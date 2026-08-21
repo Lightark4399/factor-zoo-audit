@@ -1,0 +1,44 @@
+factor_id: bm_ratio
+name: Book-to-market ratio
+category: value
+
+economic_rationale: >
+  Firms trading at a low price relative to book value are either compensating
+  investors for bearing distress risk, or are mispriced because investors
+  extrapolate recent poor performance too far into the future. Both readings
+  imply higher subsequent returns, which is why the effect survives regardless of
+  which interpretation is correct — though only the risk reading implies it
+  should persist after publication.
+
+persistence_conditions: >
+  Expected to weaken when intangible assets form a large share of firm value,
+  since book value measures them poorly and the ratio then compares a market
+  price against an incomplete accounting of what the firm owns. Expected to
+  underperform for extended stretches during growth-led markets.
+
+definition: >
+  Most recently filed common stockholders' equity divided by market
+  capitalisation at the signal date. Equity is read through the point-in-time
+  view, so only filings published before the signal date are visible. Negative
+  book values are excluded rather than winsorised, since the ratio has no
+  economic meaning there.
+
+timing:
+  signal_computed: month_end_close
+  earliest_execution: next_trading_day_open
+  # The physical constraint is filed <= signal_date. The additional lag below is
+  # a deliberate margin: filings appear on EDGAR during the day, and a signal
+  # formed at a month-end close cannot rely on same-day availability.
+  data_lag_days: 2
+
+falsification:
+  - Decile portfolio returns show no monotonic pattern
+  - The point-in-time and restated versions produce materially different results,
+    indicating the effect depends on data unavailable at the time
+  - The effect disappears after controlling for size
+  - Monthly correlation with the Ken French HML series falls below 0.9,
+    indicating an implementation error rather than a factor failing
+
+references:
+  - "Fama and French (1992), The Cross-Section of Expected Stock Returns, JF"
+  - "Rosenberg, Reid and Lanstein (1985), Persuasive Evidence of Market Inefficiency, JPM"

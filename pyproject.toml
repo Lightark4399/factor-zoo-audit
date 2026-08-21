@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "factor-zoo-audit"
+version = "0.1.0"
+description = "How many published equity anomalies survive out-of-sample, multiple testing, baseline decomposition and costs"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "statsmodels>=0.14",
+    "pyyaml>=6.0",
+    "duckdb>=1.0",
+]
+
+[project.optional-dependencies]
+# Ingestion is optional so the test suite and demo run without network access.
+ingest = ["requests>=2.31"]
+dev = ["pytest>=7.4", "ruff>=0.4"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]

@@ -1,0 +1,36 @@
+factor_id: mom_12_1
+name: 12-month momentum, skipping the most recent month
+category: momentum
+
+economic_rationale: >
+  Investors underreact to news, and information diffuses through the market
+  gradually rather than instantly, so past winners continue to outperform over
+  intermediate horizons. The most recent month is skipped because short-horizon
+  reversal is a distinct and opposite effect driven by microstructure and
+  liquidity provision; including it contaminates the momentum signal with a
+  mechanism that works the other way.
+
+persistence_conditions: >
+  Expected to weaken in high-volatility regimes and to reverse sharply after
+  market crashes, when the losers that rebound most violently are precisely the
+  short leg. Expected to decay after publication if the effect is behavioural
+  rather than compensation for a risk that investors genuinely bear.
+
+definition: >
+  Cumulative return from t-12 months to t-1 month, computed from adjusted close
+  prices after the close on the last trading day of the formation month.
+
+timing:
+  signal_computed: month_end_close
+  earliest_execution: next_trading_day_open
+  data_lag_days: 0
+
+falsification:
+  - Decile portfolio returns show no monotonic pattern
+  - The effect is concentrated in a single sub-period rather than spread across decades
+  - The effect disappears once the portfolio is neutralised on industry
+  - Performance at execution lag 1 is indistinguishable from zero
+
+references:
+  - "Jegadeesh and Titman (1993), Returns to Buying Winners and Selling Losers, JF"
+  - "Asness, Moskowitz and Pedersen (2013), Value and Momentum Everywhere, JF"
