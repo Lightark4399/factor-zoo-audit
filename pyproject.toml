@@ -20,7 +20,10 @@ dependencies = [
 
 [project.optional-dependencies]
 # Ingestion is optional so the test suite and demo run without network access.
-ingest = ["requests>=2.31"]
+# yfinance is part of ingestion, not optional within it: the code falls back to
+# it when Stooq has no data, and omitting it made every fallback raise
+# ImportError, which was then swallowed as a per-ticker failure.
+ingest = ["requests>=2.31", "yfinance>=0.2"]
 dev = ["pytest>=7.4", "ruff>=0.4"]
 
 [tool.setuptools.packages.find]

@@ -91,6 +91,7 @@ class IngestReport:
     n_excluded_form: int = 0
     n_excluded_no_filed: int = 0
     n_excluded_unit: int = 0
+    n_excluded_filed_before_period: int = 0
     failures: list[str] = field(default_factory=list)
     tag_coverage: dict[str, int] = field(default_factory=dict)
 
@@ -111,6 +112,7 @@ class IngestReport:
             "n_excluded_form": self.n_excluded_form,
             "n_excluded_no_filed": self.n_excluded_no_filed,
             "n_excluded_unit": self.n_excluded_unit,
+            "n_excluded_filed_before_period": self.n_excluded_filed_before_period,
             "tag_coverage": dict(self.tag_coverage),
             "failures": list(self.failures[:20]),
         }
@@ -284,6 +286,23 @@ def parse_companyfacts(
         frame = frame.drop_duplicates(
             subset=["cik", "tag", "period_end", "filed", "form"], keep="first"
         )
+
+        # A filing cannot predate the period it reports on, and the schema
+        # enforces that. Real XBRL nonetheless contains rows that violate it:
+        # filers mistype period ends, and nothing in the submission process
+        # catches a date typo. Measured on the first thirty companies ingested,
+        # such rows exist in the live data.
+        #
+        # The constraint stays. What changes is where the violation is handled:
+        # dropping these rows here, with a count, keeps a data-entry error in one
+        # filing from aborting an ingest of thirty thousand rows. Relaxing the
+        # constraint instead would let a fact with an impossible date into the
+        # table, where a point-in-time query would happily return it.
+        filed = pd.to_datetime(frame["filed"], errors="coerce")
+        period = pd.to_datetime(frame["period_end"], errors="coerce")
+        valid = filed.notna() & period.notna() & (filed >= period)
+        rep.n_excluded_filed_before_period += int((~valid).sum())
+        frame = frame.loc[valid]
 
     rep.n_rows += len(frame)
     return frame

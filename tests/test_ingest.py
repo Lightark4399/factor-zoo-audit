@@ -15,7 +15,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from fza.ingest.prices import parse_stooq_csv
+from fza.ingest.prices import fetch_stooq, parse_stooq_csv
 from fza.ingest.sec import (
     ACCEPTED_FORMS,
     CORE_TAGS,
@@ -129,6 +129,57 @@ def test_filing_history_spans_first_to_last(parsed):
     assert hist["last_filing"].iloc[0] == pd.Timestamp("2021-02-15")
 
 
+def test_facts_filed_before_their_period_end_are_excluded():
+    """Real XBRL contains impossible dates, and the schema rejects them.
+
+    Filers mistype period ends and nothing in the submission process catches it.
+    The constraint is right; handling the violation at parse time is what keeps
+    one bad filing from aborting an ingest of thirty thousand rows. The first
+    live run failed exactly this way.
+    """
+    payload = {
+        "cik": 1234567,
+        "facts": {
+            "us-gaap": {
+                "Assets": {
+                    "units": {
+                        "USD": [
+                            # filed BEFORE the period it reports on: impossible
+                            {
+                                "end": "2029-12-31", "val": 1.0, "form": "10-K",
+                                "filed": "2021-02-15", "accn": "bad",
+                            },
+                            {
+                                "end": "2020-12-31", "val": 2.0, "form": "10-K",
+                                "filed": "2021-02-15", "accn": "good",
+                            },
+                        ]
+                    }
+                }
+            }
+        },
+    }
+    report = IngestReport()
+    out = parse_companyfacts(payload, report=report)
+    assert len(out) == 1
+    assert out["accession"].iloc[0] == "good"
+    assert report.n_excluded_filed_before_period == 1
+
+
+def test_excluded_impossible_dates_are_counted_not_silent():
+    """The count is what distinguishes a filer error from an absence."""
+    payload = {
+        "cik": 1,
+        "facts": {"us-gaap": {"Assets": {"units": {"USD": [
+            {"end": "2030-12-31", "val": 1.0, "form": "10-K", "filed": "2020-01-01"},
+        ]}}}},
+    }
+    report = IngestReport()
+    assert parse_companyfacts(payload, report=report).empty
+    assert report.n_excluded_filed_before_period == 1
+    assert "n_excluded_filed_before_period" in report.to_dict()
+
+
 def test_filing_history_of_empty_input_is_empty():
     assert derive_filing_history(pd.DataFrame()).empty
 
@@ -171,3 +222,56 @@ def test_stooq_no_data_is_not_mistaken_for_success():
 
 def test_stooq_parser_rejects_an_unexpected_schema():
     assert parse_stooq_csv("Foo,Bar\n1,2\n", "TEST").empty
+
+
+def test_stooq_parser_rejects_an_html_error_page():
+    """A rejected request comes back as HTML with a 200 status.
+
+    Reaching read_csv with it fails several frames from the real cause, which is
+    that the request was refused. The first live run returned zero rows for all
+    thirty tickers this way.
+    """
+    html = "<!DOCTYPE html><html><body>Access denied</body></html>"
+    assert parse_stooq_csv(html, "TEST").empty
+
+
+def test_stooq_request_carries_a_browser_user_agent():
+    """Stooq refuses a bare session, and the failure is silent.
+
+    Asserting the header rather than the download keeps this testable offline.
+    """
+
+    class FakeResponse:
+        text = "Date,Open,High,Low,Close,Volume\n2020-01-02,1,1,1,1,1\n"
+
+        def raise_for_status(self):
+            return None
+
+    class FakeSession:
+        def __init__(self):
+            self.headers = {}
+            self.seen = None
+
+        def get(self, url, params=None, timeout=None):
+            self.seen = dict(self.headers)
+            return FakeResponse()
+
+    session = FakeSession()
+    fetch_stooq("TEST", session=session)
+    assert "User-Agent" in session.seen
+    assert "Mozilla" in session.seen["User-Agent"]
+
+
+def test_yfinance_is_declared_as_an_ingest_dependency():
+    """The fallback is part of ingestion, not optional within it.
+
+    Omitting it made every fallback raise ImportError, which was then swallowed
+    as a per-ticker failure -- so the run reported "no data" for tickers whose
+    only problem was a missing package.
+    """
+    root = Path(__file__).resolve().parents[1]
+    pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+    ingest_line = next(
+        line for line in pyproject.splitlines() if line.strip().startswith("ingest =")
+    )
+    assert "yfinance" in ingest_line

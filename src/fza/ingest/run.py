@@ -93,6 +93,28 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"  {len(prices):,} rows", flush=True)
 
+    # The report is written BEFORE the database. The first live run crashed
+    # inside the store on a constraint violation, and because the report was
+    # written afterwards, every diagnostic from a four-minute download was lost --
+    # including the reason the prices had failed. Diagnostics that only survive a
+    # successful run are diagnostics for the case that needs them least.
+    report = {
+        "sec": sec_report.to_dict(),
+        "prices": price_report.to_dict() if price_report else None,
+        "n_companies": len(tickers),
+        "n_fundamental_rows": len(fundamentals),
+        "n_price_rows": len(prices),
+    }
+    report_path = args.out.with_suffix(".report.json")
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    print(f"  diagnostics written to {report_path}", flush=True)
+
+    if price_report and price_report.failures:
+        print("  first price failures:", flush=True)
+        for f in price_report.failures[:3]:
+            print(f"    {f}", flush=True)
+
     print(f"writing {args.out}...", flush=True)
     if args.out.exists():
         args.out.unlink()
@@ -110,16 +132,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         store.load_prices(prices)
 
-    # The report is written next to the database, not printed and forgotten. A
-    # coverage rate that only ever appeared on a terminal cannot be cited later,
-    # and the exclusion counts are part of what the project claims.
-    report = {
-        "sec": sec_report.to_dict(),
-        "prices": price_report.to_dict() if price_report else None,
-        "n_securities": len(securities),
-        "n_restatements": len(store.restatements()),
-    }
-    report_path = args.out.with_suffix(".report.json")
+    # Now that the store loaded, enrich the report with what only it knows.
+    report["n_securities"] = len(securities)
+    report["n_restatements"] = len(store.restatements())
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
 
     print()

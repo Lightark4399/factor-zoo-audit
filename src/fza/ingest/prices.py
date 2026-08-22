@@ -36,6 +36,16 @@ import pandas as pd
 
 STOOQ_URL = "https://stooq.com/q/d/l/"
 
+# Stooq refuses or returns an HTML error page for requests without a browser-like
+# User-Agent. The first live run downloaded zero rows for all thirty tickers
+# because the session was created bare -- the SEC client set a User-Agent, this
+# one did not, and the failure was silent because an HTML body simply fails to
+# parse as CSV.
+BROWSER_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+)
+
 
 @dataclass
 class PriceReport:
@@ -74,7 +84,13 @@ def parse_stooq_csv(text: str, ticker: str) -> pd.DataFrame:
     the 200 response as success would insert an empty frame and let the ticker
     look downloaded.
     """
-    if not text or text.strip().lower().startswith("no data"):
+    stripped = (text or "").strip()
+    if not stripped or stripped.lower().startswith("no data"):
+        return pd.DataFrame()
+    # A rejected request comes back as an HTML page with a 200 status, which
+    # would otherwise reach read_csv and fail with a parser error several frames
+    # away from the actual cause.
+    if stripped.startswith("<"):
         return pd.DataFrame()
 
     frame = pd.read_csv(io.StringIO(text))
@@ -112,6 +128,7 @@ def fetch_stooq(ticker: str, session: Any | None = None) -> pd.DataFrame:
                 "requests is needed for ingestion: pip install -e '.[ingest]'"
             ) from exc
         session = requests.Session()
+    session.headers.setdefault("User-Agent", BROWSER_USER_AGENT)
 
     # Stooq expects US symbols suffixed '.us'.
     symbol = ticker.lower()
@@ -190,6 +207,11 @@ def ingest_prices(
 
         if frame.empty:
             report.n_failed += 1
+            if not any(ticker in f for f in report.failures):
+                report.failures.append(
+                    f"{ticker}: both sources returned no rows (check the "
+                    "failure entries above for the underlying error)"
+                )
         else:
             frames.append(frame)
 
