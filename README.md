@@ -131,9 +131,9 @@ factor library and the audit pipeline are in progress.
 ✓ Cross-sectional pipeline: winsorise, neutralise, standardise, forward returns
 ✓ Standard protocol: quantiles, long-short, IC, monotonicity, Fama-MacBeth, sub-periods
 ✓ Point-in-time vs restated vintage comparison
-✓ 35 tests, CI green
-○ Ingestion from SEC XBRL and price sources
-○ Factor library (20 to start, across eight categories)
+✓ SEC XBRL and price ingestion, parsers tested against recorded payloads
+✓ 50 tests, CI green
+○ Factor library beyond the two reference implementations
 ○ Audit layer wired to backtest-audit
 ○ Style orthogonalisation, factor structure (PCA), costs
 ```
@@ -158,8 +158,17 @@ Ingestion is the only step that reaches the internet:
 
 ```bash
 pip install -e ".[ingest]"
-make data     # SEC XBRL + prices into data/fza.duckdb
+python -m fza.ingest.run --user-agent "Your Name you@example.com" --limit 30
 ```
+
+SEC requires a User-Agent identifying you, with a contact address — it is a
+condition of the fair-access policy, and requests without one are refused. The
+run is throttled to ten requests per second for the same reason.
+
+Start small. Thirty companies makes a failure cheap and legible; scaling up is a
+flag change, not a different code path. The run writes a report alongside the
+database recording coverage, exclusion counts by reason, and what share of the
+prices came from a source that drops delisted tickers.
 
 ---
 
