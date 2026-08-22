@@ -23,11 +23,14 @@ import pandas as pd
 from ..store import Store
 from .registry import register
 
-# Trading days in a month, used to convert the literature's month-based windows
-# into row offsets. Approximate by construction; the pipeline supplies actual
-# month-end dates, so this only affects the length of the lookback window and not
-# the alignment of the signal.
-DAYS_PER_MONTH = 21
+# NOTE ON UNITS. `_monthly_closes` resamples to the signal dates, so one row is
+# one signal period -- typically one month. Windows are therefore expressed in
+# ROWS OF THE RESAMPLED FRAME, not in trading days.
+#
+# An earlier version shifted by 21 rows to mean "one month", which on a
+# month-end frame shifts twenty-one MONTHS. The factor returned zero rows, and
+# the emptiness propagated silently all the way to the join. Keeping the unit in
+# the name is the cheap guard against repeating it.
 
 
 def _monthly_closes(prices: pd.DataFrame, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
@@ -71,10 +74,12 @@ def momentum_12_1(
 
     closes = _monthly_closes(prices, signal_dates)
 
-    # Both endpoints are shifted back by whole months so the window ends before
-    # the skip period rather than at the signal date.
-    end = closes.shift(skip_months * DAYS_PER_MONTH)
-    start = closes.shift((formation_months + skip_months) * DAYS_PER_MONTH)
+    # One row of `closes` is one signal period. The window ends `skip_months`
+    # periods before the signal date and starts `formation_months` before that,
+    # which is the literature's definition: a 12-month return skipping the most
+    # recent month.
+    end = closes.shift(skip_months)
+    start = closes.shift(formation_months + skip_months)
 
     with np.errstate(divide="ignore", invalid="ignore"):
         value = (end / start) - 1.0

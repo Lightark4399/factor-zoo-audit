@@ -25,7 +25,9 @@ import pandas as pd
 
 @dataclass(frozen=True)
 class FixtureSpec:
-    n_securities: int = 12
+    # Large enough that the default minimum cross-section of 10 is a realistic
+    # constraint rather than one the fixture has to be weakened to satisfy.
+    n_securities: int = 40
     start: str = "2018-01-01"
     end: str = "2021-12-31"
     seed: int = 11
@@ -48,7 +50,7 @@ def build_fixture(spec: FixtureSpec | None = None) -> dict[str, pd.DataFrame]:
     # ---- securities -------------------------------------------------
     # One security is delisted part-way through, so universe reconstruction has
     # something to reconstruct. Its last_filing precedes the end of the sample.
-    delisted_idx = 7
+    delisted_idx = 7  # one name leaves part-way through, for universe reconstruction
     delist_date = dates[int(len(dates) * 0.6)]
     securities = pd.DataFrame(
         {

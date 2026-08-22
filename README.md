@@ -128,10 +128,13 @@ factor library and the audit pipeline are in progress.
 ✓ Universe reconstruction from filing activity
 ✓ Factor registry requiring a hypothesis card to register
 ✓ Synthetic fixtures with a known restatement and a delisting
-✓ 15 tests, CI green
+✓ Cross-sectional pipeline: winsorise, neutralise, standardise, forward returns
+✓ Standard protocol: quantiles, long-short, IC, monotonicity, Fama-MacBeth, sub-periods
+✓ Point-in-time vs restated vintage comparison
+✓ 35 tests, CI green
 ○ Ingestion from SEC XBRL and price sources
 ○ Factor library (20 to start, across eight categories)
-○ Standard test protocol and the audit pipeline
+○ Audit layer wired to backtest-audit
 ○ Style orthogonalisation, factor structure (PCA), costs
 ```
 
