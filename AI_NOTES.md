@@ -108,6 +108,66 @@ that only survives a successful run is a report for the case that needs it least
 
 ---
 
+## Incident 6 — the same bug in a second place
+
+**What happened.** The second live ingest crashed in `merge_asof` with
+`incompatible merge keys dtype('<M8[s]') and dtype('<M8[us]')`.
+
+**Diagnosis.** pandas infers different datetime resolutions depending on how a
+frame was built, and `merge_asof` raises on a mismatch rather than coercing. The
+identical failure had been found and fixed during the pipeline work, in
+`build_panel`. It was fixed there and nowhere else.
+
+**The fix.** Both keys normalised at the join. More usefully: the other join
+sites were audited, which is what should have happened the first time.
+
+**Constraint added.** A fix applied at one call site is not a fix. When a defect
+turns out to be a property of a library rather than of one line, the response is
+a search for the other instances, not a patch.
+
+---
+
+## Incident 7 — a default that truncated the data and looked like success
+
+**What happened.** After the price fixes, the run downloaded 690 rows across
+thirty tickers and reported success.
+
+**Diagnosis.** That is about 23 trading days each. `yfinance.download` returns
+roughly one month when no start date is given, and the code passed none. No
+error, no warning — just a dataset too short for any factor in the project.
+
+**The fix.** An explicit default start of 2010-01-01, and a `--start` flag. The
+parameter is no longer optional in the sense that matters: omitting it now
+produces fifteen years, not one month.
+
+**Constraint added.** A default that silently truncates is worse than an error.
+Where a library's default is a quiet subset of what the caller means, the wrapper
+states its own.
+
+---
+
+## Incident 8 — a provider that answers 404 to a documented request
+
+**What happened.** Stooq returned `404 Not Found` for `aapl.us`, `nvda.us`,
+`googl.us` — the documented symbol format, over a plain residential connection,
+with a browser User-Agent already set from incident 4.
+
+**Why it was not simply fixed.** The development environment cannot reach Stooq
+at all, so the correct request could not be determined empirically. Guessing at a
+URL format and shipping it would have been a change with no evidence behind it.
+
+**What was done instead.** The source order became a parameter, defaulting to
+Stooq for the survivorship reason but overridable with `--price-source
+yfinance,stooq`. The run report records which source supplied each ticker and
+what share came from the survivorship-prone one.
+
+**Constraint added.** When a dependency's behaviour cannot be verified from
+here, the response is to make the choice visible and recorded rather than to
+guess and hard-code. The report already carried `survivorship_prone_share` for
+exactly this situation.
+
+---
+
 ## What the live data changed
 
 The first thirty companies produced facts, not assumptions:
@@ -117,8 +177,14 @@ The first thirty companies produced facts, not assumptions:
 * **Impossible filing dates are real**, not a hypothetical. The exclusion count is
   now part of every run's report.
 * **Free price sources are the fragile link**, not SEC. The fundamentals arrived
-  first try; the prices needed two fixes and still depend on a source that refuses
-  unfamiliar clients.
+  on the first attempt and have been stable since. Prices have now taken four
+  fixes across two runs — a missing User-Agent, an undeclared dependency, a
+  default window of one month, and a provider returning 404 to its own documented
+  format — and still depend on a source that drops delisted securities.
+
+  That asymmetry is itself a finding worth stating: the point-in-time guarantee
+  this project is built around rests on SEC data, which is well-formed and
+  complete. The survivorship guarantee rests on price data, which is neither.
 
 ---
 

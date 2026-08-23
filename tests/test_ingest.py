@@ -262,6 +262,89 @@ def test_stooq_request_carries_a_browser_user_agent():
     assert "Mozilla" in session.seen["User-Agent"]
 
 
+def test_attach_shares_survives_mismatched_datetime_units():
+    """merge_asof raises on differing datetime resolutions rather than coercing.
+
+    The identical failure was fixed in build_panel during the pipeline work and
+    not audited across the other join sites, so it surfaced again here on the
+    first live run. A fix applied at one call site is not a fix.
+    """
+    from fza.ingest.prices import attach_shares_outstanding
+
+    prices = pd.DataFrame(
+        {
+            "ticker": ["AAA", "AAA"],
+            "cik": ["0000000001"] * 2,
+            "trade_date": pd.to_datetime(
+                ["2020-06-01", "2020-06-02"]
+            ).astype("datetime64[s]"),
+            "open": [1.0, 1.0],
+            "high": [1.0, 1.0],
+            "low": [1.0, 1.0],
+            "close": [1.0, 1.0],
+            "close_adj": [1.0, 1.0],
+            "volume": [1.0, 1.0],
+            "shares_out": [None, None],
+        }
+    )
+    fundamentals = pd.DataFrame(
+        {
+            "cik": ["0000000001"],
+            "tag": ["CommonStockSharesOutstanding"],
+            "filed": pd.to_datetime(["2020-05-01"]).astype("datetime64[us]"),
+            "value": [1_000_000.0],
+        }
+    )
+    out = attach_shares_outstanding(prices, fundamentals)
+    assert (out["shares_out"] == 1_000_000.0).all()
+
+
+def test_shares_are_not_backfilled_before_the_first_filing():
+    """Back-filling would put a future disclosure into a historical row.
+
+    That is the exact error the schema exists to prevent, reintroduced through a
+    convenience.
+    """
+    from fza.ingest.prices import attach_shares_outstanding
+
+    prices = pd.DataFrame(
+        {
+            "ticker": ["AAA", "AAA"],
+            "cik": ["0000000001"] * 2,
+            "trade_date": pd.to_datetime(["2020-01-02", "2020-06-02"]),
+            "open": [1.0, 1.0],
+            "high": [1.0, 1.0],
+            "low": [1.0, 1.0],
+            "close": [1.0, 1.0],
+            "close_adj": [1.0, 1.0],
+            "volume": [1.0, 1.0],
+            "shares_out": [None, None],
+        }
+    )
+    fundamentals = pd.DataFrame(
+        {
+            "cik": ["0000000001"],
+            "tag": ["CommonStockSharesOutstanding"],
+            "filed": pd.to_datetime(["2020-05-01"]),
+            "value": [1_000_000.0],
+        }
+    )
+    out = attach_shares_outstanding(prices, fundamentals).sort_values("trade_date")
+    assert pd.isna(out["shares_out"].iloc[0])  # before the filing existed
+    assert out["shares_out"].iloc[1] == 1_000_000.0
+
+
+def test_yfinance_has_an_explicit_default_start():
+    """Without one, yfinance returns about a month and the run looks successful.
+
+    The first live run produced 690 rows across thirty tickers -- roughly 23 days
+    each -- which is too short for any factor here and did not raise.
+    """
+    from fza.ingest.prices import DEFAULT_START
+
+    assert pd.Timestamp(DEFAULT_START) < pd.Timestamp("2015-01-01")
+
+
 def test_yfinance_is_declared_as_an_ingest_dependency():
     """The fallback is part of ingestion, not optional within it.
 

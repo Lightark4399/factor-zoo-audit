@@ -140,7 +140,17 @@ def fetch_stooq(ticker: str, session: Any | None = None) -> pd.DataFrame:
     return parse_stooq_csv(resp.text, ticker)
 
 
-def fetch_yfinance(ticker: str, start: str | None = None, end: str | None = None) -> pd.DataFrame:
+# Without an explicit start date yfinance returns roughly one month of history.
+# The first live run downloaded 690 rows across thirty tickers -- about 23 days
+# each -- and looked like a success. A default that silently truncates to a
+# window too short for any factor is worse than an error, so the start date is
+# required rather than optional.
+DEFAULT_START = "2010-01-01"
+
+
+def fetch_yfinance(
+    ticker: str, start: str = DEFAULT_START, end: str | None = None
+) -> pd.DataFrame:
     """Fallback source. Drops delisted tickers, which is why it is second."""
     try:
         import yfinance as yf
@@ -177,6 +187,9 @@ def ingest_prices(
     tickers: list[str],
     session: Any | None = None,
     use_yfinance_fallback: bool = True,
+    start: str = DEFAULT_START,
+    end: str | None = None,
+    source_order: tuple[str, ...] = ("stooq", "yfinance"),
     on_progress=None,
 ) -> tuple[pd.DataFrame, PriceReport]:
     """Download prices for several tickers, recording which source supplied each.
@@ -184,26 +197,38 @@ def ingest_prices(
     A failure for one ticker is collected rather than raised: a single delisted
     or renamed symbol must not abort a five-hundred-name download, and the
     coverage rate is more informative than the exception would have been.
+
+    ``source_order`` exists because provider availability is not a constant.
+    Stooq is first by default for the survivorship reason above, but it returned
+    404 for every major US ticker on the first live run, from an ordinary
+    residential connection. Making the order a parameter -- and reporting which
+    source actually supplied each row -- keeps that a recorded fact about the run
+    rather than an assumption baked into the code.
     """
     report = PriceReport(n_requested=len(tickers))
     frames = []
 
+    fetchers = {
+        "stooq": lambda t: fetch_stooq(t, session=session),
+        "yfinance": lambda t: fetch_yfinance(t, start=start, end=end),
+    }
+
     for i, ticker in enumerate(tickers):
         frame = pd.DataFrame()
-        try:
-            frame = fetch_stooq(ticker, session=session)
-            if not frame.empty:
-                report.n_stooq += 1
-        except Exception as exc:
-            report.failures.append(f"{ticker} (stooq): {type(exc).__name__}: {exc}")
-
-        if frame.empty and use_yfinance_fallback:
+        for source in source_order:
+            if source == "yfinance" and not use_yfinance_fallback:
+                continue
             try:
-                frame = fetch_yfinance(ticker)
-                if not frame.empty:
-                    report.n_yfinance += 1
+                frame = fetchers[source](ticker)
             except Exception as exc:
-                report.failures.append(f"{ticker} (yfinance): {type(exc).__name__}: {exc}")
+                report.failures.append(f"{ticker} ({source}): {type(exc).__name__}: {exc}")
+                frame = pd.DataFrame()
+            if not frame.empty:
+                if source == "stooq":
+                    report.n_stooq += 1
+                else:
+                    report.n_yfinance += 1
+                break
 
         if frame.empty:
             report.n_failed += 1
@@ -257,11 +282,17 @@ def attach_shares_outstanding(
     if shares.empty:
         return prices
 
-    shares["filed"] = pd.to_datetime(shares["filed"])
+    # Both keys are normalised to the same resolution. pandas infers different
+    # datetime units depending on how a frame was built, and merge_asof raises on
+    # a mismatch rather than coercing. The same failure was fixed in build_panel
+    # during the pipeline work and not audited across the other join sites, so it
+    # surfaced again here on the first live run -- a fix applied at one call site
+    # is not a fix.
+    shares["filed"] = pd.to_datetime(shares["filed"]).astype("datetime64[ns]")
     shares = shares.sort_values("filed").rename(columns={"value": "shares_filed"})
 
     px = prices.copy()
-    px["trade_date"] = pd.to_datetime(px["trade_date"])
+    px["trade_date"] = pd.to_datetime(px["trade_date"]).astype("datetime64[ns]")
     px = px.sort_values("trade_date")
 
     # merge_asof with direction='backward' takes the most recent filing at or

@@ -60,6 +60,21 @@ def main(argv: list[str] | None = None) -> int:
         help="comma-separated tickers; overrides --limit when given",
     )
     ap.add_argument("--skip-prices", action="store_true")
+    ap.add_argument(
+        "--start",
+        default="2010-01-01",
+        help="earliest price date (default 2010-01-01)",
+    )
+    ap.add_argument(
+        "--price-source",
+        default="stooq,yfinance",
+        help=(
+            "comma-separated source order. Stooq is first by default because it "
+            "retains delisted securities; if it fails from your connection, use "
+            "'yfinance,stooq' and note that the run report will show the "
+            "survivorship-prone share."
+        ),
+    )
     args = ap.parse_args(argv)
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -89,7 +104,10 @@ def main(argv: list[str] | None = None) -> int:
     if not args.skip_prices:
         print("fetching prices...", flush=True)
         prices, price_report = ingest_prices(
-            tickers["ticker"].tolist(), on_progress=_progress("prices")
+            tickers["ticker"].tolist(),
+            start=args.start,
+            source_order=tuple(s.strip() for s in args.price_source.split(",")),
+            on_progress=_progress("prices"),
         )
         print(f"  {len(prices):,} rows", flush=True)
 
