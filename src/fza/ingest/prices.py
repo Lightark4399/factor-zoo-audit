@@ -213,6 +213,18 @@ def ingest_prices(
         "yfinance": lambda t: fetch_yfinance(t, start=start, end=end),
     }
 
+    # Validate before downloading anything. A misspelled source name would
+    # otherwise be caught inside the per-ticker try block and recorded as thirty
+    # download failures -- indistinguishable from a network problem, and the
+    # operator would go looking at their connection. Per-item error handling must
+    # not swallow a configuration error.
+    unknown = [s for s in source_order if s not in fetchers]
+    if unknown:
+        raise ValueError(
+            f"unknown price source(s): {unknown}. Valid sources are "
+            f"{sorted(fetchers)}."
+        )
+
     for i, ticker in enumerate(tickers):
         frame = pd.DataFrame()
         for source in source_order:

@@ -132,9 +132,10 @@ factor library and the audit pipeline are in progress.
 ✓ Standard protocol: quantiles, long-short, IC, monotonicity, Fama-MacBeth, sub-periods
 ✓ Point-in-time vs restated vintage comparison
 ✓ SEC XBRL and price ingestion, parsers tested against recorded payloads
-✓ 50 tests, CI green
-○ Factor library beyond the two reference implementations
+✓ Demo entry point: real store when present, fixtures otherwise
+✓ 66 tests, CI green
 ○ Audit layer wired to backtest-audit
+○ Factor library beyond the two reference implementations
 ○ Style orthogonalisation, factor structure (PCA), costs
 ```
 
@@ -142,6 +143,35 @@ See [PLAN.md](PLAN.md) for the build order and [SPEC.md](SPEC.md) for what would
 count as failure.
 
 ---
+
+## First real ingest
+
+Thirty companies, run as the first live test of the ingestion layer:
+
+```
+securities         30
+fundamentals   33,598
+prices        121,341
+restatements    8,999      (27% of fundamental rows)
+coverage         100%
+of prices, 100% came from a source that drops delisted tickers
+```
+
+Two things in that table shaped what came next.
+
+**Nearly a third of fundamental rows were revised after first publication.** The
+point-in-time machinery was built on the assumption that restatements matter; it
+is now built on the observation that they are pervasive. A backtest reading a
+mutable fundamentals table is reading revised figures for a large share of its
+history.
+
+**Every price row came from a source that drops delisted securities.** Stooq,
+which retains them, returned 404 for its own documented symbol format from an
+ordinary connection. The run reports that share rather than letting it pass, and
+it is the project's largest known gap — quantified in the output of every run.
+
+Getting to that table took seven fixes across three runs; they are recorded in
+[AI_NOTES.md](AI_NOTES.md).
 
 ## Running it
 

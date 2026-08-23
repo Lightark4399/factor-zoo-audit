@@ -1,0 +1,57 @@
+==============================================================================
+                               FACTOR ZOO AUDIT                               
+==============================================================================
+
+  DATA: data\fza.duckdb
+
+  securities             30
+  fundamentals       33,598
+  prices            121,341
+  restatements        8,999   (26.8% of fundamental rows)
+  price history  2010-01-04 .. 2026-08-21
+
+==============================================================================
+REGISTERED FACTORS
+==============================================================================
+
+  factor        category      fundamentals   falsification
+  mom_12_1      momentum      no                         4
+  bm_ratio      value         yes                        4
+
+  Every factor carries a hypothesis card stating an economic mechanism,
+  the conditions under which it should persist, and what would falsify
+  it. Registration fails without one.
+
+==============================================================================
+STANDARD PROTOCOL
+==============================================================================
+
+  184 monthly signal dates, 2011-04-30 .. 2026-07-31
+
+  factor                IC   LS Sharpe   monotone   dates   lookahead
+  mom_12_1         +0.0149     +0.0531      +0.00     170          ok
+  bm_ratio         +0.0377     +0.1401      +0.70     183   VIOLATION
+
+==============================================================================
+POINT-IN-TIME VS RESTATED
+==============================================================================
+
+  Could this result have been obtained when the signal was formed?
+
+  mom_12_1
+    not applicable -- this factor reads no fundamentals, so the
+    two vintages are identical by construction. That is not
+    evidence it is free of look-ahead.
+
+  bm_ratio
+    point-in-time IC      +0.0377
+    restated IC           +0.0363
+    unearned advantage    -0.0014
+    verdict                  PASS
+
+==============================================================================
+  The gap above is the value of reading a filing before it existed.
+  It is measurable here only because revisions are stored as rows
+  rather than updates -- a database that overwrote them could not
+  produce this number at all.
+==============================================================================

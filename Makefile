@@ -22,6 +22,9 @@ lint:
 data:
 	python -m fza.ingest.run --out data/fza.duckdb
 
+# Runs on an ingested store when one exists, and on fixtures otherwise -- so a
+# reviewer can see the pipeline work without downloading anything, and CI can
+# run it unchanged.
 demo:
 	python -m fza.demo --outdir examples/outputs
 

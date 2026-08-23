@@ -19,3 +19,7 @@ jobs:
       # beyond PyPI. The point-in-time guarantee is verified here, not asserted.
       - name: unit tests
         run: python -m pytest
+      # The demo runs in fixture mode here, which exercises the whole pipeline
+      # end to end. A regression the unit tests miss still fails the build.
+      - name: demo smoke test
+        run: python -m fza.demo --outdir /tmp/demo_out
