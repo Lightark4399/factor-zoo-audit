@@ -181,7 +181,7 @@ def main(argv: list[str] | None = None) -> int:
     emit()
     emit(
         f"  {'factor':<14}{'IC':>10}{'LS Sharpe':>12}"
-        f"{'monotone':>11}{'dates':>8}{'lookahead':>12}"
+        f"{'monotone':>11}{'dates':>8}{'as-of held':>12}"
     )
 
     runs = {}
@@ -196,7 +196,29 @@ def main(argv: list[str] | None = None) -> int:
         emit(
             f"  {factor_id:<14}{s['ic_mean']:>+10.4f}{s['ls_sharpe']:>+12.4f}"
             f"{run.protocol.monotonicity_rho:>+11.2f}{run.protocol.n_dates:>8}"
-            f"{('ok' if run.lookahead_check['ok'] else 'VIOLATION'):>12}"
+            f"{('yes' if run.read_path_check['ok'] else 'VIOLATION'):>12}"
+        )
+
+    emit()
+    emit("  'as-of held' is a check on this code: did every read return only")
+    emit("  filings that were already public on the day being forecast, including")
+    emit("  any reporting lag the factor declared? A VIOLATION here would void")
+    emit("  every number in the row.")
+
+    emit(_header("THE TRAP, MEASURED"))
+    emit()
+    emit("  How much would a naive query have read early? This is the hazard the")
+    emit("  bitemporal store exists to avoid -- a finding, not a failure.")
+    emit()
+    emit(f"  {'factor':<14}{'signal dates':>14}{'exposed':>10}{'trap rows':>12}{'rate':>9}")
+    for factor_id, run in runs.items():
+        t = run.naive_trap
+        if not t.get("n_signal_dates"):
+            emit(f"  {factor_id:<14}{'n/a -- reads no fundamentals':>45}")
+            continue
+        emit(
+            f"  {factor_id:<14}{t['n_signal_dates']:>14,}{t['n_dates_exposed']:>10,}"
+            f"{t['n_trap_rows']:>12,}{t['exposure_rate']:>9.1%}"
         )
 
     emit(_header("POINT-IN-TIME VS RESTATED"))

@@ -2,8 +2,14 @@
 
 The store's job is to make a leaking query hard to write and a written one easy
 to detect. Both halves are tested: the view returns the pre-restatement value
-before the amendment is filed, and ``assert_no_lookahead`` catches a factor that
-went around the view.
+before the amendment is filed, and the read log catches a factor that went around
+the view.
+
+The two checks are kept apart deliberately. ``assert_read_path_respected``
+inspects what the reads actually returned and is a check on this code;
+``measure_naive_trap`` quantifies what a naive query would have read early and is
+a finding about the data. An earlier version conflated them and reported the size
+of the hazard as a violation by the code that avoids it.
 """
 
 from __future__ import annotations
@@ -13,7 +19,7 @@ import pandas as pd
 import pytest
 
 from fza.fixtures import FixtureSpec, build_fixture, load_fixture_into
-from fza.store import Store
+from fza.store import ReadRecord, Store
 
 
 @pytest.fixture()
@@ -137,43 +143,131 @@ def test_pit_reads_are_counted(store):
     assert store.access.pit_reads == before + 1
 
 
-def test_assert_no_lookahead_passes_for_honest_signal_dates(store):
-    """Signal dates late enough that every filing they touch already existed."""
-    values = pd.DataFrame(
-        {
-            "ticker": ["TST00", "TST01"],
-            "signal_date": [pd.Timestamp("2021-12-01")] * 2,
-        }
-    )
-    result = store.assert_no_lookahead(values, tags=["StockholdersEquity"])
+def test_read_path_check_passes_when_reads_go_through_the_view(store):
+    """The honest path returns only filings that already existed."""
+    store.access.reads.clear()
+    for date in ("2020-06-30", "2021-03-31", "2021-12-01"):
+        store.fundamentals_asof(date, tags=["StockholdersEquity"])
+    result = store.assert_read_path_respected()
     assert result["ok"] is True
-    assert result["violations"] == 0
+    assert result["n_reads"] == 3
+    assert result["n_violations"] == 0
 
 
-def test_assert_no_lookahead_flags_a_signal_that_precedes_its_filing(store):
-    """The check that would catch a factor bypassing the view.
+def test_read_path_check_catches_a_bypass(store):
+    """The check that an earlier version could not perform.
 
-    A signal formed in early 2019 for a company whose latest filing for a
-    then-current period arrives in 2019-08 is exactly the pattern a naive query
-    against a mutable table produces.
+    The previous implementation re-derived a hypothetical from the raw table and
+    never inspected what the reads returned, so a caller who went around the view
+    was invisible to it. This one logs the outcome, so it fails.
+    """
+    store.access.reads.clear()
+    # Simulate a caller reading the restated frame and labelling it as of an
+    # early date -- exactly what bypassing the view looks like.
+    restated = store.fundamentals_restated(caller="test-bypass")
+    store.access.reads.append(
+        ReadRecord(
+            requested_asof=pd.Timestamp("2019-01-31"),
+            intended_signal_date=pd.Timestamp("2019-01-31"),
+            max_filed=pd.to_datetime(restated["filed"]).max(),
+            n_rows=len(restated),
+            tags=("StockholdersEquity",),
+        )
+    )
+    result = store.assert_read_path_respected()
+    assert result["ok"] is False
+    assert result["n_violations"] == 1
+    sample = result["sample"][0]
+    assert sample["max_filed"] > sample["intended_signal_date"]
+
+
+def test_read_path_grace_days_are_measured_from_the_intended_signal_date(store):
+    """A factor that applies its declared lag at the query site passes.
+
+    The lag must be counted once. An earlier version recorded only the date that
+    was asked for -- already shifted by the factor -- and then subtracted the lag
+    again, so every honest read failed. Here the read asks for 2020-06-28 while
+    intending 2020-06-30, and a two-day declaration is exactly satisfied.
+    """
+    store.access.reads.clear()
+    store.access.reads.append(
+        ReadRecord(
+            requested_asof=pd.Timestamp("2020-06-28"),
+            intended_signal_date=pd.Timestamp("2020-06-30"),
+            max_filed=pd.Timestamp("2020-06-28"),
+            n_rows=1,
+            tags=("StockholdersEquity",),
+        )
+    )
+    assert store.assert_read_path_respected(grace_days=2)["ok"] is True
+
+
+def test_read_path_catches_a_declared_lag_that_was_never_applied(store):
+    """The reason this fix exists: a declaration is checked, not believed.
+
+    This read is legal on its own terms -- nothing came back later than the date
+    it asked for, so ``respects_asof`` holds. What it did not do is honour the
+    two-day lag the factor declared: it asked for the signal date itself. Under
+    grace 0 that is fine; under the declaration it is a violation, and saying so
+    is the difference between enforcing the lag and taking its word for it.
+    """
+    store.access.reads.clear()
+    store.access.reads.append(
+        ReadRecord(
+            requested_asof=pd.Timestamp("2020-06-30"),
+            intended_signal_date=pd.Timestamp("2020-06-30"),
+            max_filed=pd.Timestamp("2020-06-30"),
+            n_rows=1,
+            tags=("StockholdersEquity",),
+        )
+    )
+    assert store.access.reads[0].respects_asof is True
+    assert store.assert_read_path_respected(grace_days=0)["ok"] is True
+    assert store.assert_read_path_respected(grace_days=2)["ok"] is False
+
+
+def test_intended_signal_date_defaults_to_the_date_asked_for(store):
+    """A factor declaring no lag intends the day it asked for."""
+    store.access.reads.clear()
+    store.fundamentals_asof("2021-12-01", tags=["StockholdersEquity"])
+    record = store.access.reads[-1]
+    assert record.requested_asof == record.intended_signal_date == pd.Timestamp("2021-12-01")
+
+
+def test_read_path_check_with_no_reads_says_so(store):
+    """Vacuous truth is reported as vacuous, not as a pass."""
+    store.access.reads.clear()
+    result = store.assert_read_path_respected()
+    assert result["n_reads"] == 0
+    assert "no point-in-time reads" in result["note"]
+
+
+def test_naive_trap_measures_the_hazard_not_this_code(store):
+    """A large trap means the store is earning its keep.
+
+    The counts are reported at two granularities because they answer different
+    questions, and mixing them made a ratio impossible to compute -- the earlier
+    version reported 12,844 violations against 3,010 checks.
     """
     ticker = store._fixture_info["restated_ticker"]
     values = pd.DataFrame(
         {"ticker": [ticker], "signal_date": [pd.Timestamp("2019-03-01")]}
     )
-    result = store.assert_no_lookahead(values, tags=["StockholdersEquity"])
-    assert result["ok"] is False
-    assert result["violations"] > 0
+    trap = store.measure_naive_trap(values, tags=["StockholdersEquity"])
+    assert trap["n_signal_dates"] == 1
+    assert trap["n_trap_rows"] > 0
+    assert 0.0 <= trap["exposure_rate"] <= 1.0
+    assert trap["n_dates_exposed"] <= trap["n_signal_dates"]
 
 
-def test_grace_days_tightens_the_check(store):
-    """A factor requiring a reporting lag can assert it, and the check enforces it."""
+def test_naive_trap_is_empty_for_late_signal_dates(store):
+    """By the end of the sample every filing has appeared, so the trap is gone."""
     values = pd.DataFrame(
-        {"ticker": ["TST00"], "signal_date": [pd.Timestamp("2019-02-14")]}
+        {"ticker": ["TST00"], "signal_date": [pd.Timestamp("2021-12-01")]}
     )
-    lenient = store.assert_no_lookahead(values, tags=["StockholdersEquity"], grace_days=0)
-    strict = store.assert_no_lookahead(values, tags=["StockholdersEquity"], grace_days=30)
-    assert strict["violations"] >= lenient["violations"]
+    trap = store.measure_naive_trap(values, tags=["StockholdersEquity"])
+    assert trap["n_trap_rows"] == 0
+    assert trap["exposure_rate"] == 0.0
 
 
 # ----------------------------------------------------------------------

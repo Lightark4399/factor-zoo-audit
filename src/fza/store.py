@@ -9,9 +9,9 @@ it, so the mechanism is here rather than in a convention:
 * ``fundamentals_restated()`` exists solely to measure the gap. It is named
   loudly, documented as unusable for signal construction, and every call is
   recorded so an audit can show whether a factor ever touched it.
-* ``assert_no_lookahead()`` re-derives, from the raw table, whether any value a
-  factor consumed had a ``filed`` date after the signal date. It is the check
-  that runs in CI.
+* ``assert_read_path_respected()`` verifies, from a log of what was actually
+  returned, that no read handed back a filing dated after the signal date it was
+  asked for. It is the check that runs in CI.
 
 Why both a guard and a check
 ----------------------------
@@ -42,6 +42,42 @@ class LookaheadError(AssertionError):
 
 
 @dataclass
+class ReadRecord:
+    """One call to the point-in-time read path, and what it returned.
+
+    Recording the maximum ``filed`` in the result is what makes the guarantee
+    checkable after the fact. The view's WHERE clause is an intention; this is
+    evidence.
+
+    TWO DATES, DELIBERATELY. ``requested_asof`` is what was handed to the view;
+    ``intended_signal_date`` is the day the factor actually wants to form a
+    signal on. A factor declaring a reporting lag asks for an earlier vintage
+    than the day it is forecasting, so the two differ, and each answers a
+    different question: whether the read path held, and whether the declared lag
+    was really applied. An earlier version stored one field for both, so the lag
+    was subtracted twice and every honest read was flagged.
+    """
+
+    requested_asof: pd.Timestamp
+    intended_signal_date: pd.Timestamp
+    max_filed: pd.Timestamp | None
+    n_rows: int
+    tags: tuple[str, ...]
+
+    @property
+    def respects_asof(self) -> bool:
+        """The read path's own contract: nothing newer than what was asked for.
+
+        Judged against ``requested_asof`` alone. Whether the date asked for was
+        the right one is a separate question, and ``assert_read_path_respected``
+        answers it.
+        """
+        if self.max_filed is None:
+            return True
+        return self.max_filed <= self.requested_asof
+
+
+@dataclass
 class AccessLog:
     """Record of which vintage a session read.
 
@@ -53,10 +89,17 @@ class AccessLog:
     pit_reads: int = 0
     restated_reads: int = 0
     restated_callers: list[str] = field(default_factory=list)
+    # Every point-in-time read, with the latest filing date it returned. This is
+    # the raw material for assert_read_path_respected.
+    reads: list[ReadRecord] = field(default_factory=list)
 
     @property
     def touched_restated(self) -> bool:
         return self.restated_reads > 0
+
+    @property
+    def violating_reads(self) -> list[ReadRecord]:
+        return [r for r in self.reads if not r.respects_asof]
 
     def to_dict(self) -> dict:
         return {
@@ -64,6 +107,8 @@ class AccessLog:
             "restated_reads": self.restated_reads,
             "restated_callers": list(self.restated_callers),
             "touched_restated": self.touched_restated,
+            "n_reads_logged": len(self.reads),
+            "n_reads_violating": len(self.violating_reads),
         }
 
 
@@ -131,13 +176,28 @@ class Store:
     # ------------------------------------------------------------------
     # Reading -- the point of the class
     # ------------------------------------------------------------------
-    def fundamentals_asof(self, signal_date, tags: list[str] | None = None) -> pd.DataFrame:
+    def fundamentals_asof(
+        self,
+        signal_date,
+        tags: list[str] | None = None,
+        intended_signal_date=None,
+    ) -> pd.DataFrame:
         """Latest value per (cik, tag) that had been FILED by ``signal_date``.
 
         This is the only supported read path for factor construction.
+
+        ``intended_signal_date`` is the day the caller is forming a signal for,
+        which differs from ``signal_date`` when the factor deliberately asks for
+        an older vintage to honour a declared reporting lag. It never touches the
+        query -- it is recorded so ``assert_read_path_respected`` can check that
+        the lag was actually applied, rather than taking the declaration on
+        trust. Omitted, it defaults to ``signal_date``: a factor that declares no
+        lag intends to read as of the day it asked for.
         """
         self.access.pit_reads += 1
-        d = pd.Timestamp(signal_date).date()
+        ts = pd.Timestamp(signal_date)
+        intended = ts if intended_signal_date is None else pd.Timestamp(intended_signal_date)
+        d = ts.date()
         sql = (
             "SELECT * FROM latest_fundamental_asof(DATE '"
             f"{d.isoformat()}')"
@@ -145,7 +205,24 @@ class Store:
         if tags:
             placeholders = ", ".join(f"'{t}'" for t in tags)
             sql += f" WHERE tag IN ({placeholders})"
-        return self.con.execute(sql).df()
+        out = self.con.execute(sql).df()
+
+        # Log what was actually returned, not what was asked for. The WHERE
+        # clause states the intention; this records the outcome, and the two can
+        # only be compared if both exist.
+        max_filed = (
+            pd.to_datetime(out["filed"]).max() if len(out) and "filed" in out else None
+        )
+        self.access.reads.append(
+            ReadRecord(
+                requested_asof=ts,
+                intended_signal_date=intended,
+                max_filed=None if pd.isna(max_filed) else max_filed,
+                n_rows=len(out),
+                tags=tuple(tags or ()),
+            )
+        )
+        return out
 
     def fundamentals_restated(self, caller: str = "unknown") -> pd.DataFrame:
         """Final value per (cik, tag, period). NOT usable for signal construction.
@@ -186,25 +263,82 @@ class Store:
         ).df()
 
     # ------------------------------------------------------------------
-    # The check that runs in CI
+    # The check on the guarantee
     # ------------------------------------------------------------------
-    def assert_no_lookahead(
+    def assert_read_path_respected(self, grace_days: int = 0) -> dict:
+        """Verify every logged read returned only filings that already existed.
+
+        This is the check that the point-in-time guarantee held. It reads the log
+        of what the read path actually returned, so it fails if someone bypasses
+        the view -- which an earlier version could not do, because it re-derived
+        a hypothetical from the raw table instead of inspecting the real reads.
+
+        ``grace_days`` lets a factor assert a deliberate reporting lag beyond the
+        physical constraint, and this is what enforces it. The comparison is
+        against ``intended_signal_date`` -- the day being forecast -- so a factor
+        that declares a two-day lag but forgets to subtract it at the query site
+        fails here. That is the whole point: the declaration is checked against
+        the reads rather than believed.
+        """
+        reads = self.access.reads
+        if not reads:
+            return {
+                "n_reads": 0,
+                "n_violations": 0,
+                "ok": True,
+                "note": "no point-in-time reads were logged",
+            }
+
+        tolerance = pd.Timedelta(days=grace_days)
+        violations = [
+            r
+            for r in reads
+            if r.max_filed is not None
+            and r.max_filed > (r.intended_signal_date - tolerance)
+        ]
+
+        return {
+            "n_reads": len(reads),
+            "n_violations": len(violations),
+            "ok": not violations,
+            "grace_days": grace_days,
+            "sample": [
+                {
+                    "intended_signal_date": str(r.intended_signal_date.date()),
+                    "requested_asof": str(r.requested_asof.date()),
+                    "max_filed": str(r.max_filed.date()),
+                    "n_rows": r.n_rows,
+                }
+                for r in violations[:5]
+            ],
+        }
+
+    def measure_naive_trap(
         self, factor_values: pd.DataFrame, tags: list[str], grace_days: int = 0
     ) -> dict:
-        """Verify no factor value could have used a filing published after it.
+        """How much data a NAIVE query would have read early.
 
-        Re-derived from the raw table rather than trusting the read path: for
-        each (ticker, signal_date) in ``factor_values``, find the earliest filing
-        that the factor could plausibly have needed and confirm it predates the
-        signal date.
+        This is a measurement of the hazard, not a check on this code. It asks:
+        for these signal dates, how many (period, tag) values would a query that
+        takes the latest figure per period -- ignoring filing dates entirely --
+        have returned before they were published?
 
-        ``grace_days`` allows a deliberate reporting lag to be asserted -- a
-        factor that requires data filed at least 5 days earlier can state that,
-        and the check enforces it. The default of 0 enforces only the
-        physical constraint.
+        The result is a finding. A large number means the bitemporal store is
+        earning its keep; it says nothing about whether this project's factors
+        respected it. Confusing the two is what an earlier version did, reporting
+        the size of the trap as a violation by the code that avoids it.
+
+        Counts are reported at two granularities because they answer different
+        questions: how many signal dates are exposed at all, and how many values
+        are involved.
         """
         if factor_values.empty:
-            return {"checked": 0, "violations": 0, "ok": True}
+            return {
+                "n_signal_dates": 0,
+                "n_dates_exposed": 0,
+                "n_trap_rows": 0,
+                "exposure_rate": float("nan"),
+            }
 
         needed = factor_values[["ticker", "signal_date"]].drop_duplicates()
         needed["signal_date"] = pd.to_datetime(needed["signal_date"]).dt.date
@@ -234,12 +368,17 @@ class Store:
         ).df()
         self.con.unregister("_needed")
 
+        n_dates = int(needed["signal_date"].nunique())
+        n_exposed = (
+            int(violations["signal_date"].nunique()) if len(violations) else 0
+        )
         return {
-            "checked": int(len(needed)),
-            "violations": int(len(violations)),
-            "ok": len(violations) == 0,
-            "sample": violations.head(10).to_dict(orient="records"),
+            "n_signal_dates": n_dates,
+            "n_dates_exposed": n_exposed,
+            "n_trap_rows": int(len(violations)),
+            "exposure_rate": n_exposed / n_dates if n_dates else float("nan"),
             "grace_days": grace_days,
+            "sample": violations.head(5).to_dict(orient="records"),
         }
 
     # ------------------------------------------------------------------

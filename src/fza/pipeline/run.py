@@ -88,7 +88,10 @@ class FactorRun:
     panel: pd.DataFrame
     protocol: ProtocolResult
     cleaning: CleaningReport
-    lookahead_check: dict
+    # Whether the point-in-time read path held. A failure here voids everything.
+    read_path_check: dict
+    # How much a naive query would have read early. A finding, not a failure.
+    naive_trap: dict
     vintage: str
 
 
@@ -108,6 +111,10 @@ def compute_factor(
     every time, rather than as a separate audit step. A violation makes every
     downstream number meaningless, so it belongs where it cannot be skipped.
     """
+    # Clear the read log so this factor's check covers this factor's reads. A
+    # shared log would let one factor's clean run vouch for another's.
+    store.access.reads.clear()
+
     raw = factor.compute(store, signal_dates)
 
     cleaned, report = prepare_cross_sections(raw, groups=groups)
@@ -116,17 +123,44 @@ def compute_factor(
     )
 
     if factor.tags:
-        check = store.assert_no_lookahead(
+        # The check on the guarantee: did the reads this factor actually made
+        # return anything filed after the date it asked for? Only meaningful for
+        # the honest vintage -- the restated arm substitutes a leaking read path
+        # on purpose, and asserting against it would flag the simulation as a
+        # bug.
+        if vintage == "pit":
+            read_check = store.assert_read_path_respected(
+                grace_days=factor.filing_lag_days
+            )
+        else:
+            read_check = {
+                "n_reads": 0,
+                "n_violations": 0,
+                "ok": True,
+                "note": "restated vintage deliberately bypasses the as-of path",
+            }
+
+        # The measurement of the hazard. Reported alongside, never conflated:
+        # a large trap is the reason the store exists, not a defect in the code
+        # that avoids it.
+        trap = store.measure_naive_trap(
             raw[["ticker", "signal_date"]],
             tags=list(factor.tags),
             grace_days=factor.filing_lag_days,
         )
     else:
-        check = {
-            "checked": 0,
-            "violations": 0,
+        read_check = {
+            "n_reads": 0,
+            "n_violations": 0,
             "ok": True,
             "note": "factor declares no fundamental tags; nothing to check",
+        }
+        trap = {
+            "n_signal_dates": 0,
+            "n_dates_exposed": 0,
+            "n_trap_rows": 0,
+            "exposure_rate": float("nan"),
+            "note": "factor reads no fundamentals, so no naive trap applies",
         }
 
     protocol = run_protocol(factor.factor_id, panel, n_quantiles=n_quantiles)
@@ -137,7 +171,8 @@ def compute_factor(
         panel=panel,
         protocol=protocol,
         cleaning=report,
-        lookahead_check=check,
+        read_path_check=read_check,
+        naive_trap=trap,
         vintage=vintage,
     )
 
@@ -192,7 +227,11 @@ def compare_vintages(
 
     original = store.fundamentals_asof
 
-    def leaking_asof(signal_date, tags=None):
+    def leaking_asof(signal_date, tags=None, intended_signal_date=None):
+        # Mirrors the real signature so a factor can be swapped onto this path
+        # unchanged. ``intended_signal_date`` is accepted and ignored: this arm
+        # keeps no read log, because the whole point of it is to bypass the
+        # guarantee the log exists to verify.
         out = restated_frame
         if tags:
             out = out.loc[out["tag"].isin(tags)]
@@ -270,6 +309,7 @@ def compare_vintages(
         detail={
             "n_shared_dates": len(shared),
             "material_gap_threshold": MATERIAL_GAP,
-            "lookahead_violations": pit_run.lookahead_check["violations"],
+            "read_path_violations": pit_run.read_path_check["n_violations"],
+            "naive_trap_rows": pit_run.naive_trap["n_trap_rows"],
         },
     )

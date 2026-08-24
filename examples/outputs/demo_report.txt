@@ -28,9 +28,25 @@ STANDARD PROTOCOL
 
   184 monthly signal dates, 2011-04-30 .. 2026-07-31
 
-  factor                IC   LS Sharpe   monotone   dates   lookahead
-  mom_12_1         +0.0149     +0.0531      +0.00     170          ok
-  bm_ratio         +0.0377     +0.1401      +0.70     183   VIOLATION
+  factor                IC   LS Sharpe   monotone   dates  as-of held
+  mom_12_1         +0.0149     +0.0531      +0.00     170         yes
+  bm_ratio         +0.0377     +0.1401      +0.70     183         yes
+
+  'as-of held' is a check on this code: did every read return only
+  filings that were already public on the day being forecast, including
+  any reporting lag the factor declared? A VIOLATION here would void
+  every number in the row.
+
+==============================================================================
+THE TRAP, MEASURED
+==============================================================================
+
+  How much would a naive query have read early? This is the hazard the
+  bitemporal store exists to avoid -- a finding, not a failure.
+
+  factor          signal dates   exposed   trap rows     rate
+  mom_12_1                       n/a -- reads no fundamentals
+  bm_ratio                 184       184      12,844   100.0%
 
 ==============================================================================
 POINT-IN-TIME VS RESTATED

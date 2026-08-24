@@ -103,9 +103,11 @@ def book_to_market(
     """Book value per the latest available filing, over market capitalisation.
 
     The fundamentals read goes through ``store.fundamentals_asof(date)``, which
-    filters ``filed <= date``. Combined with the two-day lag declared on the
-    registration, a value is only used if its filing had been public for at least
-    two days when the signal was formed.
+    filters ``filed <= date``. The two-day lag is applied by the subtraction in
+    the loop below, so a value is only used if its filing had been public for at
+    least two days when the signal was formed. The ``filing_lag_days=2`` on the
+    registration declares that intent; passing ``intended_signal_date`` is what
+    lets the read-path check confirm the subtraction actually happened.
 
     Negative book values are dropped rather than winsorised. A negative
     book-to-market has no economic reading — the ordering it induces is
@@ -135,7 +137,9 @@ def book_to_market(
         # two days" means. Filtering afterwards would still have read the newer
         # filing, and a future change could easily let it through.
         asof = pd.Timestamp(date) - pd.Timedelta(days=2)
-        fundamentals = store.fundamentals_asof(asof, tags=["StockholdersEquity"])
+        fundamentals = store.fundamentals_asof(
+            asof, tags=["StockholdersEquity"], intended_signal_date=date
+        )
         if fundamentals.empty:
             continue
 

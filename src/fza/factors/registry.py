@@ -137,9 +137,10 @@ class Factor:
 
     card: HypothesisCard
     compute: Callable[..., pd.DataFrame]
-    # Fundamental tags the factor reads, declared so assert_no_lookahead knows
-    # what to check. A factor that reads a tag it did not declare will be caught
-    # by the test that compares declarations against the access log.
+    # Fundamental tags the factor reads, declared so measure_naive_trap and the
+    # read-path check know which tags this factor touches. A factor that reads a
+    # tag it did not declare will be caught by the test that compares
+    # declarations against the access log.
     tags: tuple[str, ...] = ()
     # Minimum days between the filing date and the signal date. Some factors
     # deliberately require a reporting lag beyond the physical constraint;

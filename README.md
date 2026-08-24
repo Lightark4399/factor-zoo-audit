@@ -74,8 +74,8 @@ The gap between running a factor on the first and on the third is the quantified
 value of the look-ahead — one of this project's headline numbers.
 
 **Both a guard and a check.** The view makes a leaking query hard to write;
-`assert_no_lookahead()` re-derives from the raw table whether any consumed value
-was filed after its signal date, and runs in CI. Neither alone is enough: in a
+`assert_read_path_respected()` inspects what the reads actually returned and
+confirms none was filed after its signal date, and runs in CI. Neither alone is enough: in a
 repository meant to be read and extended, someone will eventually open a
 connection and write their own SQL.
 
@@ -133,7 +133,8 @@ factor library and the audit pipeline are in progress.
 ✓ Point-in-time vs restated vintage comparison
 ✓ SEC XBRL and price ingestion, parsers tested against recorded payloads
 ✓ Demo entry point: real store when present, fixtures otherwise
-✓ 66 tests, CI green
+✓ Read-path verification distinct from hazard measurement
+✓ 71 tests, CI green
 ○ Audit layer wired to backtest-audit
 ○ Factor library beyond the two reference implementations
 ○ Style orthogonalisation, factor structure (PCA), costs

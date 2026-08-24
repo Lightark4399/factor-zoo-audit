@@ -168,6 +168,54 @@ exactly this situation.
 
 ---
 
+## Incident 9 — the guarantee was asserted by a check that did not test it
+
+**What happened.** The first run on real data reported `VIOLATION` for the
+book-to-market factor in one section and `PASS` in the next. The two sections
+disagreed about the same factor in the same run.
+
+**Diagnosis.** `assert_no_lookahead` did not do what its name, its docstring, or
+the comment at its call site said. Those said it verified that no factor value
+had used a filing published after it. What it actually did was re-derive, from
+the raw table, how many rows a *naive* query would have read early — a fact about
+the data, computed without reference to what this code had read.
+
+So it flagged a violation while the point-in-time path was working correctly, and
+`compare_vintages` said so. The counts gave it away: 12,844 violations against
+3,010 checks, a ratio that cannot mean anything because the two numbers were
+counted at different granularities.
+
+**Why it mattered more than a mislabelling.** The project's central claim is that
+its factors could have been computed when they claim to have been, and the
+evidence offered for that claim was a check that never examined a single read.
+Nothing was verifying the guarantee. Worse, the number it produced — the size of
+the trap, which is the strongest finding here — was being reported as a failure
+of the code that avoids the trap.
+
+**How it was caught.** Not by a test. All of them passed, because they asserted
+the behaviour the implementation had rather than the behaviour the name promised.
+The coding agent noticed the contradiction between two sections of the demo
+output and traced it back rather than reporting the run as successful.
+
+**The fix.** Two functions where there was one.
+
+`assert_read_path_respected` logs what `fundamentals_asof` actually returns — the
+maximum filing date in each result — and checks it against the date that was
+asked for. It is evidence rather than intention, and it fails if someone bypasses
+the view, which the old implementation could not detect.
+
+`measure_naive_trap` keeps the hazard measurement, renamed, with its counts
+reported at consistent granularity. On the fixture it reads: 33 signal dates, 31
+exposed, 899 trap rows, 93.9%. That is a finding — it is the reason the
+bitemporal store exists.
+
+**Constraint added.** A check's name, its docstring, and its implementation must
+describe the same thing. When they diverge, the check does not merely fail to
+help — it supplies false assurance, and the tests written against it lock that in.
+For a project about false assurance this was a fitting place to find one.
+
+---
+
 ## What the live data changed
 
 The first thirty companies produced facts, not assumptions:
