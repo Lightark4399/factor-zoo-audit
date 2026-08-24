@@ -216,6 +216,44 @@ For a project about false assurance this was a fitting place to find one.
 
 ---
 
+## Incident 10 — the same lesson, reintroduced by the fix for it
+
+**What happened.** The fix for incident 9 added `ReadRecord.signal_date` to log
+what each point-in-time read returned. On real data every one of 184 signal
+dates reported a violation.
+
+**Diagnosis.** The field held two different quantities depending on who was
+reading it. `book_to_market` subtracts its declared two-day lag before calling
+`fundamentals_asof`, so what got logged was the date actually asked for.
+`assert_read_path_respected` then subtracted `grace_days` again, requiring
+filings to predate a date two days earlier still. The lag was applied twice.
+
+**Why it matters more than an off-by-two.** Incident 9's constraint was that a
+check's name, its docstring and its implementation must describe the same thing.
+This was that same failure one level down: a single field name carried both "the
+day the factor wants to predict" and "the day it actually queried", and the
+recorder and the checker each read it as the one they meant. The fix for a
+naming failure contained a naming failure.
+
+**The fix.** Two fields where there was one. `requested_asof` is what was passed
+to the view; `intended_signal_date` is the day the factor is forecasting.
+`respects_asof` uses the first, which is the read path's own contract;
+`assert_read_path_respected(grace_days)` uses the second, so a declared lag is
+subtracted exactly once.
+
+**What this bought beyond removing a false alarm.** `filing_lag_days` was
+previously decoration — nothing verified that a factor declaring a two-day lag
+actually applied one. It is now enforced: a test constructs a read where the
+factor forgot the subtraction, confirms the read path itself is clean, and
+confirms the check fails only once the declared lag is taken into account.
+
+**Constraint added.** When one name is ambiguous between two quantities, the
+ambiguity will be resolved differently by each reader. Splitting the field is
+cheaper than any amount of documentation, and the second quantity usually turns
+out to be the one that makes a declared invariant enforceable.
+
+---
+
 ## What the live data changed
 
 The first thirty companies produced facts, not assumptions:
