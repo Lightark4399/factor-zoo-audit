@@ -289,4 +289,7 @@ fixture omits and what breaks a parser.
 
 **Live runs are expected to find bugs, and are run small for that reason.**
 Thirty companies is enough to hit real data quirks and cheap enough that a
-failure costs four minutes. All five incidents above came from one such run.
+failure costs four minutes. Incidents 3 through 8 came from two such runs, the
+first and second live ingests; incidents 9 and 10 came from the first demo
+executed against that data. In both cases the code had passed its full test
+suite immediately beforehand.
