@@ -1,0 +1,29 @@
+factor_id: turnover
+name: Share turnover
+category: liquidity
+economic_rationale: >
+  Turnover proxies for disagreement among investors and for the ease of taking a
+  position. High turnover stocks have historically underperformed, consistent
+  with disagreement plus short-sale constraints causing prices to reflect the
+  optimists' views. The factor is signed so that low turnover is the long side.
+persistence_conditions: >
+  Expected to be confounded with size and with idiosyncratic volatility, since
+  all three describe overlapping populations. That confounding is the reason the
+  style-orthogonalisation step exists, and this factor is the clearest test of
+  whether it works.
+definition: >
+  Negative of average daily volume over the trailing 21 trading days divided by
+  shares outstanding at the signal date.
+timing:
+  signal_computed: month_end_close
+  earliest_execution: next_trading_day_open
+  data_lag_days: 2
+falsification:
+  - Decile returns show no monotonic pattern
+  - The effect vanishes after orthogonalising against size and volatility,
+    indicating it carried no independent information
+  - The effect is entirely explained by transaction costs, which are highest
+    exactly where turnover is highest
+references:
+  - "Datar, Naik and Radcliffe (1998), Liquidity and Stock Returns, JFM"
+  - "Miller (1977), Risk, Uncertainty, and Divergence of Opinion, JF"

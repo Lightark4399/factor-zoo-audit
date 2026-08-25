@@ -1,0 +1,29 @@
+factor_id: rev_1m
+name: One-month reversal
+category: reversal
+economic_rationale: >
+  Short-horizon price moves are substantially driven by liquidity provision
+  rather than information: a large buy order pushes the price up, and the
+  liquidity provider who absorbed it is compensated as the price reverts. The
+  factor is therefore the negative of last month's return, and it is the
+  mechanism whose contamination the momentum factors avoid by skipping a month.
+persistence_conditions: >
+  Expected to weaken as market-making has become cheaper and more competitive,
+  since the compensation being harvested is the cost of that service. Expected
+  to be strongest in small and illiquid names, and to be largely unavailable
+  after transaction costs precisely because it requires trading the names where
+  costs are highest.
+definition: >
+  Negative of the return over the most recent month, computed from adjusted
+  closes at the month-end signal date.
+timing:
+  signal_computed: month_end_close
+  earliest_execution: next_trading_day_open
+  data_lag_days: 0
+falsification:
+  - Decile returns show no monotonic pattern
+  - The effect survives a realistic transaction cost assumption in large caps only
+  - The effect has the same sign as momentum, indicating the two are measuring one thing
+references:
+  - "Jegadeesh (1990), Evidence of Predictable Behavior of Security Returns, JF"
+  - "Nagel (2012), Evaporating Liquidity, RFS"

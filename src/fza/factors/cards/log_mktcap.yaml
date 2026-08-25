@@ -1,0 +1,30 @@
+factor_id: log_mktcap
+name: Log market capitalisation (size)
+category: size
+economic_rationale: >
+  Small firms have historically earned higher average returns than large ones,
+  attributed either to compensation for illiquidity and distress risk or to the
+  difficulty of arbitraging away mispricing in names too small to trade at scale.
+  The factor is included with its sign inverted so that a high value means small,
+  keeping the convention that a positive IC means the factor predicts returns.
+persistence_conditions: >
+  Expected to have weakened substantially since publication, and to be
+  concentrated in the smallest decile where capacity is lowest. Expected to
+  behave very differently equal-weighted versus value-weighted, and the gap
+  between the two is itself the diagnostic.
+definition: >
+  Negative log of market capitalisation, computed as the unadjusted close times
+  shares outstanding at the signal date. Shares outstanding come from the most
+  recent filing available at that date.
+timing:
+  signal_computed: month_end_close
+  earliest_execution: next_trading_day_open
+  data_lag_days: 2
+falsification:
+  - Decile returns show no monotonic pattern
+  - The effect disappears entirely under value weighting
+  - The effect exists only in the smallest decile, making it a statement about
+    a corner of the universe rather than about size
+references:
+  - "Banz (1981), The Relationship Between Return and Market Value of Common Stocks, JFE"
+  - "Fama and French (1993), Common Risk Factors, JFE"

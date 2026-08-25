@@ -1,0 +1,32 @@
+factor_id: ep_ratio
+name: Earnings-to-price ratio
+category: value
+economic_rationale: >
+  A second value measure, using earnings rather than book value. Its role here is
+  partly as a factor and partly as a control on the first: book-to-market and
+  earnings-to-price describe the same intuition through different accounting
+  quantities, so a large divergence between them points at the accounting rather
+  than at the economics. Earnings are also more affected by restatement than book
+  value, which makes this the factor where the point-in-time gap should be widest.
+persistence_conditions: >
+  Expected to be noisier than book-to-market because earnings are more volatile
+  and more often negative. Expected to show a larger point-in-time gap, since
+  earnings restatements are both more common and more consequential than
+  restatements of equity.
+definition: >
+  Most recently filed net income divided by market capitalisation at the signal
+  date. Negative earnings are excluded rather than winsorised: a firm losing
+  money has no meaningful earnings yield, and ranking losses by size would order
+  stocks by a quantity unrelated to the mechanism claimed.
+timing:
+  signal_computed: month_end_close
+  earliest_execution: next_trading_day_open
+  data_lag_days: 2
+falsification:
+  - Decile returns show no monotonic pattern
+  - Results diverge sharply from book-to-market without an accounting explanation
+  - The point-in-time and restated versions differ materially, indicating the
+    result depends on figures unavailable at the time
+references:
+  - "Basu (1977), Investment Performance of Common Stocks in Relation to Their P/E Ratios, JF"
+  - "Fama and French (1992), The Cross-Section of Expected Stock Returns, JF"

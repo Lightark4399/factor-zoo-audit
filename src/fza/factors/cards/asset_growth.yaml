@@ -1,0 +1,30 @@
+factor_id: asset_growth
+name: Asset growth
+category: investment
+economic_rationale: >
+  Firms that expand their asset base rapidly earn lower subsequent returns. Two
+  readings: managers over-invest when their stock is overpriced and capital is
+  cheap, or a low discount rate simultaneously makes investment attractive and
+  implies low future returns. The two readings differ on whether the effect
+  should survive publication, which makes it a useful test case for the
+  post-publication decay question this project asks.
+persistence_conditions: >
+  Expected to weaken if behavioural, persist if it reflects a discount-rate
+  mechanism. Expected to be strongest in firms with the most discretion over
+  investment, and to be mechanically related to size, since growth changes the
+  denominator of every other ratio.
+definition: >
+  Negative of the year-over-year growth in total assets, computed from the two
+  most recent annual filings available at the signal date. Signed so that low
+  growth is the long side.
+timing:
+  signal_computed: month_end_close
+  earliest_execution: next_trading_day_open
+  data_lag_days: 2
+falsification:
+  - Decile returns show no monotonic pattern
+  - The effect disappears after controlling for size and book-to-market
+  - The effect is concentrated in the year of publication and absent afterwards
+references:
+  - "Cooper, Gulen and Schill (2008), Asset Growth and the Cross-Section of Stock Returns, JF"
+  - "Titman, Wei and Xie (2004), Capital Investments and Stock Returns, JFQA"

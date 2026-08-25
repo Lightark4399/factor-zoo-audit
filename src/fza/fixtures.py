@@ -104,20 +104,41 @@ def build_fixture(spec: FixtureSpec | None = None) -> dict[str, pd.DataFrame]:
                 continue
             equity = 5e8 * (1.0 + 0.3 * (i % 4)) * (1.0 + 0.02 * period_end.quarter)
 
-            fundamentals.append(
-                {
-                    "cik": cik,
-                    "tag": "StockholdersEquity",
-                    "period_end": period_end.date(),
-                    "fiscal_year": period_end.year,
-                    "fiscal_period": f"Q{period_end.quarter}",
-                    "filed": filed.date(),
-                    "value": equity,
-                    "unit": "USD",
-                    "form": "10-Q",
-                    "accession": f"{cik}-{period_end.date()}-orig",
-                }
-            )
+            # Every tag the factor library reads. An earlier fixture carried only
+            # equity and share count, so three factors failed with "produced no
+            # values" -- which correctly pointed at the factor, since a factor
+            # that returns nothing is always a bug, but the bug was in the
+            # fixture. A fixture that cannot exercise the library is not a
+            # fixture for it.
+            years_elapsed = (period_end.year - pd.Timestamp(spec.start).year)
+            values_by_tag = {
+                "StockholdersEquity": equity,
+                # Income scales with equity so ROE is stable per firm and varies
+                # across them -- otherwise the factor has no cross-section to rank.
+                "NetIncomeLoss": equity * (0.02 + 0.01 * (i % 5)),
+                # Assets grow at a firm-specific rate, which is what asset growth
+                # measures. A constant would make the factor degenerate.
+                "Assets": equity * 3.0 * (1.0 + 0.05 * (i % 6)) ** years_elapsed,
+                "CommonStockSharesOutstanding": 1e7 * (1.0 + 0.5 * (i % 4)),
+            }
+
+            for tag, value in values_by_tag.items():
+                fundamentals.append(
+                    {
+                        "cik": cik,
+                        "tag": tag,
+                        "period_end": period_end.date(),
+                        "fiscal_year": period_end.year,
+                        "fiscal_period": f"Q{period_end.quarter}",
+                        "filed": filed.date(),
+                        "value": value,
+                        "unit": "shares"
+                        if tag == "CommonStockSharesOutstanding"
+                        else "USD",
+                        "form": "10-Q",
+                        "accession": f"{cik}-{period_end.date()}-orig",
+                    }
+                )
 
             # The restatement: same period, later filing, different value. Stored
             # as an additional row so the original belief survives.

@@ -15,8 +15,16 @@ REGISTERED FACTORS
 ==============================================================================
 
   factor        category      fundamentals   falsification
+  asset_growth  investment    yes                        3
+  turnover      liquidity     yes                        3
   mom_12_1      momentum      no                         4
+  mom_6_1       momentum      no                         3
+  roe           profitability yes                        3
+  rev_1m        reversal      no                         3
+  idio_vol      risk          no                         3
+  log_mktcap    size          yes                        3
   bm_ratio      value         yes                        4
+  ep_ratio      value         yes                        3
 
   Every factor carries a hypothesis card stating an economic mechanism,
   the conditions under which it should persist, and what would falsify
@@ -30,7 +38,15 @@ STANDARD PROTOCOL
 
   factor                IC   LS Sharpe   monotone   dates  as-of held
   mom_12_1         +0.0149     +0.0531      +0.00     170         yes
+  mom_6_1          +0.0373     +0.1454      +0.30     176         yes
+  rev_1m           +0.0110     -0.0470      -0.10     182         yes
+  log_mktcap       +0.0820     +0.3724      +0.90     183         yes
+  idio_vol         -0.0638     -0.2449      -1.00     183         yes
+  turnover         -0.0606     -0.2862      -1.00     183         yes
   bm_ratio         +0.0377     +0.1401      +0.70     183         yes
+  ep_ratio         +0.0161     -0.1233      -0.10     183         yes
+  roe              -0.0085     -0.1466      -0.50     183         yes
+  asset_growth     -0.0081     -0.1337      -1.00     183         yes
 
   'as-of held' is a check on this code: did every read return only
   filings that were already public on the day being forecast, including
@@ -46,7 +62,15 @@ THE TRAP, MEASURED
 
   factor          signal dates   exposed   trap rows     rate
   mom_12_1                       n/a -- reads no fundamentals
+  mom_6_1                        n/a -- reads no fundamentals
+  rev_1m                         n/a -- reads no fundamentals
+  log_mktcap               184       184       4,653   100.0%
+  idio_vol                       n/a -- reads no fundamentals
+  turnover                 184       184       4,653   100.0%
   bm_ratio                 184       184      12,844   100.0%
+  ep_ratio                 184       184      15,427   100.0%
+  roe                      184       184      40,434   100.0%
+  asset_growth             184       184       9,830   100.0%
 
 ==============================================================================
 POINT-IN-TIME VS RESTATED
@@ -59,10 +83,55 @@ POINT-IN-TIME VS RESTATED
     two vintages are identical by construction. That is not
     evidence it is free of look-ahead.
 
+  mom_6_1
+    not applicable -- this factor reads no fundamentals, so the
+    two vintages are identical by construction. That is not
+    evidence it is free of look-ahead.
+
+  rev_1m
+    not applicable -- this factor reads no fundamentals, so the
+    two vintages are identical by construction. That is not
+    evidence it is free of look-ahead.
+
+  log_mktcap
+    point-in-time IC      +0.0820
+    restated IC           +0.0820
+    unearned advantage    +0.0000
+    verdict                  PASS
+
+  idio_vol
+    not applicable -- this factor reads no fundamentals, so the
+    two vintages are identical by construction. That is not
+    evidence it is free of look-ahead.
+
+  turnover
+    point-in-time IC      -0.0606
+    restated IC           -0.0606
+    unearned advantage    +0.0000
+    verdict                  PASS
+
   bm_ratio
     point-in-time IC      +0.0377
     restated IC           +0.0363
     unearned advantage    -0.0014
+    verdict                  PASS
+
+  ep_ratio
+    point-in-time IC      +0.0161
+    restated IC           +0.0104
+    unearned advantage    -0.0056
+    verdict            PASS (opposite direction)
+
+  roe
+    point-in-time IC      -0.0085
+    restated IC           +0.0037
+    unearned advantage    +0.0122
+    verdict                  FAIL
+
+  asset_growth
+    point-in-time IC      -0.0081
+    restated IC           -0.0081
+    unearned advantage    +0.0000
     verdict                  PASS
 
 ==============================================================================

@@ -41,8 +41,12 @@ def test_restatement_is_stored_as_a_new_row(store):
     knowable at the time, and the project's central claim would be unverifiable.
     """
     cik = store._fixture_info["restated_cik"]
+    # Filtered by tag: the fixture carries four tags per period now, so an
+    # unfiltered query returns eight rows and the count assertion below would be
+    # about the fixture's breadth rather than about revision handling.
     rows = store.con.execute(
         f"SELECT filed, value, form FROM fundamentals WHERE cik = '{cik}' "
+        "AND tag = 'StockholdersEquity' "
         "AND period_end = DATE '2018-12-31' ORDER BY filed"
     ).df()
     assert len(rows) == 2
@@ -54,6 +58,7 @@ def test_asof_returns_the_original_value_before_the_amendment_is_filed(store):
     """The heart of the project: a signal cannot see a filing that does not exist."""
     cik = store._fixture_info["restated_cik"]
     rest = store.restatements()
+    rest = rest.loc[rest["tag"] == "StockholdersEquity"]
     row = rest.iloc[0]
 
     before = pd.Timestamp(row["last_filed"]) - pd.Timedelta(days=1)
@@ -62,7 +67,8 @@ def test_asof_returns_the_original_value_before_the_amendment_is_filed(store):
     def value_at(d):
         return store.con.execute(
             f"SELECT value FROM fundamentals_asof(DATE '{d.date()}') "
-            f"WHERE cik = '{cik}' AND period_end = DATE '{row['period_end']}'"
+            f"WHERE cik = '{cik}' AND tag = 'StockholdersEquity' "
+            f"AND period_end = DATE '{row['period_end']}'"
         ).df()["value"].iloc[0]
 
     assert value_at(before) == pytest.approx(row["first_value"])
@@ -73,10 +79,12 @@ def test_restated_view_always_shows_the_final_value(store):
     """And is therefore unusable for signal construction, which is why it is named loudly."""
     cik = store._fixture_info["restated_cik"]
     rest = store.restatements()
+    rest = rest.loc[rest["tag"] == "StockholdersEquity"]
     row = rest.iloc[0]
     final = store.con.execute(
         "SELECT value FROM fundamentals_restated "
-        f"WHERE cik = '{cik}' AND period_end = DATE '{row['period_end']}'"
+        f"WHERE cik = '{cik}' AND tag = 'StockholdersEquity' "
+        f"AND period_end = DATE '{row['period_end']}'"
     ).df()["value"].iloc[0]
     assert final == pytest.approx(row["last_value"])
 
@@ -85,6 +93,7 @@ def test_restatement_size_matches_the_fixture(store):
     """The fixture states the revision in advance, so the test asserts the number."""
     spec = store._fixture_info["spec"]
     rest = store.restatements()
+    rest = rest.loc[rest["tag"] == "StockholdersEquity"]
     assert len(rest) > 0
     expected_pct = spec.restatement_factor - 1.0  # 0.60 -> -0.40
     assert rest["revision_pct"].iloc[0] == pytest.approx(expected_pct, abs=1e-9)

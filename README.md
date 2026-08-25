@@ -118,8 +118,8 @@ what conditions it persists.* They are what separates research from search.
 
 ## Status
 
-Early. The data layer, the registry, and the fixtures are built and tested; the
-factor library and the audit pipeline are in progress.
+Early. The data layer, the registry, the fixtures, and the factor library are
+built and tested; the audit pipeline is in progress.
 
 ```
 ✓ SPEC.md — research question, six acceptance criteria, falsification standard
@@ -134,9 +134,9 @@ factor library and the audit pipeline are in progress.
 ✓ SEC XBRL and price ingestion, parsers tested against recorded payloads
 ✓ Demo entry point: real store when present, fixtures otherwise
 ✓ Read-path verification distinct from hazard measurement
-✓ 71 tests, CI green
+✓ Factor library: ten factors across eight categories, each with a hypothesis card
+✓ 107 tests, CI green
 ○ Audit layer wired to backtest-audit
-○ Factor library beyond the two reference implementations
 ○ Style orthogonalisation, factor structure (PCA), costs
 ```
 

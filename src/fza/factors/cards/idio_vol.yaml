@@ -1,0 +1,33 @@
+factor_id: idio_vol
+name: Idiosyncratic volatility
+category: risk
+economic_rationale: >
+  Standard theory says only systematic risk should be priced, so idiosyncratic
+  volatility should not predict returns at all. It does, and negatively: high
+  idiosyncratic volatility stocks earn lower subsequent returns. The leading
+  explanations are that such stocks attract investors with a preference for
+  lottery-like payoffs who overpay, and that they are the hardest to arbitrage.
+  The factor is signed so that low volatility is the long side.
+persistence_conditions: >
+  Expected to be strongest among stocks with retail ownership and low
+  institutional participation, where the lottery preference has most influence.
+  Expected to invert during periods when volatility itself is rewarded, which
+  makes the sub-period decomposition unusually informative for this factor.
+definition: >
+  Negative of the standard deviation of daily returns over the trailing 60
+  trading days ending at the signal date. Idiosyncratic in the sense of total
+  volatility rather than residual from a market model, which is a simplification
+  recorded here rather than smoothed over: the residual version requires a
+  market factor this project does not yet construct.
+timing:
+  signal_computed: month_end_close
+  earliest_execution: next_trading_day_open
+  data_lag_days: 0
+falsification:
+  - Decile returns show no monotonic pattern
+  - The effect disappears once size is controlled for, indicating it was a size
+    proxy rather than a volatility effect
+  - The sign flips across sub-periods without an identifiable regime explanation
+references:
+  - "Ang, Hodrick, Xing and Zhang (2006), The Cross-Section of Volatility and Expected Returns, JF"
+  - "Bali, Cakici and Whitelaw (2011), Maxing Out, JFE"

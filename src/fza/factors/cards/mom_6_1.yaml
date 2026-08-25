@@ -1,0 +1,26 @@
+factor_id: mom_6_1
+name: 6-month momentum, skipping the most recent month
+category: momentum
+economic_rationale: >
+  The same underreaction mechanism as twelve-month momentum, measured over a
+  shorter formation window. Its purpose here is not to be a separate discovery
+  but to test whether the twelve-month result is a property of the effect or of
+  the window: an effect present at twelve months and absent at six is a claim
+  about one grid point rather than about momentum.
+persistence_conditions: >
+  Expected to track twelve-month momentum closely. A large divergence between
+  the two would indicate that the formation window is doing more work than the
+  economic story allows, which is the definition of a fitted parameter.
+definition: >
+  Cumulative return from t-6 months to t-1 month, computed from adjusted closes
+  after the close on the last trading day of the formation month.
+timing:
+  signal_computed: month_end_close
+  earliest_execution: next_trading_day_open
+  data_lag_days: 0
+falsification:
+  - Decile returns show no monotonic pattern
+  - Results diverge sharply from the 12-month version, indicating window sensitivity
+  - The effect is concentrated in a single sub-period
+references:
+  - "Jegadeesh and Titman (1993), Returns to Buying Winners and Selling Losers, JF"

@@ -1,0 +1,31 @@
+factor_id: roe
+name: Return on equity
+category: profitability
+economic_rationale: >
+  Profitable firms earn higher subsequent returns than unprofitable ones with the
+  same valuation. Under a discounted-cash-flow identity this is close to
+  mechanical: holding book-to-market fixed, higher expected profitability implies
+  a higher discount rate, and hence higher expected returns. That makes
+  profitability one of the few anomalies with a derivation rather than only a
+  story.
+persistence_conditions: >
+  Expected to persist better than behavioural anomalies precisely because the
+  mechanism is a valuation identity rather than a mistake investors might stop
+  making. Expected to be strongest when combined with value, since the identity
+  holds book-to-market fixed.
+definition: >
+  Most recently filed net income divided by most recently filed stockholders'
+  equity, both read through the point-in-time view. Negative equity is excluded:
+  the ratio changes sign for reasons unrelated to profitability.
+timing:
+  signal_computed: month_end_close
+  earliest_execution: next_trading_day_open
+  data_lag_days: 2
+falsification:
+  - Decile returns show no monotonic pattern
+  - The effect disappears once book-to-market is controlled for, contradicting
+    the identity that motivates it
+  - The point-in-time and restated versions differ materially
+references:
+  - "Novy-Marx (2013), The Other Side of Value, JFE"
+  - "Fama and French (2015), A Five-Factor Asset Pricing Model, JFE"
