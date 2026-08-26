@@ -152,6 +152,22 @@ def main(argv: list[str] | None = None) -> int:
          f"({info['restatement_rate']:.1%} of fundamental rows)")
     emit(f"  price history  {info['first_date']} .. {info['last_date']}")
 
+    coverage = store.column_coverage("prices")
+    thin = coverage.loc[coverage["coverage"] < 0.99]
+    if len(thin):
+        emit(_header("DATA QUALITY"))
+        emit()
+        emit("  Price columns that are not fully populated. A column at 0.0%")
+        emit("  empties every factor that reads it, and the failure surfaces as")
+        emit("  'factor produced no values' -- naming the factor, not the column.")
+        emit()
+        emit(f"  {'column':<16}{'non-null':>12}{'coverage':>12}")
+        for _, row in thin.iterrows():
+            emit(
+                f"  {row['column']:<16}{int(row['non_null']):>12,}"
+                f"{row['coverage']:>11.1%}"
+            )
+
     emit(_header("REGISTERED FACTORS"))
     emit()
     table = summary_table()

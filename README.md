@@ -135,7 +135,8 @@ built and tested; the audit pipeline is in progress.
 ✓ Demo entry point: real store when present, fixtures otherwise
 ✓ Read-path verification distinct from hazard measurement
 ✓ Factor library: ten factors across eight categories, each with a hypothesis card
-✓ 107 tests, CI green
+✓ Column coverage reported at load — an entirely null column names itself
+✓ 110 tests, CI green
 ○ Audit layer wired to backtest-audit
 ○ Style orthogonalisation, factor structure (PCA), costs
 ```

@@ -39,7 +39,27 @@ from .registry import register
 # Shared accessors
 # ----------------------------------------------------------------------
 def _wide(prices: pd.DataFrame, column: str) -> pd.DataFrame:
-    """Wide panel of one price column, dates by ticker, sorted."""
+    """Wide panel of one price column, dates by ticker, sorted.
+
+    Raises if the column is entirely null. That case previously produced an
+    empty factor, and the pipeline then reported "factor produced no values" --
+    naming the factor when the fault was in the data. Four price factors failed
+    that way at once on the first real run, and the shared cause took a
+    comparison of which factors read which column to find.
+    """
+    if column not in prices.columns:
+        raise ValueError(
+            f"price column {column!r} is absent. Available: "
+            f"{sorted(prices.columns)}"
+        )
+    if prices[column].notna().sum() == 0:
+        raise ValueError(
+            f"price column {column!r} is entirely null, so every factor reading "
+            "it will produce nothing. Check the ingest: this is a data problem, "
+            "not a factor problem. Store.column_coverage('prices') reports the "
+            "non-null rate of every column."
+        )
+
     px = prices.copy()
     px["trade_date"] = pd.to_datetime(px["trade_date"])
     return px.pivot_table(

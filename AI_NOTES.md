@@ -254,6 +254,43 @@ out to be the one that makes a declared invariant enforceable.
 
 ---
 
+## Incident 11 — one null column, four factors, and an error that named the wrong thing
+
+**What happened.** The first run of the full factor library against real data
+produced results for six factors and nothing for four. Each of the four reported
+`factor produced no values`.
+
+**Diagnosis.** The four were exactly the four that read `close_adj`, and that
+column was null for every row in the store. Recent `yfinance` versions drop
+`Adj Close` unless the request is shaped a particular way, and the fallback was
+written as a dictionary `.get()` default that did not fire under the shape the
+library actually returned.
+
+**Why the error was unhelpful.** The pipeline's refusal to pass an empty factor
+along — added in incident 1, and correct — reports the factor that produced
+nothing. Here the factor was fine. Finding the shared cause required lining up
+which factors read which column and noticing that the split was exactly along
+`close` versus `close_adj`.
+
+**The fix, in three places.** The ingestion fallback is now explicit rather than
+a `.get()` default. `_wide` raises when a requested column is entirely null,
+saying so and pointing at the diagnostic. And `Store.column_coverage` reports the
+non-null rate of every column, printed by the ingest as a warning and by the demo
+as a section.
+
+**Constraint added.** A silent null column is the ingestion equivalent of a
+silent exclusion, and this project already refuses to allow those. Coverage is
+now reported at the point of load, before anything downstream can fail in a way
+that names the wrong component.
+
+**A note on where the error surfaced.** Incident 1's constraint — an empty result
+must be rejected where it happens — was doing its job. It localised the failure
+to the factor layer, which was as far as it could see. Localisation is not
+diagnosis: a check can only name the layer it guards, and pointing one layer
+further up requires a check at that layer too. Hence the coverage report.
+
+---
+
 ## What the live data changed
 
 The first thirty companies produced facts, not assumptions:
@@ -263,10 +300,11 @@ The first thirty companies produced facts, not assumptions:
 * **Impossible filing dates are real**, not a hypothetical. The exclusion count is
   now part of every run's report.
 * **Free price sources are the fragile link**, not SEC. The fundamentals arrived
-  on the first attempt and have been stable since. Prices have now taken four
-  fixes across two runs — a missing User-Agent, an undeclared dependency, a
-  default window of one month, and a provider returning 404 to its own documented
-  format — and still depend on a source that drops delisted securities.
+  on the first attempt and have been stable since, failing once on a filer's
+  typo. Prices have now taken five fixes — a missing User-Agent, an undeclared
+  dependency, a default window of one month, a provider returning 404 to its own
+  documented format, and a silently null adjusted-close column — and still
+  depend on a source that drops delisted securities.
 
   That asymmetry is itself a finding worth stating: the point-in-time guarantee
   this project is built around rests on SEC data, which is well-formed and
@@ -291,5 +329,6 @@ fixture omits and what breaks a parser.
 Thirty companies is enough to hit real data quirks and cheap enough that a
 failure costs four minutes. Incidents 3 through 8 came from two such runs, the
 first and second live ingests; incidents 9 and 10 came from the first demo
-executed against that data. In both cases the code had passed its full test
-suite immediately beforehand.
+executed against that data; incident 11 from the first demo run with the full
+factor library. In every case the code had passed its full test suite
+immediately beforehand.

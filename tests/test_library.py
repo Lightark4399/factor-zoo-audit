@@ -125,3 +125,66 @@ def test_sign_convention_is_documented_for_inverted_factors(factors):
         card = factors[factor_id].card
         text = (card.definition + card.economic_rationale).lower()
         assert "negat" in text or "invert" in text or "long side" in text
+
+
+# ----------------------------------------------------------------------
+# A null column must name itself, not the factors that read it
+# ----------------------------------------------------------------------
+def test_entirely_null_price_column_raises_naming_the_column(store):
+    """Four price factors failed at once on the first real run because
+    close_adj was never populated. Each reported 'factor produced no values',
+    which names the factor when the fault is in the data -- and finding the
+    shared cause required noticing which factors read which column."""
+    import pandas as pd
+
+    from fza.factors.library import _wide
+
+    prices = store.prices().assign(close_adj=None)
+    with pytest.raises(ValueError, match="entirely null"):
+        _wide(prices, "close_adj")
+
+    # And the message points at the diagnostic rather than leaving the reader
+    # to work out where to look.
+    try:
+        _wide(prices, "close_adj")
+    except ValueError as exc:
+        assert "column_coverage" in str(exc)
+    assert isinstance(prices, pd.DataFrame)
+
+
+def test_absent_price_column_lists_what_is_available(store):
+    from fza.factors.library import _wide
+
+    with pytest.raises(ValueError, match="absent"):
+        _wide(store.prices(), "not_a_column")
+
+
+def test_column_coverage_reports_a_null_column():
+    """The diagnostic the error message points to.
+
+    Built on a store with a deliberately emptied column rather than on the
+    shared fixture, whose columns are all populated -- asserting against the
+    fixture would make this test pass or fail on how the fixture happens to be
+    built rather than on what the method does.
+    """
+    from fza.store import Store
+
+    with Store() as s:
+        prices = pd.DataFrame(
+            {
+                "ticker": ["AAA", "AAA"],
+                "trade_date": pd.to_datetime(["2020-01-02", "2020-01-03"]),
+                "open": [1.0, 1.0],
+                "high": [1.0, 1.0],
+                "low": [1.0, 1.0],
+                "close": [1.0, 1.0],
+                "close_adj": [None, None],  # the failure mode being reported
+                "volume": [1.0, 1.0],
+                "shares_out": [1.0, 1.0],
+            }
+        )
+        s.load_prices(prices)
+        coverage = s.column_coverage("prices").set_index("column")
+
+    assert coverage.loc["close", "coverage"] == 1.0
+    assert coverage.loc["close_adj", "coverage"] == 0.0

@@ -257,6 +257,32 @@ class Store:
             f"SELECT * FROM universe_asof(DATE '{d.isoformat()}') ORDER BY ticker"
         ).df()
 
+    def column_coverage(self, table: str = "prices") -> pd.DataFrame:
+        """Non-null rate for every column of a table.
+
+        Exists because a column that is entirely null fails in the least helpful
+        way available: every factor reading it returns nothing, the pipeline
+        correctly refuses to pass an empty factor along, and the error names the
+        factor rather than the column. Four factors failed this way on the first
+        real run before anything reported that ``close_adj`` had never been
+        populated.
+
+        A silent null column is the ingestion equivalent of a silent exclusion,
+        and this project already insists on counting those.
+        """
+        cols = self.con.execute(f"SELECT * FROM {table} LIMIT 0").df().columns
+        total = self.con.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
+        if not total:
+            return pd.DataFrame(columns=["column", "non_null", "coverage"])
+
+        rows = []
+        for c in cols:
+            n = self.con.execute(
+                f'SELECT count("{c}") FROM {table}'
+            ).fetchone()[0]
+            rows.append({"column": c, "non_null": n, "coverage": n / total})
+        return pd.DataFrame(rows).sort_values("coverage")
+
     def restatements(self) -> pd.DataFrame:
         return self.con.execute(
             "SELECT * FROM restatements ORDER BY abs(revision_pct) DESC NULLS LAST"

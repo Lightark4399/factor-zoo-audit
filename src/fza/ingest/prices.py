@@ -168,6 +168,21 @@ def fetch_yfinance(
     if isinstance(data.columns, pd.MultiIndex):
         data.columns = data.columns.get_level_values(0)
 
+    # Recent yfinance versions drop 'Adj Close' unless auto_adjust=False is
+    # honoured, and the shape of the result varies with the version. The first
+    # real ingest produced a store where close_adj was null for every row, which
+    # silently emptied every price-based factor -- momentum, reversal and
+    # volatility all read the adjusted series.
+    #
+    # The fallback is explicit rather than a .get() default, so the substitution
+    # is visible in the data: when only one close series is available, the two
+    # columns are equal, and a reader comparing them can tell that no adjustment
+    # was applied rather than assuming one was.
+    if "Adj Close" in data.columns:
+        adj = data["Adj Close"].astype(float).to_numpy()
+    else:
+        adj = data["Close"].astype(float).to_numpy()
+
     return pd.DataFrame(
         {
             "ticker": ticker.upper(),
@@ -176,7 +191,7 @@ def fetch_yfinance(
             "high": data["High"].astype(float).to_numpy(),
             "low": data["Low"].astype(float).to_numpy(),
             "close": data["Close"].astype(float).to_numpy(),
-            "close_adj": data.get("Adj Close", data["Close"]).astype(float).to_numpy(),
+            "close_adj": adj,
             "volume": data["Volume"].astype(float).to_numpy(),
             "shares_out": None,
         }

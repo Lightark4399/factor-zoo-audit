@@ -150,6 +150,18 @@ def main(argv: list[str] | None = None) -> int:
         )
         store.load_prices(prices)
 
+    # Column coverage, checked immediately after load. A column that is entirely
+    # null is invisible until a factor reading it returns nothing several steps
+    # later, and the error then names the factor rather than the column.
+    coverage = store.column_coverage("prices")
+    empty_cols = coverage.loc[coverage["coverage"] == 0.0, "column"].tolist()
+    if empty_cols:
+        print(f"  WARNING: price columns entirely null: {empty_cols}", flush=True)
+        print("  Factors reading them will produce nothing.", flush=True)
+    report["price_column_coverage"] = coverage.set_index("column")[
+        "coverage"
+    ].to_dict()
+
     # Now that the store loaded, enrich the report with what only it knows.
     report["n_securities"] = len(securities)
     report["n_restatements"] = len(store.restatements())
