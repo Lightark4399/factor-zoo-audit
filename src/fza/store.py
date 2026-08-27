@@ -157,10 +157,13 @@ class Store:
         """
         cols = [
             "cik", "tag", "period_end", "fiscal_year", "fiscal_period",
-            "filed", "value", "unit", "form", "accession",
+            "filed", "value", "unit", "form", "accession", "source_namespace",
         ]
         df = frame.reindex(columns=cols).copy()
         df["cik"] = df["cik"].astype(str).str.zfill(10)
+        # A frame built before this column existed still loads, as us-gaap --
+        # which is what every such row was.
+        df["source_namespace"] = df["source_namespace"].fillna("us-gaap")
         for c in ("period_end", "filed"):
             df[c] = pd.to_datetime(df[c]).dt.date
         return self._insert("fundamentals", df)

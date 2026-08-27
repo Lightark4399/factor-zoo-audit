@@ -117,7 +117,13 @@ def test_filing_before_period_end_is_rejected(store):
     # constraint untested while the test still went green.
     with pytest.raises(duckdb.ConstraintException):
         store.con.execute(
-            "INSERT INTO fundamentals VALUES ('0000000001', 'X', "
+            # Columns are named rather than positional: an unnamed INSERT binds
+            # by position, so adding a column to the table turns this into a
+            # BinderError and the CHECK constraint stops being exercised at all.
+            "INSERT INTO fundamentals "
+            "(cik, tag, period_end, fiscal_year, fiscal_period, filed, value, "
+            " unit, form, accession) "
+            "VALUES ('0000000001', 'X', "
             "DATE '2020-12-31', 2020, 'Q4', DATE '2020-06-30', 1.0, 'USD', "
             "'10-K', 'acc')"
         )

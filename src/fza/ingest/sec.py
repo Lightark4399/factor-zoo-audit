@@ -31,7 +31,10 @@ Constraints SEC imposes, and how they are handled
 * **Custom extension tags.** Companies define their own concepts, so the same
   economic quantity lands on different tags across filers. The scope is pinned to
   the ``us-gaap`` namespace and a fixed tag list; anything else is excluded, and
-  the exclusion rate is reported rather than silently absorbed.
+  the exclusion rate is reported rather than silently absorbed. The single
+  exception is ``DEI_TAGS`` -- see the comment there: shares outstanding is a
+  cover-page fact that us-gaap does not define, and DEI is SEC's own namespace,
+  not a filer's invention. One named tag is admitted, not a namespace.
 """
 
 from __future__ import annotations
@@ -63,6 +66,33 @@ CORE_TAGS: tuple[str, ...] = (
     "PaymentsToAcquirePropertyPlantAndEquipment",
 )
 
+# The one tag this project reads from outside us-gaap, and why.
+#
+# Shares outstanding is not a us-gaap concept. It lives on the filing's cover
+# page, which XBRL tags in the DEI (Document and Entity Information) namespace.
+# Checked against Coca-Cola (cik 0000021344): its us-gaap namespace carries 724
+# tags and `CommonStockSharesOutstanding` is not among them, while
+# `dei:EntityCommonStockSharesOutstanding` carries 71 facts spanning 2009-2026.
+# Eleven of the first thirty companies ingested had no share count at all for
+# this reason. The ingest was looking in the wrong namespace; the data was never
+# missing.
+#
+# THE SCOPE RESTRICTION IS NOT RELAXED. The reason us-gaap is pinned is that a
+# custom extension tag one filer invented is not comparable with anything else
+# in the panel. DEI is not a custom extension: it is defined by SEC and reported
+# identically by every filer, so that reason does not apply to it. What is
+# opened here is a NAMED TAG, not a namespace -- anything else under `dei` is
+# still excluded and still counted.
+DEI_TAGS: tuple[str, ...] = ("EntityCommonStockSharesOutstanding",)
+
+# Written under the us-gaap name the rest of the codebase already asks for, so
+# no factor has to know which namespace a share count came from. The `dei`
+# origin stays visible in the `source_namespace` column and in the report's
+# `n_shares_from_dei`, so the substitution is auditable rather than invisible.
+DEI_TAG_ALIASES: dict[str, str] = {
+    "EntityCommonStockSharesOutstanding": "CommonStockSharesOutstanding",
+}
+
 # Only annual and quarterly reports and their amendments. Anything else (8-K, S-1)
 # carries values that are not comparable across the panel.
 ACCEPTED_FORMS: tuple[str, ...] = ("10-K", "10-Q", "10-K/A", "10-Q/A")
@@ -92,6 +122,9 @@ class IngestReport:
     n_excluded_no_filed: int = 0
     n_excluded_unit: int = 0
     n_excluded_filed_before_period: int = 0
+    # Rows adopted from the DEI namespace and written under a us-gaap tag name.
+    # Counted after de-duplication, so it reports rows actually kept.
+    n_shares_from_dei: int = 0
     failures: list[str] = field(default_factory=list)
     tag_coverage: dict[str, int] = field(default_factory=dict)
 
@@ -113,6 +146,7 @@ class IngestReport:
             "n_excluded_no_filed": self.n_excluded_no_filed,
             "n_excluded_unit": self.n_excluded_unit,
             "n_excluded_filed_before_period": self.n_excluded_filed_before_period,
+            "n_shares_from_dei": self.n_shares_from_dei,
             "tag_coverage": dict(self.tag_coverage),
             "failures": list(self.failures[:20]),
         }
@@ -213,26 +247,33 @@ def parse_companyfacts(
     cik = str(payload.get("cik", "")).zfill(10)
     facts = payload.get("facts", {})
 
-    # Only us-gaap. Custom extension namespaces are counted and excluded: a tag
-    # one filer invented is not comparable with anything else in the panel.
+    # Anything outside the adopted scope is counted and excluded: a tag one
+    # filer invented is not comparable with anything else in the panel. The
+    # count must not include what is adopted below, or the report would list
+    # this parser's own intake as an exclusion.
     for namespace in facts:
-        if namespace != "us-gaap":
+        if namespace == "us-gaap":
+            continue
+        for tag_name, tag_data in facts[namespace].items():
+            if namespace == "dei" and tag_name in DEI_TAGS:
+                continue
             rep.n_excluded_non_usgaap += sum(
-                len(unit_facts)
-                for tag_data in facts[namespace].values()
-                for unit_facts in tag_data.get("units", {}).values()
+                len(unit_facts) for unit_facts in tag_data.get("units", {}).values()
             )
 
-    usgaap = facts.get("us-gaap", {})
     rows = []
 
-    for tag in tags:
-        tag_data = usgaap.get(tag)
-        if tag_data is None:
-            continue
+    def collect(tag_data: dict | None, out_tag: str, namespace: str) -> None:
+        """Flatten one tag's facts onto ``rows`` under the name ``out_tag``.
 
-        units = tag_data.get("units", {})
-        for unit, entries in units.items():
+        Shared by both namespaces so the form, unit and ``filed`` rules are
+        applied identically to each. A DEI share count that skipped these checks
+        would be the one row in the table whose provenance was weaker than the
+        rest.
+        """
+        if tag_data is None:
+            return
+        for unit, entries in tag_data.get("units", {}).items():
             # Monetary values in USD and share counts are the only units these
             # tags should carry. Anything else (a foreign currency, a per-share
             # figure) is not comparable and is excluded with a count.
@@ -257,7 +298,7 @@ def parse_companyfacts(
                 rows.append(
                     {
                         "cik": cik,
-                        "tag": tag,
+                        "tag": out_tag,
                         "period_end": end,
                         "fiscal_year": e.get("fy"),
                         "fiscal_period": e.get("fp"),
@@ -266,15 +307,28 @@ def parse_companyfacts(
                         "unit": unit,
                         "form": form,
                         "accession": e.get("accn"),
+                        "source_namespace": namespace,
                     }
                 )
-                rep.tag_coverage[tag] = rep.tag_coverage.get(tag, 0) + 1
+                rep.tag_coverage[out_tag] = rep.tag_coverage.get(out_tag, 0) + 1
+
+    usgaap = facts.get("us-gaap", {})
+    for tag in tags:
+        collect(usgaap.get(tag), tag, "us-gaap")
+
+    # DEI second, and deliberately so. If a filer reports a share count under
+    # both namespaces, the two land on the same primary key and the de-duplication
+    # below keeps the first -- which makes us-gaap authoritative where it exists
+    # and DEI the fallback, rather than the other way round.
+    dei = facts.get("dei", {})
+    for tag in DEI_TAGS:
+        collect(dei.get(tag), DEI_TAG_ALIASES.get(tag, tag), "dei")
 
     frame = pd.DataFrame(
         rows,
         columns=[
             "cik", "tag", "period_end", "fiscal_year", "fiscal_period",
-            "filed", "value", "unit", "form", "accession",
+            "filed", "value", "unit", "form", "accession", "source_namespace",
         ],
     )
 
@@ -303,6 +357,10 @@ def parse_companyfacts(
         valid = filed.notna() & period.notna() & (filed >= period)
         rep.n_excluded_filed_before_period += int((~valid).sum())
         frame = frame.loc[valid]
+
+        # Counted here rather than at intake so it reports rows actually kept,
+        # net of the us-gaap precedence above and of the date check.
+        rep.n_shares_from_dei += int((frame["source_namespace"] == "dei").sum())
 
     rep.n_rows += len(frame)
     return frame

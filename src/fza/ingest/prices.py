@@ -148,10 +148,49 @@ def fetch_stooq(ticker: str, session: Any | None = None) -> pd.DataFrame:
 DEFAULT_START = "2010-01-01"
 
 
+def cumulative_split_factor(splits) -> pd.Series:
+    """For each row, the product of every split taking effect strictly AFTER it.
+
+    A split-adjusted series expresses the whole history in today's share terms.
+    Multiplying a row by this factor puts it back into the share terms that were
+    current on that day.
+
+    STRICTLY AFTER is the boundary that matters, and it is easy to get wrong by
+    one row. The price printed ON a split's effective date is already quoted in
+    the new, smaller shares -- Apple closed at 129.04 on 2020-08-31, the day its
+    4:1 split took effect, not at 516. So the effective date's own ratio must not
+    be applied to it. Hence the reverse cumulative product is shifted up by one:
+    each row takes the accumulation belonging to the row after it.
+    """
+    s = pd.Series(splits).astype(float).replace(0.0, 1.0).fillna(1.0)
+    return s[::-1].cumprod()[::-1].shift(-1).fillna(1.0)
+
+
+def unadjust_close(close_adj, splits) -> pd.Series:
+    """Recover the price as it was quoted, from a split-adjusted series.
+
+    ``close_adj`` here means *any* split-adjusted price series. In
+    ``fetch_yfinance`` it is yfinance's ``Close`` -- which is adjusted for splits
+    but not for dividends -- and NOT its ``Adj Close``, which is adjusted for
+    both. Feeding the dividend-adjusted series in would produce a number that was
+    never quoted: 120.9557 x 4 = 483.82, where Apple actually closed at 499.23.
+
+    Pure and offline: it takes two series and returns one, so the arithmetic is
+    tested against constructed splits rather than against a download.
+    """
+    close = pd.Series(close_adj).astype(float)
+    return close * cumulative_split_factor(splits).to_numpy()
+
+
 def fetch_yfinance(
     ticker: str, start: str = DEFAULT_START, end: str | None = None
 ) -> pd.DataFrame:
-    """Fallback source. Drops delisted tickers, which is why it is second."""
+    """Fallback source. Drops delisted tickers, which is why it is second.
+
+    Prices come back split-adjusted whatever is asked for, so the unadjusted
+    series is RECONSTRUCTED here rather than downloaded. See the comment on the
+    call below.
+    """
     try:
         import yfinance as yf
     except ImportError as exc:  # pragma: no cover
@@ -159,8 +198,24 @@ def fetch_yfinance(
             "yfinance is needed for the fallback source: pip install yfinance"
         ) from exc
 
-    data = yf.download(
-        ticker, start=start, end=end, auto_adjust=False, progress=False, threads=False
+    # ``auto_adjust=False`` DOES NOT WORK in this version of yfinance (1.6.0).
+    # It restores the 'Adj Close' column, but 'Close' comes back split-adjusted
+    # regardless. Probed directly on Apple across its 2020-08-31 4:1 split:
+    # yf.download(auto_adjust=False), Ticker().history(auto_adjust=False), and
+    # Ticker().history(auto_adjust=False, actions=True) all return 124.81 for
+    # 2020-08-28, where the price actually quoted that day was 499.23. There is
+    # no call that returns the raw series.
+    #
+    # So the unadjusted price is reconstructed from the split history rather than
+    # downloaded, and ``Ticker().history`` is used because it is the only one of
+    # the three that carries the 'Stock Splits' column needed to do it.
+    #
+    # THIS IS A NEW SINGLE POINT OF DEPENDENCE. Every unadjusted price now rests
+    # on that column being complete: a split yfinance failed to record would
+    # leave the prices before it silently short by that factor, and nothing
+    # downstream could tell. Recorded in the README's limitations section.
+    data = yf.Ticker(ticker).history(
+        start=start, end=end, auto_adjust=False, actions=True
     )
     if data is None or data.empty:
         return pd.DataFrame()
@@ -168,16 +223,21 @@ def fetch_yfinance(
     if isinstance(data.columns, pd.MultiIndex):
         data.columns = data.columns.get_level_values(0)
 
-    # Recent yfinance versions drop 'Adj Close' unless auto_adjust=False is
-    # honoured, and the shape of the result varies with the version. The first
-    # real ingest produced a store where close_adj was null for every row, which
-    # silently emptied every price-based factor -- momentum, reversal and
-    # volatility all read the adjusted series.
-    #
-    # The fallback is explicit rather than a .get() default, so the substitution
-    # is visible in the data: when only one close series is available, the two
-    # columns are equal, and a reader comparing them can tell that no adjustment
-    # was applied rather than assuming one was.
+    # ``history`` returns an exchange-local tz-aware index; the store holds dates.
+    idx = pd.DatetimeIndex(data.index)
+    if idx.tz is not None:
+        idx = idx.tz_localize(None)
+    idx = idx.normalize()
+
+    # No split column means no way to reconstruct, and a factor of 1 says so
+    # honestly -- the prices are then whatever the provider returned, which is
+    # the pre-existing behaviour rather than a silent guess.
+    splits = data["Stock Splits"] if "Stock Splits" in data.columns else 0.0
+    factor = cumulative_split_factor(pd.Series(splits, index=data.index)).to_numpy()
+
+    # 'Close' is split-adjusted only; 'Adj Close' is split- AND dividend-adjusted.
+    # The unadjusted price must be built from the former. The latter is what the
+    # return-based factors want and is stored unchanged.
     if "Adj Close" in data.columns:
         adj = data["Adj Close"].astype(float).to_numpy()
     else:
@@ -186,13 +246,20 @@ def fetch_yfinance(
     return pd.DataFrame(
         {
             "ticker": ticker.upper(),
-            "trade_date": pd.to_datetime(data.index),
-            "open": data["Open"].astype(float).to_numpy(),
-            "high": data["High"].astype(float).to_numpy(),
-            "low": data["Low"].astype(float).to_numpy(),
-            "close": data["Close"].astype(float).to_numpy(),
+            "trade_date": idx,
+            # The whole bar is put back into the day's share terms together.
+            # Un-splitting the close alone would leave rows whose close sat four
+            # times above their own high.
+            "open": data["Open"].astype(float).to_numpy() * factor,
+            "high": data["High"].astype(float).to_numpy() * factor,
+            "low": data["Low"].astype(float).to_numpy() * factor,
+            "close": data["Close"].astype(float).to_numpy() * factor,
             "close_adj": adj,
-            "volume": data["Volume"].astype(float).to_numpy(),
+            # Volume moves the other way: a split-adjusted volume counts today's
+            # smaller shares, so it is divided rather than multiplied. `turnover`
+            # divides volume by a point-in-time share count, and the two have to
+            # be in the same share terms or the ratio is off by the split.
+            "volume": data["Volume"].astype(float).to_numpy() / factor,
             "shares_out": None,
         }
     ).reset_index(drop=True)

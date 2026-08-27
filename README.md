@@ -175,6 +175,36 @@ it is the project's largest known gap — quantified in the output of every run.
 Getting to that table took seven fixes across three runs; they are recorded in
 [AI_NOTES.md](AI_NOTES.md).
 
+## Known limitations of the price data
+
+**Unadjusted prices are reconstructed, not downloaded.** yfinance 1.6.0 returns a
+split-adjusted `Close` no matter what is asked of it — `auto_adjust=False`
+restores the `Adj Close` column but does not restore the raw series, and all
+three call shapes were probed to confirm it. Market capitalisation needs the
+price as it was actually quoted, so `fetch_yfinance` rebuilds it by multiplying
+each row by the product of every split that took effect after it, using the
+`Stock Splits` column that `Ticker().history()` carries.
+
+That makes the split history a **single point of dependence**: a split the
+provider failed to record would leave every price before it short by exactly that
+factor, and every market-cap factor wrong in the same proportion, with nothing
+downstream able to detect it. The reconstruction is verified against two known
+splits (Apple 4:1 in 2020, NVIDIA 10:1 in 2024) and its arithmetic is unit-tested
+offline, but neither check can find a split that was never reported. Before this
+was noticed, `close` held the adjusted series and market capitalisation was wrong
+by the cumulative split factor — Apple's 2014 book-to-market came out four times
+too high.
+
+**Volume is rescaled the same way, in the other direction.** A split-adjusted
+volume counts today's smaller shares, so it is divided by the same factor;
+`turnover` divides volume by a point-in-time share count and the two must be in
+the same share terms.
+
+**Share counts come from the DEI namespace.** Shares outstanding is a cover-page
+fact that `us-gaap` does not define, so it is read from
+`dei:EntityCommonStockSharesOutstanding` and written under the `us-gaap` name the
+rest of the codebase asks for. The `source_namespace` column records the origin.
+
 ## Running it
 
 The test suite and the demo need no network and no credentials — everything runs

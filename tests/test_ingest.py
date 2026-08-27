@@ -15,7 +15,12 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from fza.ingest.prices import fetch_stooq, parse_stooq_csv
+from fza.ingest.prices import (
+    cumulative_split_factor,
+    fetch_stooq,
+    parse_stooq_csv,
+    unadjust_close,
+)
 from fza.ingest.sec import (
     ACCEPTED_FORMS,
     CORE_TAGS,
@@ -358,3 +363,169 @@ def test_yfinance_is_declared_as_an_ingest_dependency():
         line for line in pyproject.splitlines() if line.strip().startswith("ingest =")
     )
     assert "yfinance" in ingest_line
+
+
+# ----------------------------------------------------------------------
+# Shares outstanding lives in the DEI namespace, not us-gaap
+# ----------------------------------------------------------------------
+def _dei_payload(include_other_dei_tag: bool = True) -> dict:
+    """A payload shaped like the real thing for the namespace question.
+
+    Constructed rather than recorded, because the recorded fixture happens to
+    report `CommonStockSharesOutstanding` under us-gaap and so cannot exercise
+    the case that actually occurred: eleven of the first thirty companies had no
+    us-gaap share count at all, and their cover-page figure sat under `dei`.
+    """
+    dei_facts = {
+        "EntityCommonStockSharesOutstanding": {
+            "units": {
+                "shares": [
+                    {"end": "2020-04-24", "val": 4_300_000_000, "filed": "2020-04-30",
+                     "form": "10-Q", "accn": "0000021344-20-000018", "fy": 2020, "fp": "Q1"},
+                    {"end": "2021-04-23", "val": 4_310_000_000, "filed": "2021-04-29",
+                     "form": "10-Q", "accn": "0000021344-21-000012", "fy": 2021, "fp": "Q1"},
+                ]
+            }
+        }
+    }
+    if include_other_dei_tag:
+        # In DEI, but not in DEI_TAGS. Must stay excluded: what was opened is a
+        # named tag, not the namespace.
+        dei_facts["EntityPublicFloat"] = {
+            "units": {
+                "USD": [
+                    {"end": "2020-06-30", "val": 2.0e11, "filed": "2021-02-22",
+                     "form": "10-K", "accn": "0000021344-21-000009", "fy": 2020, "fp": "FY"},
+                    {"end": "2021-06-30", "val": 2.4e11, "filed": "2022-02-22",
+                     "form": "10-K", "accn": "0000021344-22-000009", "fy": 2021, "fp": "FY"},
+                    {"end": "2022-06-30", "val": 2.6e11, "filed": "2023-02-21",
+                     "form": "10-K", "accn": "0000021344-23-000011", "fy": 2022, "fp": "FY"},
+                ]
+            }
+        }
+    return {
+        "cik": 21344,
+        "facts": {
+            # No us-gaap share count, which is the real shape: Coca-Cola's
+            # us-gaap namespace carries 724 tags and this is not one of them.
+            "us-gaap": {
+                "Assets": {
+                    "units": {
+                        "USD": [
+                            {"end": "2020-03-31", "val": 8.7e10, "filed": "2020-04-30",
+                             "form": "10-Q", "accn": "0000021344-20-000018",
+                             "fy": 2020, "fp": "Q1"},
+                        ]
+                    }
+                }
+            },
+            "dei": dei_facts,
+        },
+    }
+
+
+def test_dei_share_count_is_adopted_under_the_usgaap_name():
+    """The share count is read from `dei` and written as the us-gaap concept.
+
+    Renaming at the parser means no factor has to know which namespace a share
+    count came from, and `attach_shares_outstanding` keeps working unchanged.
+    The origin stays recoverable through `source_namespace`.
+    """
+    report = IngestReport(n_companies_requested=1)
+    df = parse_companyfacts(_dei_payload(), report=report)
+
+    shares = df[df["tag"] == "CommonStockSharesOutstanding"]
+    assert len(shares) == 2
+    assert set(shares["source_namespace"]) == {"dei"}
+    assert sorted(shares["value"]) == [4_300_000_000.0, 4_310_000_000.0]
+    assert report.n_shares_from_dei == 2
+
+    # The rename is a rename, not a widening: the DEI spelling does not survive.
+    assert "EntityCommonStockSharesOutstanding" not in set(df["tag"])
+    # And a us-gaap row still reports its own origin.
+    assert set(df.loc[df["tag"] == "Assets", "source_namespace"]) == {"us-gaap"}
+
+
+def test_other_dei_tags_are_still_excluded_and_counted():
+    """What was opened is one named tag, not the DEI namespace."""
+    report = IngestReport(n_companies_requested=1)
+    df = parse_companyfacts(_dei_payload(), report=report)
+
+    assert "EntityPublicFloat" not in set(df["tag"])
+    assert report.n_excluded_non_usgaap == 3  # the three EntityPublicFloat facts
+
+
+def test_the_adopted_dei_tag_is_not_counted_as_an_exclusion():
+    """The exclusion count must not include this parser's own intake.
+
+    An earlier shape of this counter summed every fact outside us-gaap before
+    the DEI tag was read, so the rows it went on to adopt were also reported as
+    excluded -- a number that contradicted itself.
+    """
+    report = IngestReport(n_companies_requested=1)
+    df = parse_companyfacts(_dei_payload(include_other_dei_tag=False), report=report)
+
+    assert report.n_excluded_non_usgaap == 0
+    assert report.n_shares_from_dei == 2
+    assert len(df[df["tag"] == "CommonStockSharesOutstanding"]) == 2
+
+
+# ----------------------------------------------------------------------
+# Unadjusted prices are reconstructed from the split history
+# ----------------------------------------------------------------------
+def _series(values, splits):
+    """A split-adjusted close and its split column, indexed by trading day."""
+    idx = pd.date_range("2020-01-01", periods=len(values), freq="D")
+    return pd.Series(values, index=idx, dtype=float), pd.Series(splits, index=idx, dtype=float)
+
+
+def test_one_split_lifts_only_the_prices_before_it():
+    """The price printed ON the effective date is already in the new shares.
+
+    This is the boundary the reconstruction gets wrong if the cumulative product
+    is not shifted: Apple closed at 129.04 on the day of its 4:1 split, not 516.
+    """
+    close, splits = _series([100.0, 100.0, 25.0, 25.0], [0.0, 0.0, 4.0, 0.0])
+    out = unadjust_close(close, splits)
+
+    assert list(out) == [400.0, 400.0, 25.0, 25.0]
+
+
+def test_two_splits_compound_for_the_earliest_prices():
+    """A price before both splits carries the product of both, not the later one."""
+    close, splits = _series(
+        [1.0, 1.0, 1.0, 1.0, 1.0], [0.0, 0.0, 4.0, 0.0, 10.0]
+    )
+    out = unadjust_close(close, splits)
+
+    assert list(out) == [40.0, 40.0, 10.0, 10.0, 1.0]
+
+
+def test_without_splits_the_series_is_returned_unchanged():
+    """No split means nothing to undo, and the reconstruction must not invent one."""
+    close, splits = _series([10.0, 11.0, 12.0], [0.0, 0.0, 0.0])
+    out = unadjust_close(close, splits)
+
+    assert list(out) == [10.0, 11.0, 12.0]
+
+
+def test_a_missing_split_column_yields_a_factor_of_one():
+    """An absent or all-null split column leaves prices as the provider sent them.
+
+    Stated as a test because the alternative -- treating a missing column as a
+    reason to guess -- would put a fabricated price in the table. A factor of one
+    is the honest answer, and the README records that this makes the split
+    history a single point of dependence.
+    """
+    idx = pd.date_range("2020-01-01", periods=3, freq="D")
+    close = pd.Series([10.0, 11.0, 12.0], index=idx)
+
+    assert list(cumulative_split_factor(pd.Series([float("nan")] * 3, index=idx))) == [
+        1.0, 1.0, 1.0,
+    ]
+    assert list(unadjust_close(close, pd.Series([float("nan")] * 3, index=idx))) == [
+        10.0, 11.0, 12.0,
+    ]
+    assert list(cumulative_split_factor(pd.Series([0.0, 0.0, 0.0], index=idx))) == [
+        1.0, 1.0, 1.0,
+    ]
