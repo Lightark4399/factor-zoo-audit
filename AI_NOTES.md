@@ -291,6 +291,86 @@ further up requires a check at that layer too. Hence the coverage report.
 
 ---
 
+## Incident 12 — a broken quantity that produced the expected result
+
+**What happened.** On real data `bm_ratio` returned an IC of +0.0365 with a
+monotonicity of +0.70 — a value factor behaving the way the value literature
+says it should. `log_mktcap` returned +0.0831 and +0.90, the strongest row in the
+table. Both were computed from a market capitalisation that was wrong for every
+company on every date.
+
+**How it was found, which is the part worth recording.** Not by looking at those
+ICs. They were unremarkable in the direction that invites no scrutiny. It came
+out of a diagnostic written for an unrelated question — whether `bm_ratio`'s
+unearned advantage of -0.0013 was a real measurement or an inert leaking path
+— which happened to print the five largest raw factor values on its way to
+answering. The top row read `AAPL 2014-06-30  5752.68`. A book-to-market ratio
+lives between roughly 0.1 and 3. The IC computed from that column was reported to
+four decimal places and looked fine.
+
+**Root cause (a): both price columns held adjusted prices.** Recent `yfinance`
+versions adjust `Close` as well as dropping `Adj Close`. Incident 11 fixed the
+missing column and did not ask what had happened to the one that remained. All
+three call shapes were probed across Apple's 2020 split — `yf.download`,
+`Ticker().history()`, and `Ticker().history(actions=True)` — and
+`auto_adjust=False` restores the `Adj Close` column in every one of them without
+restoring a raw series. There is no call that returns the unadjusted price, so it
+is now reconstructed from the split history.
+
+**Root cause (b): shares outstanding was read from the wrong namespace.** Eleven
+of thirty companies had no share count at all. The number is a cover-page fact
+that `us-gaap` does not define: Coca-Cola's `us-gaap` namespace carries 724 tags
+and `CommonStockSharesOutstanding` is not among them, while
+`dei:EntityCommonStockSharesOutstanding` carries 71 facts spanning 2009-2026. The
+ingest was looking in the wrong place. The data had never been missing.
+
+**What the fix did to the results.** `bm_ratio` went from +0.0365 to **-0.0336**.
+`ep_ratio` went from +0.0169 to **-0.0382**. Both value factors changed sign. The
+pre-fix signs agreed with the literature and the post-fix signs do not — and
+the pre-fix numbers came from a market capitalisation off by a factor of about
+four thousand. On the row that gave it away, the implied market cap was $20.9
+million against an actual $80.0 billion. Had nobody asked about the 5752, this
+table would have entered the README carrying two value factors that agreed with
+expectations.
+
+**An additional irony.** `_market_cap`'s docstring, at the time, read: *"The
+unadjusted close is deliberate. Market capitalisation is a level at a point in
+time, and the adjusted series has been rescaled by every subsequent split —
+using it would make a firm's historical market cap depend on corporate actions
+that had not happened yet."* The code described the error it was there to prevent
+and then committed it. A docstring is a statement of intent, and nothing had ever
+checked that the column it named held what it claimed.
+
+**Constraints added.**
+
+* **A result agreeing with expectations is not evidence that it is correct.**
+  Agreement lowers the probability that anyone looks, which is precisely what
+  makes it dangerous. The four factors that were wrong all looked reasonable; the
+  one number that did not look reasonable was never printed by the demo.
+* **Every factor needs a plausible-magnitude assertion.** Book-to-market between
+  0.01 and 100, market cap between 1e6 and 1e13, returns between -1 and 10. A
+  value outside physical range must raise, not yield a credible-looking IC. An
+  out-of-range value is the only signal that survives a broken input, because
+  every downstream statistic is rank-based or standardised and will happily
+  report four decimal places on nonsense.
+* **A change in an external API can move several fields at once.** Incident 11
+  fixed "this column is empty" without asking whether the meaning of the
+  neighbouring column had also changed. The question to ask of a provider change
+  is not "which field broke" but "which fields moved".
+
+**Still open, found while writing this up.** The reconstruction fixed the price
+but not its counterpart: `shares_out` is the last count *filed* as of the signal
+date, while the price is the one *quoted* that day, and a split moves the two out
+of step until the next filing reports the new count. Apple's 7:1 split took
+effect on 2014-06-09; at the 2014-06-30 signal date the store pairs a post-split
+price of 92.93 with the pre-split count of 861,381,000, giving a market cap of
+$80.0bn against an actual $560bn — low by exactly seven. The resulting
+`bm_ratio` of 1.50 sits squarely inside the plausible range, so the magnitude
+assertion proposed above would not catch it. That is the same lesson again, one
+level down.
+
+---
+
 ## What the live data changed
 
 The first thirty companies produced facts, not assumptions:
@@ -329,6 +409,8 @@ fixture omits and what breaks a parser.
 Thirty companies is enough to hit real data quirks and cheap enough that a
 failure costs four minutes. Incidents 3 through 8 came from two such runs, the
 first and second live ingests; incidents 9 and 10 came from the first demo
-executed against that data; incident 11 from the first demo run with the full
-factor library. In every case the code had passed its full test suite
-immediately beforehand.
+executed against that data; incidents 11 and 12 from the first demo run with
+the full factor library. In every case the code had passed its full test suite
+immediately beforehand — and incident 12 would have passed any test suite that
+did not assert on magnitudes, because every number in it was finite, plausibly
+scaled and wrong.
