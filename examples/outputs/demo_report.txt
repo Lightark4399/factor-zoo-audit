@@ -5,10 +5,21 @@
   DATA: data\fza.duckdb
 
   securities             30
-  fundamentals       33,598
-  prices            121,341
-  restatements        8,999   (26.8% of fundamental rows)
-  price history  2010-01-04 .. 2026-08-21
+  fundamentals       34,244
+  prices            117,375
+  restatements        8,830   (25.8% of fundamental rows)
+  price history  2010-01-04 .. 2026-08-27
+
+==============================================================================
+DATA QUALITY
+==============================================================================
+
+  Price columns that are not fully populated. A column at 0.0%
+  empties every factor that reads it, and the failure surfaces as
+  'factor produced no values' -- naming the factor, not the column.
+
+  column              non-null    coverage
+  shares_out           100,903      86.0%
 
 ==============================================================================
 REGISTERED FACTORS
@@ -37,16 +48,16 @@ STANDARD PROTOCOL
   184 monthly signal dates, 2011-04-30 .. 2026-07-31
 
   factor                IC   LS Sharpe   monotone   dates  as-of held
-  mom_12_1         +0.0149     +0.0531      +0.00     170         yes
-  mom_6_1          +0.0373     +0.1454      +0.30     176         yes
-  rev_1m           +0.0110     -0.0470      -0.10     182         yes
-  log_mktcap       +0.0820     +0.3724      +0.90     183         yes
-  idio_vol         -0.0638     -0.2449      -1.00     183         yes
-  turnover         -0.0606     -0.2862      -1.00     183         yes
-  bm_ratio         +0.0377     +0.1401      +0.70     183         yes
-  ep_ratio         +0.0161     -0.1233      -0.10     183         yes
-  roe              -0.0085     -0.1466      -0.50     183         yes
-  asset_growth     -0.0081     -0.1337      -1.00     183         yes
+  mom_12_1         +0.0137     +0.0537      +0.10     170         yes
+  mom_6_1          +0.0323     +0.1398      +0.40     176         yes
+  rev_1m           +0.0102     -0.0401      -0.10     182         yes
+  log_mktcap       +0.0329     +0.1582      +0.70     183         yes
+  idio_vol         -0.0654     -0.2466      -1.00     183         yes
+  turnover         -0.0308     -0.2097      -1.00     183         yes
+  bm_ratio         -0.0336     -0.1612      -0.90     183         yes
+  ep_ratio         -0.0382     -0.2027      -0.80     183         yes
+  roe              -0.0063     -0.1421      -0.80     183         yes
+  asset_growth     -0.0043     -0.1065      -1.00     183         yes
 
   'as-of held' is a check on this code: did every read return only
   filings that were already public on the day being forecast, including
@@ -64,13 +75,13 @@ THE TRAP, MEASURED
   mom_12_1                       n/a -- reads no fundamentals
   mom_6_1                        n/a -- reads no fundamentals
   rev_1m                         n/a -- reads no fundamentals
-  log_mktcap               184       184       4,653   100.0%
+  log_mktcap               184       184       5,081   100.0%
   idio_vol                       n/a -- reads no fundamentals
-  turnover                 184       184       4,653   100.0%
-  bm_ratio                 184       184      12,844   100.0%
-  ep_ratio                 184       184      15,427   100.0%
-  roe                      184       184      40,434   100.0%
-  asset_growth             184       184       9,830   100.0%
+  turnover                 184       184       5,081   100.0%
+  bm_ratio                 184       184      14,680   100.0%
+  ep_ratio                 184       184      22,444   100.0%
+  roe                      184       184      39,145   100.0%
+  asset_growth             184       184       9,528   100.0%
 
 ==============================================================================
 POINT-IN-TIME VS RESTATED
@@ -94,8 +105,8 @@ POINT-IN-TIME VS RESTATED
     evidence it is free of look-ahead.
 
   log_mktcap
-    point-in-time IC      +0.0820
-    restated IC           +0.0820
+    point-in-time IC      +0.0329
+    restated IC           +0.0329
     unearned advantage    +0.0000
     verdict                  PASS
 
@@ -105,32 +116,32 @@ POINT-IN-TIME VS RESTATED
     evidence it is free of look-ahead.
 
   turnover
-    point-in-time IC      -0.0606
-    restated IC           -0.0606
+    point-in-time IC      -0.0308
+    restated IC           -0.0308
     unearned advantage    +0.0000
     verdict                  PASS
 
   bm_ratio
-    point-in-time IC      +0.0377
-    restated IC           +0.0363
-    unearned advantage    -0.0014
+    point-in-time IC      -0.0336
+    restated IC           -0.0347
+    unearned advantage    -0.0011
     verdict                  PASS
 
   ep_ratio
-    point-in-time IC      +0.0161
-    restated IC           +0.0104
-    unearned advantage    -0.0056
-    verdict            PASS (opposite direction)
+    point-in-time IC      -0.0382
+    restated IC           -0.0267
+    unearned advantage    +0.0116
+    verdict                  FAIL
 
   roe
-    point-in-time IC      -0.0085
-    restated IC           +0.0037
-    unearned advantage    +0.0122
+    point-in-time IC      -0.0063
+    restated IC           +0.0062
+    unearned advantage    +0.0125
     verdict                  FAIL
 
   asset_growth
-    point-in-time IC      -0.0081
-    restated IC           -0.0081
+    point-in-time IC      -0.0043
+    restated IC           -0.0043
     unearned advantage    +0.0000
     verdict                  PASS
 

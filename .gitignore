@@ -10,3 +10,8 @@ venv/
 data/
 *.duckdb
 .DS_Store
+
+# Ad-hoc run captures, regenerated on demand and not part of the record.
+# The committed demo output lives in examples/outputs/.
+demo_output.txt
+yf_probe.txt
