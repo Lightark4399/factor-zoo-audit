@@ -94,3 +94,115 @@ def test_unknown_price_source_raises_before_downloading():
 def test_valid_sources_are_listed_in_the_error():
     with pytest.raises(ValueError, match="yfinance"):
         ingest_prices(["AAPL"], source_order=("nonsense",))
+
+
+# ----------------------------------------------------------------------
+# A failing factor stays visible
+# ----------------------------------------------------------------------
+# The demo runs the full pipeline per factor, so a test that calls it twice
+# costs more than the rest of this file put together. Six dates exercise every
+# branch these tests are about.
+_FAST = ["--db", "/definitely/not/a/real/path.duckdb", "--max-dates", "6"]
+
+
+def _factors_with_impossible_range(factor_id: str = "bm_ratio"):
+    """load_all(), with one factor given a range nothing can satisfy."""
+    import dataclasses
+
+    from fza.factors.registry import load_all
+
+    factors = load_all()
+    factors[factor_id] = dataclasses.replace(
+        factors[factor_id], plausible_range=(1e9, 2e9)
+    )
+    return factors
+
+
+def test_a_factor_that_fails_its_magnitude_check_stays_in_the_table(monkeypatch, capsys):
+    """Catching the error must not be the same as hiding it.
+
+    The magnitude check is only worth having if a reader can see it fire. A demo
+    that dropped the failing row would leave nine plausible factors on screen and
+    no sign that a tenth had been rejected -- which is how a check becomes
+    decoration.
+    """
+    monkeypatch.setattr("fza.demo.load_all", _factors_with_impossible_range)
+    assert main(_FAST) == 0
+
+    out = capsys.readouterr().out
+    assert "FAILED: magnitude" in out
+    # the row itself, not just the word
+    protocol = out.split("STANDARD PROTOCOL")[1].split("THE TRAP")[0]
+    row = next(ln for ln in protocol.splitlines() if ln.strip().startswith("bm_ratio"))
+    assert "FAILED: magnitude" in row
+    # and the reason, with the numbers that produced it
+    assert "fall outside" in out
+    assert "1e+09, 2e+09" in out
+    assert "most extreme:" in out
+
+
+def test_the_other_factors_still_run_when_one_fails(monkeypatch, capsys):
+    """One rejected factor must not take the report down with it."""
+    monkeypatch.setattr("fza.demo.load_all", _factors_with_impossible_range)
+    main(_FAST)
+
+    out = capsys.readouterr().out
+    protocol = out.split("STANDARD PROTOCOL")[1].split("THE TRAP")[0]
+
+    def status_of(factor_id: str) -> str:
+        line = next(
+            ln for ln in protocol.splitlines() if ln.strip().startswith(factor_id + " ")
+        )
+        return line.split()[-1]
+
+    assert status_of("bm_ratio") == "magnitude"
+    for still_working in ("ep_ratio", "roe", "log_mktcap", "asset_growth"):
+        assert status_of(still_working) == "OK"
+    assert protocol.count("  OK") >= 7
+
+
+def test_the_status_column_reports_an_empty_factor_as_its_own_outcome(capsys):
+    """'FAILED: empty' and 'FAILED: magnitude' are different things.
+
+    Six subsampled signal dates leave the momentum factors without a formation
+    window, so they legitimately produce nothing. Collapsing that into the same
+    label as a rejected magnitude would tell a reader to go looking in the wrong
+    place -- which is the failure mode of incident 11, where the message named
+    the factor and the fault was in a column.
+    """
+    main(_FAST)
+    out = capsys.readouterr().out
+    protocol = out.split("STANDARD PROTOCOL")[1].split("THE TRAP")[0]
+
+    assert "FAILED: empty" in protocol
+    assert "produced no values at all" in protocol
+    assert "FAILED: magnitude" not in protocol
+
+
+def test_a_failed_factor_is_named_in_the_vintage_section_too(monkeypatch, capsys):
+    """Absent for a reason and absent by omission look identical on the page."""
+    monkeypatch.setattr("fza.demo.load_all", _factors_with_impossible_range)
+    main(_FAST)
+
+    out = capsys.readouterr().out
+    vintages = out.split("POINT-IN-TIME VS RESTATED")[1]
+    assert "bm_ratio" in vintages
+    assert "not compared" in vintages
+    assert "FAILED: magnitude" in vintages
+
+
+def test_an_undeclared_range_is_printed_as_undefined_not_as_a_pass(capsys):
+    """The report must distinguish 'checked and fine' from 'never checked'.
+
+    Six of the ten factors have no plausible range yet. Printing a blank, or
+    nothing at all, would let a reader take silence for a clean bill -- the same
+    error as writing 0 where the share count is unknown.
+    """
+    main(_FAST)
+    out = capsys.readouterr().out
+    registered = out.split("REGISTERED FACTORS")[1].split("STANDARD PROTOCOL")[0]
+
+    assert "plausible range" in registered
+    assert "undefined" in registered  # the six that have none
+    assert "0.01 .. 100" in registered  # bm_ratio, which has one
+    assert "NOT that the factor passed" in out

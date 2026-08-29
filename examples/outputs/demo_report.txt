@@ -1,72 +1,83 @@
-==============================================================================
-                               FACTOR ZOO AUDIT                               
-==============================================================================
+====================================================================================
+                                  FACTOR ZOO AUDIT                                  
+====================================================================================
 
   DATA: data\fza.duckdb
 
   securities             30
-  fundamentals       34,244
-  prices            117,375
-  restatements        8,830   (25.8% of fundamental rows)
-  price history  2010-01-04 .. 2026-08-27
+  fundamentals       34,262
+  prices            113,216
+  restatements        8,837   (25.8% of fundamental rows)
+  price history  2010-01-04 .. 2026-08-28
 
-==============================================================================
+====================================================================================
 DATA QUALITY
-==============================================================================
+====================================================================================
 
   Price columns that are not fully populated. A column at 0.0%
   empties every factor that reads it, and the failure surfaces as
   'factor produced no values' -- naming the factor, not the column.
 
   column              non-null    coverage
-  shares_out           100,903      86.0%
+  shares_out            85,575      75.6%
 
-==============================================================================
+====================================================================================
 REGISTERED FACTORS
-==============================================================================
+====================================================================================
 
-  factor        category      fundamentals   falsification
-  asset_growth  investment    yes                        3
-  turnover      liquidity     yes                        3
-  mom_12_1      momentum      no                         4
-  mom_6_1       momentum      no                         3
-  roe           profitability yes                        3
-  rev_1m        reversal      no                         3
-  idio_vol      risk          no                         3
-  log_mktcap    size          yes                        3
-  bm_ratio      value         yes                        4
-  ep_ratio      value         yes                        3
+  factor        category      fundamentals   falsification     plausible range
+  asset_growth  investment    yes                        3           -10 .. 10
+  turnover      liquidity     yes                        3           undefined
+  mom_12_1      momentum      no                         4           undefined
+  mom_6_1       momentum      no                         3           undefined
+  roe           profitability yes                        3           -10 .. 10
+  rev_1m        reversal      no                         3           undefined
+  idio_vol      risk          no                         3           undefined
+  log_mktcap    size          yes                        3           undefined
+  bm_ratio      value         yes                        4         0.01 .. 100
+  ep_ratio      value         yes                        3         1e-05 .. 10
 
   Every factor carries a hypothesis card stating an economic mechanism,
   the conditions under which it should persist, and what would falsify
   it. Registration fails without one.
 
-==============================================================================
+  'plausible range' is the interval the factor's raw values are checked
+  against before any cleaning. 'undefined' means no range has been
+  declared -- NOT that the factor passed. An undeclared range is an
+  unchecked magnitude, and the two states are printed differently for
+  the same reason an unknown share count is null and not zero.
+
+====================================================================================
 STANDARD PROTOCOL
-==============================================================================
+====================================================================================
 
   184 monthly signal dates, 2011-04-30 .. 2026-07-31
 
-  factor                IC   LS Sharpe   monotone   dates  as-of held
-  mom_12_1         +0.0137     +0.0537      +0.10     170         yes
-  mom_6_1          +0.0323     +0.1398      +0.40     176         yes
-  rev_1m           +0.0102     -0.0401      -0.10     182         yes
-  log_mktcap       +0.0329     +0.1582      +0.70     183         yes
-  idio_vol         -0.0654     -0.2466      -1.00     183         yes
-  turnover         -0.0308     -0.2097      -1.00     183         yes
-  bm_ratio         -0.0336     -0.1612      -0.90     183         yes
-  ep_ratio         -0.0382     -0.2027      -0.80     183         yes
-  roe              -0.0063     -0.1421      -0.80     183         yes
-  asset_growth     -0.0043     -0.1065      -1.00     183         yes
+  factor                IC  LS Sharpe  monotone  dates as-of held  status
+  mom_12_1         +0.0145    +0.0529     +0.10    170        yes  OK
+  mom_6_1          +0.0329    +0.1206     +0.40    176        yes  OK
+  rev_1m           +0.0112    -0.0484     +0.00    182        yes  OK
+  log_mktcap       +0.0485    +0.2347     +0.60    183        yes  OK
+  idio_vol         -0.0704    -0.2580     -1.00    183        yes  OK
+  turnover         -0.0542    -0.2077     -1.00    183        yes  OK
+  bm_ratio         -0.0241    -0.1254     -0.90    183        yes  OK
+  ep_ratio         -0.0313    -0.1659     -0.50    183        yes  OK
+  roe              -0.0061    -0.1371     -0.50    183        yes  OK
+  asset_growth     -0.0065    -0.1059     -1.00    183        yes  OK
 
   'as-of held' is a check on this code: did every read return only
   filings that were already public on the day being forecast, including
   any reporting lag the factor declared? A VIOLATION here would void
   every number in the row.
 
-==============================================================================
+  'status' is whether the factor produced a result at all. OK means the
+  run completed; it does not mean the factor works. A FAILED row has no
+  numbers because none were computed -- the run stopped at the check
+  named in the status, and that row is excluded from every table below.
+
+====================================================================================
 THE TRAP, MEASURED
-==============================================================================
+====================================================================================
 
   How much would a naive query have read early? This is the hazard the
   bitemporal store exists to avoid -- a finding, not a failure.
@@ -75,17 +86,17 @@ THE TRAP, MEASURED
   mom_12_1                       n/a -- reads no fundamentals
   mom_6_1                        n/a -- reads no fundamentals
   rev_1m                         n/a -- reads no fundamentals
-  log_mktcap               184       184       5,081   100.0%
+  log_mktcap               184       184       4,835   100.0%
   idio_vol                       n/a -- reads no fundamentals
-  turnover                 184       184       5,081   100.0%
-  bm_ratio                 184       184      14,680   100.0%
-  ep_ratio                 184       184      22,444   100.0%
-  roe                      184       184      39,145   100.0%
-  asset_growth             184       184       9,528   100.0%
+  turnover                 184       184       4,835   100.0%
+  bm_ratio                 184       184      13,436   100.0%
+  ep_ratio                 184       184      19,507   100.0%
+  roe                      184       184      39,174   100.0%
+  asset_growth             184       184       9,544   100.0%
 
-==============================================================================
+====================================================================================
 POINT-IN-TIME VS RESTATED
-==============================================================================
+====================================================================================
 
   Could this result have been obtained when the signal was formed?
 
@@ -105,8 +116,8 @@ POINT-IN-TIME VS RESTATED
     evidence it is free of look-ahead.
 
   log_mktcap
-    point-in-time IC      +0.0329
-    restated IC           +0.0329
+    point-in-time IC      +0.0485
+    restated IC           +0.0485
     unearned advantage    +0.0000
     verdict                  PASS
 
@@ -116,38 +127,38 @@ POINT-IN-TIME VS RESTATED
     evidence it is free of look-ahead.
 
   turnover
-    point-in-time IC      -0.0308
-    restated IC           -0.0308
+    point-in-time IC      -0.0542
+    restated IC           -0.0542
     unearned advantage    +0.0000
     verdict                  PASS
 
   bm_ratio
-    point-in-time IC      -0.0336
-    restated IC           -0.0347
-    unearned advantage    -0.0011
+    point-in-time IC      -0.0241
+    restated IC           -0.0250
+    unearned advantage    -0.0009
     verdict                  PASS
 
   ep_ratio
-    point-in-time IC      -0.0382
-    restated IC           -0.0267
-    unearned advantage    +0.0116
+    point-in-time IC      -0.0313
+    restated IC           -0.0238
+    unearned advantage    +0.0075
     verdict                  FAIL
 
   roe
-    point-in-time IC      -0.0063
-    restated IC           +0.0062
-    unearned advantage    +0.0125
+    point-in-time IC      -0.0061
+    restated IC           +0.0084
+    unearned advantage    +0.0145
     verdict                  FAIL
 
   asset_growth
-    point-in-time IC      -0.0043
-    restated IC           -0.0043
+    point-in-time IC      -0.0065
+    restated IC           -0.0065
     unearned advantage    +0.0000
     verdict                  PASS
 
-==============================================================================
+====================================================================================
   The gap above is the value of reading a filing before it existed.
   It is measurable here only because revisions are stored as rows
   rather than updates -- a database that overwrote them could not
   produce this number at all.
-==============================================================================
+====================================================================================

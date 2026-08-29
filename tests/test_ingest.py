@@ -529,3 +529,94 @@ def test_a_missing_split_column_yields_a_factor_of_one():
     assert list(cumulative_split_factor(pd.Series([0.0, 0.0, 0.0], index=idx))) == [
         1.0, 1.0, 1.0,
     ]
+
+
+def _one_price_row_per(dates: list[str]) -> pd.DataFrame:
+    """A minimal price frame for one company over the given trade dates."""
+    n = len(dates)
+    return pd.DataFrame(
+        {
+            "ticker": ["AAA"] * n,
+            "cik": ["0000000001"] * n,
+            "trade_date": pd.to_datetime(dates),
+            "open": [1.0] * n,
+            "high": [1.0] * n,
+            "low": [1.0] * n,
+            "close": [1.0] * n,
+            "close_adj": [1.0] * n,
+            "volume": [1.0] * n,
+            "shares_out": [None] * n,
+        }
+    )
+
+
+def _filings(dates: list[str], values: list[float]) -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "cik": ["0000000001"] * len(dates),
+            "tag": ["CommonStockSharesOutstanding"] * len(dates),
+            "filed": pd.to_datetime(dates),
+            "value": values,
+        }
+    )
+
+
+def test_a_share_count_stops_being_carried_once_it_is_too_old():
+    """The live failure: V, MA and BRK-B kept a 2010 count against a 2026 price.
+
+    ``merge_asof`` carries the last filing forward with no bound, and for a
+    multi-class issuer the DEI share-count tag simply stops being filed. The
+    result was not a stale market cap, it was a fabricated one, and nothing
+    downstream could see it -- see AI_NOTES incident 13.
+    """
+    from fza.ingest.prices import attach_shares_outstanding
+
+    prices = _one_price_row_per(["2010-06-01", "2020-06-01"])
+    out = attach_shares_outstanding(
+        prices, _filings(["2010-05-01"], [1_000_000.0])
+    ).sort_values("trade_date")
+
+    assert out["shares_out"].iloc[0] == 1_000_000.0  # one month old
+    assert pd.isna(out["shares_out"].iloc[1])  # ten years old
+
+
+def test_the_staleness_bound_admits_a_late_annual_filer():
+    """400 days, so a year plus slippage still counts and 401 does not.
+
+    A tighter bound would null out every company that files late or changes its
+    fiscal year end, which trades a known error for a silent loss of universe.
+    """
+    from fza.ingest.prices import MAX_SHARE_COUNT_STALENESS_DAYS, attach_shares_outstanding
+
+    filed = pd.Timestamp("2010-05-01")
+    inside = filed + pd.Timedelta(days=MAX_SHARE_COUNT_STALENESS_DAYS)
+    outside = filed + pd.Timedelta(days=MAX_SHARE_COUNT_STALENESS_DAYS + 1)
+
+    out = attach_shares_outstanding(
+        _one_price_row_per([str(inside.date()), str(outside.date())]),
+        _filings(["2010-05-01"], [1_000_000.0]),
+    ).sort_values("trade_date")
+
+    assert out["shares_out"].iloc[0] == 1_000_000.0
+    assert pd.isna(out["shares_out"].iloc[1])
+
+
+def test_a_company_that_keeps_filing_is_never_nulled():
+    """The bound measures age since the last filing, not age since the first.
+
+    A normal filer refreshes the clock every year, so the mitigation costs it
+    nothing. Only a company whose tag stopped being reported loses rows.
+    """
+    from fza.ingest.prices import attach_shares_outstanding
+
+    filings = _filings(
+        ["2010-05-01", "2011-05-01", "2012-05-01", "2013-05-01"],
+        [1e6, 2e6, 3e6, 4e6],
+    )
+    out = attach_shares_outstanding(
+        _one_price_row_per(["2010-06-01", "2011-06-01", "2012-06-01", "2013-06-01"]),
+        filings,
+    ).sort_values("trade_date")
+
+    assert out["shares_out"].notna().all()
+    assert list(out["shares_out"]) == [1e6, 2e6, 3e6, 4e6]

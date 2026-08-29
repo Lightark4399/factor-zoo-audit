@@ -36,6 +36,13 @@ import pandas as pd
 
 STOOQ_URL = "https://stooq.com/q/d/l/"
 
+# A filed share count older than this is not stale, it is wrong. An annual
+# report arrives every ~365 days; 400 leaves room for a late filer and a
+# changed fiscal year end without admitting a count that simply stopped
+# being updated. See AI_NOTES incident 13 for why this is a mitigation and
+# not a fix.
+MAX_SHARE_COUNT_STALENESS_DAYS = 400
+
 # Stooq refuses or returns an HTML error page for requests without a browser-like
 # User-Agent. The first live run downloaded zero rows for all thirty tickers
 # because the session was created bare -- the SEC client set a User-Agent, this
@@ -352,7 +359,9 @@ def ingest_prices(
 
 
 def attach_shares_outstanding(
-    prices: pd.DataFrame, fundamentals: pd.DataFrame
+    prices: pd.DataFrame,
+    fundamentals: pd.DataFrame,
+    max_staleness_days: int = MAX_SHARE_COUNT_STALENESS_DAYS,
 ) -> pd.DataFrame:
     """Fill ``shares_out`` from filed share counts, as of each trade date.
 
@@ -365,6 +374,23 @@ def attach_shares_outstanding(
     rather than borrowing the earliest one backwards. Back-filling would put a
     future disclosure into a historical row — the exact error the schema exists
     to prevent, reintroduced through a convenience.
+
+    Carrying forward has a limit
+    ----------------------------
+    ``merge_asof`` will carry the last filed count forward indefinitely, and for
+    three companies in the live universe it carried one forward for a decade:
+    ``dei:EntityCommonStockSharesOutstanding`` stops being filed for multi-class
+    issuers, so V, MA and BRK-B each keep a count last reported in 2010 or 2011
+    against a price quoted in 2026. Beyond ``max_staleness_days`` the row gets a
+    null instead, because an undefined market cap is a smaller lie than a
+    confidently wrong one -- the same rule the rest of this project follows.
+
+    THIS IS A MITIGATION, NOT A FIX. It treats the symptom. The disease is that
+    the tag is a single consolidated count and BRK-B's 941,481 is a Class A
+    share count standing next to a Class B price: wrong on the day it was filed,
+    not wrong because it aged. A real fix needs per-class share counts, which
+    this tag cannot supply and which would require another source. See AI_NOTES
+    incident 13.
     """
     if prices.empty or fundamentals.empty:
         return prices
@@ -399,5 +425,12 @@ def attach_shares_outstanding(
         by="cik" if "cik" in px.columns else None,
         direction="backward",
     )
+    # Drop counts that were already too old to mean anything before they are
+    # allowed to fill a row. Done here rather than after the fillna so a stale
+    # count can never become a market cap on the way past.
+    age_days = (merged["trade_date"] - merged["filed"]).dt.days
+    stale = age_days > max_staleness_days
+    merged.loc[stale, "shares_filed"] = float("nan")
+
     merged["shares_out"] = merged["shares_out"].fillna(merged["shares_filed"])
     return merged.drop(columns=[c for c in ("filed", "shares_filed") if c in merged.columns])

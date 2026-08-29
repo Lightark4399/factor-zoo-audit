@@ -99,7 +99,16 @@ class FactorRun:
 
 
 class ImplausibleMagnitudeError(ValueError):
-    """Raised when a factor's raw values leave the range it declared."""
+    """Raised when a factor's raw values leave the range it declared.
+
+    The numbers are carried as ``detail`` as well as in the message. A
+    caller that has to render this failure in a table -- the demo does --
+    should not have to parse English back out of the string to do it.
+    """
+
+    def __init__(self, message: str, detail: dict | None = None) -> None:
+        super().__init__(message)
+        self.detail: dict = detail or {}
 
 
 def check_plausible_magnitude(
@@ -114,6 +123,12 @@ def check_plausible_magnitude(
     downstream of this point is rank-based or standardised, which means it will
     report four decimal places on any input at all. An out-of-range raw value is
     the last place a broken input is still visible as broken.
+
+    On its first run against real data it found a fault nobody was looking for:
+    a share count that SEC stopped filing in 2011 and that the as-of join then
+    carried forward to 2026, wrong for 3 companies of 30 while every aggregate
+    in the report stayed unremarkable. That is incident 13, and it is the reason
+    to keep this check rather than the reason it was written.
 
     What it catches, and what it does not
     -------------------------------------
@@ -182,7 +197,19 @@ def check_plausible_magnitude(
         "This is a data problem, not a factor problem: check the inputs before "
         "the definition. A value this far out produces a perfectly credible IC, "
         "which is why it is stopped here.\n"
-        f"Most extreme rows:\n{worst.to_string(index=False)}"
+        f"Most extreme rows:\n{worst.to_string(index=False)}",
+        detail={
+            **result,
+            "max_share": max_share,
+            "worst": [
+                (
+                    str(r.ticker),
+                    str(pd.Timestamp(r.signal_date).date()),
+                    float(r.value),
+                )
+                for r in worst.itertuples()
+            ],
+        },
     )
 
 

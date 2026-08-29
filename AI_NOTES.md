@@ -380,6 +380,9 @@ Its coverage, stated so nobody has to infer it:
 
 ### Still open (1): share counts carried forward for a decade
 
+*(Mitigated in incident 13 by a staleness bound. The account below is what
+was known when this was written; the fault itself is not fixed.)*
+
 Found by the magnitude check on its first run against real data, which is the
 strongest argument for it. `bm_ratio` exceeded its range on 4.67% of rows and
 `ep_ratio` on 4.01%, all from a single company.
@@ -407,6 +410,8 @@ a change to make in passing.
 factors rather than reporting a plausible number from them. That is the intended
 behaviour: a run that stops is better than a table that is quietly wrong.
 
+The first of those two options was taken. See incident 13.
+
 ### Still open (2): a split separates the price from the share count
 
 The reconstruction fixed the price but not its counterpart. `shares_out` is the
@@ -425,6 +430,123 @@ and the signal date, using the split history already downloaded for the prices
 
 That is the lesson of this incident recurring one level down: the number that
 looks reasonable is the one that does not get checked.
+
+---
+
+## Incident 13 — the assertion caught something nobody was looking for
+
+Incident 12 ended with a magnitude assertion and an argument for building one: a
+constraint that cannot catch an accident that has already happened is decoration.
+The assertion was written against incident 12's market cap and a regression test
+proves it rejects it. Then it ran against real data for the first time and
+stopped the demo on a fault this project did not know it had.
+
+**What it caught.** `bm_ratio` left its plausible range on 4.67% of rows and
+`ep_ratio` on 4.01%, every one of them the same company. Following it back:
+SEC's `companyfacts` stops publishing `dei:EntityCommonStockSharesOutstanding`
+once an issuer begins reporting per share class, so the tag ends at 2010-02-03
+for Visa, 2010-11-02 for Mastercard and 2011-05-06 for Berkshire Hathaway B.
+`attach_shares_outstanding` joined as-of with no staleness bound, so `merge_asof`
+carried the last value forward — fifteen years, for Berkshire. And the value it
+carried is 941,481, the **Class A** count, standing next to the **Class B**
+price. Berkshire's market capitalisation came out at $141m in 2014.
+
+**Why this one is more dangerous than incident 12.** Incident 12 was wrong for
+every company by the same ~4000x, which is the kind of error that eventually
+trips over something. This one is wrong for 3 companies out of 30 and exactly
+right for the other 27, and every aggregate in the report absorbed it:
+
+* The IC table was unremarkable. `log_mktcap` +0.0329, `bm_ratio` −0.0336 — the
+  signs and magnitudes the size and value literature would predict.
+* Winsorising clips the affected values back to the 99th percentile before any
+  statistic sees them, and standardising then erases the units the error is
+  denominated in.
+* Every statistic downstream is rank-based, and a rank cannot tell 5,752 from 3.
+  Three names out of thirty do not move a cross-sectional average enough to
+  notice.
+
+So the error was not merely undetected, it was *undetectable* by anything in the
+pipeline except a check placed on the raw values before cleaning — which is
+precisely where the magnitude assertion sits, and the reason it sits there.
+
+**What was done: a 400-day staleness bound.** A count more than 400 days old is
+written as null rather than carried forward. 400 is a year plus room for a late
+filer or a changed fiscal year end; past that, a share count that has not been
+refiled is not stale data, it is a number that is known to be wrong. An undefined
+market cap is a smaller lie than a confidently wrong one, which is the same rule
+that keeps an unknown share count out of a zero.
+
+**The bound did not hold on its first attempt, because the same carry-forward
+existed one layer down.** With `attach_shares_outstanding` fixed, the demo still
+rejected `bm_ratio` — 4.96% of values outside the range, worst case BRK-B at
+9,493 in 2026. The ingest was correctly writing null, and `_at_signal_dates` in
+the factor library was forward-filling the null away: it fills a wide panel to
+the end of the index with no limit, so the last defined market capitalisation
+(June 2012) was carried to 2026, and the value drifted *further* out of range
+every year as book equity grew against a frozen denominator.
+
+That is incident 6 again — the same bug in a second place — and it is worth
+naming precisely, because the two fills look identical and mean opposite things.
+Filling a price across a day the stock did not trade bridges a *missing
+observation*. Filling a share count across the years it was not filed
+manufactures one. `_at_signal_dates` now takes an optional
+`max_staleness_days`; it defaults to None so a price still carries as before,
+and `_market_cap` and `turnover` pass 10 days, which covers a month end on a
+holiday weekend and nothing else. `bm_ratio` fell to 0.88% out of range and
+`ep_ratio` to 0.49%, both inside the 1% tolerance, and BRK-B's last market cap
+is now 2012-05-31.
+
+`turnover` had the identical fault and no plausible range declared, so nothing
+would have reported it. It was fixed because the cause was understood, not
+because anything caught it — which is the argument for declaring the remaining
+six ranges rather than leaving them undefined.
+
+**This is a mitigation, and the distinction matters.** It treats the symptom.
+Berkshire's count was not wrong because it aged — it was a Class A count against
+a Class B price on the day it was filed, and the bound only stops it once it gets
+old. A real fix needs per-class share counts, which the consolidated DEI tag
+cannot supply and which would take another source. Recording the bound as a fix
+would leave the next reader believing the market caps are sound.
+
+**The cost, measured, because it changes the sample.** The bound nulls 11,166 of
+113,216 price rows and takes `shares_out` coverage from 85.5% to 75.6%. All
+11,166 belong to the same three companies — their last usable count is
+2011-03-10 (V), 2011-12-07 (MA) and 2012-06-08 (BRK-B) — so those three leave
+every market-cap factor from then to 2026 and stay in the price-only factors
+throughout. No other company loses a row, which is worth stating: the bound is
+not quietly thinning the universe everywhere, it is removing exactly the rows
+that were fabricated.
+
+The cost shows up in the width of each cross-section and not in the number of
+signal dates: the mean number of names carrying a market capitalisation falls
+from 23.4 to 20.6, and all 184 dates still produce one. A count of dates — the
+obvious thing to look at — would have shown this change as nothing at all. It is
+in the README's limitations section for the same reason.
+
+**What was also done: the report now has somewhere to put a failure.** Before
+this, a factor whose magnitude check fired took the whole demo down with it, and
+the obvious repair — catch the error and move on — would have deleted the row.
+Both are wrong in the same way: the first hides nine working factors behind one
+broken one, the second hides the broken one. The protocol table now carries a
+`status` column (`OK`, `FAILED: magnitude`, `FAILED: empty`, `FAILED: <error>`),
+a failed row keeps its place with its numbers withheld rather than invented, the
+reason is printed underneath it from the exception's structured payload rather
+than its prose, and the vintage section names the factor it could not compare
+instead of silently omitting it. Catching an error and reporting it is not the
+same as catching it and swallowing it; a check whose failure leaves no mark on
+the report is the same decoration this incident was supposed to be about.
+
+The factor table gained a `plausible range` column for the same reason. Six of
+the ten factors have no declared range, and that is printed as `undefined` — not
+blank, not omitted. An unchecked magnitude and a checked one must not look alike
+on the page, for the same reason an unknown share count is null and not zero.
+
+**The lesson, which is the one from incident 12 confirmed rather than repeated.**
+The assertion was justified on the argument that a check earns its place by
+catching a known accident. It did that, in a test. Its first contact with real
+data then produced a finding — and the finding was of exactly the shape the
+argument predicted: a quantity that was wrong in a way every downstream statistic
+was structurally incapable of showing.
 
 ---
 
@@ -471,3 +593,9 @@ the full factor library. In every case the code had passed its full test suite
 immediately beforehand — and incident 12 would have passed any test suite that
 did not assert on magnitudes, because every number in it was finite, plausibly
 scaled and wrong.
+
+Incident 13 is the exception that says something about the arrangement: it was
+found by a check rather than by a run that failed. The check was added because
+incident 12 argued for it, and it repaid the argument on its first contact with
+real data. That is the only failure in this list that was caught before it had
+produced a number anyone believed.

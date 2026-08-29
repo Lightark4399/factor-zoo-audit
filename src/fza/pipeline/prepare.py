@@ -39,6 +39,16 @@ import numpy as np
 import pandas as pd
 
 
+class EmptyFactorError(ValueError):
+    """Raised when a factor returns no values at all.
+
+    A subclass rather than a bare ValueError so a caller can tell an empty
+    factor apart from every other way cleaning can fail, and report it as its
+    own status instead of a generic failure. It stays a ValueError so code
+    written against the older behaviour still catches it.
+    """
+
+
 @dataclass
 class CleaningReport:
     """What the cleaning did, so attrition is visible rather than silent."""
@@ -129,7 +139,7 @@ def prepare_cross_sections(
         # factor is always a bug in the factor, and letting it propagate means
         # the error surfaces several layers later as a dtype mismatch in a join,
         # which sends the reader to the wrong file.
-        raise ValueError(
+        raise EmptyFactorError(
             "factor produced no values. Check the computation before the "
             "cleaning stage -- an empty result is never a legitimate outcome."
         )

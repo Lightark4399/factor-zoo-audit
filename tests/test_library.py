@@ -213,3 +213,75 @@ def test_the_registry_distinguishes_an_undefined_range_from_a_declared_one(facto
     # Stated as a count as well, so adding a factor without a range is visible
     # as a change in this number rather than as nothing.
     assert (table["plausible_range"] == "undefined").sum() == 6
+
+
+# ----------------------------------------------------------------------
+# A forward fill that never stops is a second carry-forward
+# ----------------------------------------------------------------------
+def _panel_going_null(last_good: str) -> pd.DataFrame:
+    """One column of daily observations that stops on ``last_good``."""
+    idx = pd.date_range("2020-01-01", "2020-12-31", freq="D")
+    s = pd.Series(100.0, index=idx)
+    s.loc[s.index > pd.Timestamp(last_good)] = None
+    return s.to_frame("AAA")
+
+
+def test_a_value_is_not_carried_past_the_staleness_bound():
+    """The bug the ingest fix did not reach.
+
+    ``attach_shares_outstanding`` nulls a share count older than 400 days, and
+    the factor layer then forward-filled the resulting null away: Berkshire's
+    count stops in 2012 and its market cap was still being reported in 2026. A
+    null that means "no observation" must survive the fill that exists to bridge
+    a missing quote. See AI_NOTES incident 13.
+    """
+    from fza.factors.library import _at_signal_dates
+
+    panel = _panel_going_null("2020-03-01")
+    dates = pd.DatetimeIndex(["2020-03-05", "2020-06-30"])
+
+    unbounded = _at_signal_dates(panel, dates)
+    assert unbounded["AAA"].notna().all()  # the old behaviour, still available
+
+    bounded = _at_signal_dates(panel, dates, max_staleness_days=10)
+    assert bounded["AAA"].iloc[0] == 100.0  # four days old, a real observation
+    assert pd.isna(bounded["AAA"].iloc[1])  # four months old, an invention
+
+
+def test_the_staleness_bound_is_measured_per_column():
+    """Columns go null at different times, and a panel-wide age would be wrong
+    for every column but one."""
+    from fza.factors.library import _at_signal_dates
+
+    panel = _panel_going_null("2020-03-01")
+    panel["BBB"] = 200.0
+
+    out = _at_signal_dates(
+        panel, pd.DatetimeIndex(["2020-06-30"]), max_staleness_days=10
+    )
+    assert pd.isna(out["AAA"].iloc[0])
+    assert out["BBB"].iloc[0] == 200.0
+
+
+def test_a_share_count_that_stopped_yields_no_market_cap():
+    """The same thing again, through the factor rather than the helper."""
+    from fza.factors.library import _market_cap
+
+    s = Store()
+    load_fixture_into(s)
+    cut = "2020-06-30"
+    tickers = [t for t in s.prices()["ticker"].unique()]
+    dead = tickers[0]
+    s.con.execute(
+        "UPDATE prices SET shares_out = NULL "
+        "WHERE ticker = ? AND trade_date > ?",
+        [dead, cut],
+    )
+
+    caps = _market_cap(s, pd.DatetimeIndex(["2020-06-30", "2021-06-30"]))
+    assert pd.notna(caps.loc[pd.Timestamp("2020-06-30"), dead])
+    assert pd.isna(caps.loc[pd.Timestamp("2021-06-30"), dead])
+    # every other name is untouched
+    others = [t for t in tickers if t != dead]
+    assert caps.loc[pd.Timestamp("2021-06-30"), others].notna().any()
+    s.close()

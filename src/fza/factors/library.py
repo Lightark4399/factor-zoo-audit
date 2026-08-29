@@ -67,15 +67,51 @@ def _wide(prices: pd.DataFrame, column: str) -> pd.DataFrame:
     ).sort_index()
 
 
-def _at_signal_dates(wide: pd.DataFrame, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
+# How old an observation may be before a share-count-derived quantity stops
+# being carried forward. A month end that lands on a weekend or a holiday is at
+# most four days from the last trade; ten leaves room for a longer closure.
+# Past that there is no observation to carry, and the forward fill would be
+# inventing one -- see AI_NOTES incident 13.
+MAX_CARRY_DAYS = 10
+
+
+def _at_signal_dates(
+    wide: pd.DataFrame,
+    signal_dates: pd.DatetimeIndex,
+    max_staleness_days: int | None = None,
+) -> pd.DataFrame:
     """Values at the signal dates, forward-filled from the last observation.
 
     Forward-filling only. A stock that did not trade on a signal date carries its
     last observed value, which is what a forecaster would have had; back-filling
     would import a future price into a historical row.
+
+    ``max_staleness_days`` bounds how far a value may be carried. Without it the
+    fill runs to the end of the panel, which is how a share count that stopped
+    being filed in 2012 produced a market capitalisation in 2026 even after the
+    ingest had correctly nulled it: the null was real, and the fill overwrote it.
+    The default is None -- unbounded, the original behaviour -- because for a
+    price a long carry is a stale quote and for a share count it is a fiction,
+    and only the caller knows which it is holding.
     """
     idx = pd.DatetimeIndex(signal_dates)
-    return wide.reindex(wide.index.union(idx)).ffill().reindex(idx)
+    full = wide.index.union(idx)
+    reindexed = wide.reindex(full)
+    filled = reindexed.ffill()
+
+    if max_staleness_days is None:
+        return filled.reindex(idx)
+
+    # Per column, the timestamp of the last observation carried into each row.
+    # Computed rather than assumed: columns go null at different times, and a
+    # single panel-wide age would be wrong for every column but one.
+    stamps = pd.DataFrame(
+        np.where(reindexed.notna(), full.to_numpy()[:, None], np.datetime64("NaT", "ns")),
+        index=full,
+        columns=reindexed.columns,
+    ).ffill()
+    age_days = (full.to_numpy()[:, None] - stamps.to_numpy()) / np.timedelta64(1, "D")
+    return filled.mask(age_days > max_staleness_days).reindex(idx)
 
 
 def _long(frame: pd.DataFrame, name: str = "value") -> pd.DataFrame:
@@ -202,7 +238,12 @@ def _market_cap(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
     wide = px.pivot_table(
         index="trade_date", columns="ticker", values="mktcap", aggfunc="last"
     ).sort_index()
-    return _at_signal_dates(wide, signal_dates)
+    # Bounded, because a null here is a decision and not a gap. The ingest nulls
+    # a share count that is more than 400 days old; an unbounded fill would put
+    # the last market cap back over the top of that null and undo it one layer
+    # further down. That is what happened: Berkshire's share count stops in 2012
+    # and its market cap was still being reported in 2026.
+    return _at_signal_dates(wide, signal_dates, max_staleness_days=MAX_CARRY_DAYS)
 
 
 # ----------------------------------------------------------------------
@@ -300,7 +341,10 @@ def share_turnover(
     shares = _wide(prices, "shares_out")
 
     avg_volume = _at_signal_dates(volume, signal_dates)
-    shares_at = _at_signal_dates(shares, signal_dates)
+    # Same bound, same reason: a share count that is no longer filed must not be
+    # carried into a present-day volume. turnover has no plausible range yet, so
+    # nothing downstream would have caught it here.
+    shares_at = _at_signal_dates(shares, signal_dates, max_staleness_days=MAX_CARRY_DAYS)
 
     with np.errstate(divide="ignore", invalid="ignore"):
         turn = avg_volume / shares_at.where(shares_at > 0)

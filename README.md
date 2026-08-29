@@ -136,7 +136,9 @@ built and tested; the audit pipeline is in progress.
 ✓ Read-path verification distinct from hazard measurement
 ✓ Factor library: ten factors across eight categories, each with a hypothesis card
 ✓ Column coverage reported at load — an entirely null column names itself
-✓ 110 tests, CI green
+✓ Magnitude assertions on raw factor values, before any cleaning can hide them
+✓ Share counts bounded at 400 days; failed factors keep a labelled row in the report
+✓ 133 tests, CI green
 ○ Audit layer wired to backtest-audit
 ○ Style orthogonalisation, factor structure (PCA), costs
 ```
@@ -204,6 +206,39 @@ the same share terms.
 fact that `us-gaap` does not define, so it is read from
 `dei:EntityCommonStockSharesOutstanding` and written under the `us-gaap` name the
 rest of the codebase asks for. The `source_namespace` column records the origin.
+
+**A share count older than 400 days is dropped, and three companies lose most of
+their history to it.** SEC stops reporting the consolidated DEI share count once
+an issuer reports per share class, so for **Visa, Mastercard and Berkshire
+Hathaway B — 3 of the 30 companies** the tag ends in 2010 or 2011 (V 2010-02-03,
+MA 2010-11-02, BRK-B 2011-05-06). The as-of join used to carry those values
+forward to 2026. `attach_shares_outstanding` now writes a null instead once a
+count is more than 400 days old, which is a year plus enough slack for a late
+filer or a changed fiscal year end.
+
+The cost is real, measured, and it changes the sample. On the current 30-company
+ingest the bound nulls **11,166 of 113,216 price rows**, taking `shares_out`
+coverage from 85.5% to 75.6%. Every one of those rows belongs to V, MA or BRK-B:
+their last usable share count falls on 2011-03-10, 2011-12-07 and 2012-06-08
+respectively, so from those dates to 2026 they drop out of every factor that
+needs a market capitalisation — `log_mktcap`, `bm_ratio`, `ep_ratio`. They remain
+in the price-only factors throughout, and no other company loses a single row.
+The loss is in the width of each cross-section rather than the number of signal
+dates: the mean count of names carrying a market cap falls from 23.4 to 20.6, and
+all 184 dates still produce a cross-section.
+
+The bound has to be enforced twice. The ingest writes the null, and the factor
+library's forward fill would otherwise overwrite it: `_at_signal_dates` fills a
+panel to the end of its index, so the last defined market capitalisation was
+still being carried into 2026. `_market_cap` and `turnover` now cap that carry at
+10 days — enough for a month end on a holiday weekend, not enough to bridge a
+share count that stopped being filed.
+
+This is a mitigation and not a fix. The underlying fault is that the tag is a
+single consolidated count: Berkshire's 941,481 is a **Class A** share count
+standing next to a **Class B** price, which was wrong on the day it was filed
+rather than wrong because it aged. Fixing that needs per-class share counts from
+a source this tag cannot supply. AI_NOTES incident 13 has the full account.
 
 ## Running it
 

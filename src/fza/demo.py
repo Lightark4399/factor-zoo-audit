@@ -31,18 +31,60 @@ import pandas as pd
 
 from .factors.registry import load_all, summary_table
 from .fixtures import load_fixture_into
-from .pipeline.run import compare_vintages, compute_factor
+from .pipeline.prepare import EmptyFactorError
+from .pipeline.run import (
+    ImplausibleMagnitudeError,
+    compare_vintages,
+    compute_factor,
+)
 from .store import Store
 
 DEFAULT_DB = Path("data/fza.duckdb")
 
+# Wide enough for the protocol table to carry a status column without
+# truncating 'FAILED: magnitude' into something a reader has to guess at.
+WIDTH = 84
 
-def _rule(char: str = "-", width: int = 78) -> str:
+
+def _rule(char: str = "-", width: int = WIDTH) -> str:
     return char * width
 
 
 def _header(title: str) -> str:
     return f"\n{_rule('=')}\n{title}\n{_rule('=')}"
+
+
+def _describe_failure(exc: Exception) -> tuple[str, list[str]]:
+    """Turn an exception from ``compute_factor`` into a status and a reason.
+
+    The status vocabulary is deliberately small and stable -- ``OK``,
+    ``FAILED: magnitude``, ``FAILED: empty``, ``FAILED: <ExceptionName>`` -- so
+    a reader can scan the column, and so a check that has never fired is still
+    distinguishable from one that has.
+
+    The reason is built from the exception's structured payload where there is
+    one, not from its message. Reporting a failure by reprinting its English is
+    how a report ends up saying something the code no longer does.
+    """
+    if isinstance(exc, ImplausibleMagnitudeError):
+        d = exc.detail
+        lo, hi = d.get("range", (float("nan"), float("nan")))
+        reason = [
+            f"{d.get('share_outside', float('nan')):.2%} of "
+            f"{d.get('n_values', 0):,} raw values fall outside "
+            f"[{lo:g}, {hi:g}] (tolerance {d.get('max_share', 0):.0%})"
+        ]
+        worst = d.get("worst") or []
+        if worst:
+            shown = ", ".join(f"{t} {dt} = {v:,.4g}" for t, dt, v in worst[:3])
+            reason.append(f"most extreme: {shown}")
+        reason.append("this is a data problem upstream of the factor definition")
+        return "FAILED: magnitude", reason
+    if isinstance(exc, EmptyFactorError):
+        return "FAILED: empty", [
+            "the factor produced no values at all; check the columns it reads"
+        ]
+    return f"FAILED: {type(exc).__name__}", [str(exc).splitlines()[0]]
 
 
 def open_store(db_path: Path | None) -> tuple[Store, str]:
@@ -126,7 +168,7 @@ def main(argv: list[str] | None = None) -> int:
         lines.append(text)
 
     emit(_rule("="))
-    emit("FACTOR ZOO AUDIT".center(78))
+    emit("FACTOR ZOO AUDIT".center(WIDTH))
     emit(_rule("="))
     emit()
 
@@ -171,17 +213,27 @@ def main(argv: list[str] | None = None) -> int:
     emit(_header("REGISTERED FACTORS"))
     emit()
     table = summary_table()
-    emit(f"  {'factor':<14}{'category':<14}{'fundamentals':<14}{'falsification':>14}")
+    emit(
+        f"  {'factor':<14}{'category':<14}{'fundamentals':<14}"
+        f"{'falsification':>14}{'plausible range':>20}"
+    )
     for _, row in table.iterrows():
         emit(
             f"  {row['factor_id']:<14}{row['category']:<14}"
             f"{'yes' if row['uses_fundamentals'] else 'no':<14}"
             f"{row['n_falsification_criteria']:>14}"
+            f"{row['plausible_range']:>20}"
         )
     emit()
     emit("  Every factor carries a hypothesis card stating an economic mechanism,")
     emit("  the conditions under which it should persist, and what would falsify")
     emit("  it. Registration fails without one.")
+    emit()
+    emit("  'plausible range' is the interval the factor's raw values are checked")
+    emit("  against before any cleaning. 'undefined' means no range has been")
+    emit("  declared -- NOT that the factor passed. An undeclared range is an")
+    emit("  unchecked magnitude, and the two states are printed differently for")
+    emit("  the same reason an unknown share count is null and not zero.")
 
     dates = signal_dates_for(store)
     if args.max_dates and len(dates) > args.max_dates:
@@ -196,23 +248,36 @@ def main(argv: list[str] | None = None) -> int:
          f"{dates[-1].date() if len(dates) else 'n/a'}")
     emit()
     emit(
-        f"  {'factor':<14}{'IC':>10}{'LS Sharpe':>12}"
-        f"{'monotone':>11}{'dates':>8}{'as-of held':>12}"
+        f"  {'factor':<14}{'IC':>10}{'LS Sharpe':>11}"
+        f"{'monotone':>10}{'dates':>7}{'as-of held':>11}  status"
     )
 
     runs = {}
+    failures: dict[str, str] = {}
     for factor_id, factor in factors.items():
         try:
             run = compute_factor(factor, store, dates)
         except Exception as exc:
-            emit(f"  {factor_id:<14}{'failed':>10}   {type(exc).__name__}: {exc}")
+            # A factor that fails a check must stay in the table. Catching the
+            # error keeps the other nine computable; dropping the row would make
+            # the failure disappear, which is the opposite of what the check is
+            # for. So the row is printed with its numbers withheld -- they were
+            # never computed -- and the reason underneath it.
+            status, reason = _describe_failure(exc)
+            failures[factor_id] = status
+            emit(
+                f"  {factor_id:<14}{'--':>10}{'--':>11}"
+                f"{'--':>10}{'--':>7}{'--':>11}  {status}"
+            )
+            for line in reason:
+                emit(f"      {line}")
             continue
         runs[factor_id] = run
         s = run.protocol.summary
         emit(
-            f"  {factor_id:<14}{s['ic_mean']:>+10.4f}{s['ls_sharpe']:>+12.4f}"
-            f"{run.protocol.monotonicity_rho:>+11.2f}{run.protocol.n_dates:>8}"
-            f"{('yes' if run.read_path_check['ok'] else 'VIOLATION'):>12}"
+            f"  {factor_id:<14}{s['ic_mean']:>+10.4f}{s['ls_sharpe']:>+11.4f}"
+            f"{run.protocol.monotonicity_rho:>+10.2f}{run.protocol.n_dates:>7}"
+            f"{('yes' if run.read_path_check['ok'] else 'VIOLATION'):>11}  OK"
         )
 
     emit()
@@ -220,6 +285,11 @@ def main(argv: list[str] | None = None) -> int:
     emit("  filings that were already public on the day being forecast, including")
     emit("  any reporting lag the factor declared? A VIOLATION here would void")
     emit("  every number in the row.")
+    emit()
+    emit("  'status' is whether the factor produced a result at all. OK means the")
+    emit("  run completed; it does not mean the factor works. A FAILED row has no")
+    emit("  numbers because none were computed -- the run stopped at the check")
+    emit("  named in the status, and that row is excluded from every table below.")
 
     emit(_header("THE TRAP, MEASURED"))
     emit()
@@ -244,6 +314,13 @@ def main(argv: list[str] | None = None) -> int:
 
     for factor_id, factor in factors.items():
         if factor_id not in runs:
+            # Named rather than skipped. A factor absent from this section
+            # because its run failed looks identical to one that was never
+            # registered, and the two mean very different things.
+            emit(f"  {factor_id}")
+            emit(f"    not compared -- {failures.get(factor_id, 'run failed')};")
+            emit("    see the status column above")
+            emit()
             continue
         try:
             comp = compare_vintages(factor, store, dates)
