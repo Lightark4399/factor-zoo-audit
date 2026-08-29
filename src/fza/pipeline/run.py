@@ -92,7 +92,98 @@ class FactorRun:
     read_path_check: dict
     # How much a naive query would have read early. A finding, not a failure.
     naive_trap: dict
+    # Whether the raw values were within the magnitude the factor declared, or
+    # -- distinctly -- whether it declared one at all.
+    magnitude_check: dict
     vintage: str
+
+
+class ImplausibleMagnitudeError(ValueError):
+    """Raised when a factor's raw values leave the range it declared."""
+
+
+def check_plausible_magnitude(
+    factor: Factor, raw: pd.DataFrame, max_share: float = 0.01
+) -> dict:
+    """Assert a factor's raw values are within the magnitude it declared.
+
+    THIS IS THE CHECK INCIDENT 12 DID NOT HAVE. `bm_ratio` returned 5752 on a
+    real company, where a book-to-market ratio lives between roughly 0.1 and 3,
+    and produced an IC of +0.0365 with a monotonicity of +0.70 -- numbers that
+    agreed with the value literature and so invited no scrutiny. Everything
+    downstream of this point is rank-based or standardised, which means it will
+    report four decimal places on any input at all. An out-of-range raw value is
+    the last place a broken input is still visible as broken.
+
+    What it catches, and what it does not
+    -------------------------------------
+    It catches a quantity that is wrong by orders of magnitude, which is what a
+    unit error, a mis-scaled column or a wrong denominator produce.
+
+    It does NOT catch a value that is wrong but physically ordinary. The known
+    live example is in AI_NOTES incident 12: `shares_out` is the last count
+    filed while the price is the one quoted, so between a split and the next
+    filing the market cap is off by the split factor. Apple's 2014 book-to-market
+    comes out at 1.50 instead of 0.21 -- seven times wrong, and comfortably
+    inside any honest range. It also misses anything affecting fewer rows than
+    ``max_share``.
+
+    And a range set too wide fails silently in the direction that matters: it
+    never fires, and its presence in the table says the factor is guarded. That
+    is the same shape as incident 9, where the check's name and its behaviour
+    had come apart. Bounds are therefore written as the widest values the
+    quantity could take and still mean what its name says, not fitted to what
+    the data happens to show.
+    """
+    if factor.plausible_range is None:
+        return {
+            "checked": False,
+            "n_values": int(len(raw)),
+            "note": (
+                "no plausible range declared -- NOT the same as passing: this "
+                "factor's magnitudes are unverified"
+            ),
+        }
+
+    lo, hi = factor.plausible_range
+    values = pd.to_numeric(raw["value"], errors="coerce").dropna()
+    if values.empty:
+        return {
+            "checked": True,
+            "range": (lo, hi),
+            "n_values": 0,
+            "n_outside": 0,
+            "share_outside": 0.0,
+            "note": "no finite values to check",
+        }
+
+    outside = (values < lo) | (values > hi)
+    share = float(outside.mean())
+    result = {
+        "checked": True,
+        "range": (lo, hi),
+        "n_values": int(len(values)),
+        "n_outside": int(outside.sum()),
+        "share_outside": share,
+    }
+    if share <= max_share:
+        return result
+
+    worst = (
+        raw.loc[values.index[outside]]
+        .assign(_d=lambda d: (d["value"] - (lo + hi) / 2).abs())
+        .nlargest(min(5, int(outside.sum())), "_d")
+        .drop(columns="_d")
+    )
+    raise ImplausibleMagnitudeError(
+        f"{factor.factor_id}: {outside.sum():,} of {len(values):,} values "
+        f"({share:.2%}, above the {max_share:.0%} tolerance) fall outside the "
+        f"declared plausible range [{lo:g}, {hi:g}].\n"
+        "This is a data problem, not a factor problem: check the inputs before "
+        "the definition. A value this far out produces a perfectly credible IC, "
+        "which is why it is stopped here.\n"
+        f"Most extreme rows:\n{worst.to_string(index=False)}"
+    )
 
 
 def compute_factor(
@@ -116,6 +207,11 @@ def compute_factor(
     store.access.reads.clear()
 
     raw = factor.compute(store, signal_dates)
+
+    # Before any cleaning. Winsorising would pull an impossible value back to a
+    # plausible one and standardising would erase the units the bound is stated
+    # in, so a check placed after either would be checking the wrong number.
+    magnitude = check_plausible_magnitude(factor, raw)
 
     cleaned, report = prepare_cross_sections(raw, groups=groups)
     panel = build_panel(
@@ -173,6 +269,7 @@ def compute_factor(
         cleaning=report,
         read_path_check=read_check,
         naive_trap=trap,
+        magnitude_check=magnitude,
         vintage=vintage,
     )
 

@@ -188,3 +188,28 @@ def test_column_coverage_reports_a_null_column():
 
     assert coverage.loc["close", "coverage"] == 1.0
     assert coverage.loc["close_adj", "coverage"] == 0.0
+
+
+def test_the_registry_distinguishes_an_undefined_range_from_a_declared_one(factors):
+    """"Undefined" and "checked" must be separable by looking at the table.
+
+    Four factors declare a plausible range and six do not. If the report
+    rendered a missing range as blank or as a pass, the six unverified factors
+    would be indistinguishable from verified ones -- which is the failure this
+    field exists to prevent, one level up.
+    """
+    table = summary_table().set_index("factor_id")
+
+    declared = {"bm_ratio", "ep_ratio", "roe", "asset_growth"}
+    for factor_id, factor in factors.items():
+        rendered = table.loc[factor_id, "plausible_range"]
+        if factor_id in declared:
+            assert factor.plausible_range is not None
+            assert rendered != "undefined"
+        else:
+            assert factor.plausible_range is None
+            assert rendered == "undefined"
+
+    # Stated as a count as well, so adding a factor without a range is visible
+    # as a change in this number rather than as nothing.
+    assert (table["plausible_range"] == "undefined").sum() == 6

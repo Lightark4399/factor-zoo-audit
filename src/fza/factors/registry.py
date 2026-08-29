@@ -146,6 +146,20 @@ class Factor:
     # deliberately require a reporting lag beyond the physical constraint;
     # stating it here lets the look-ahead check enforce it.
     filing_lag_days: int = 0
+    # (low, high) bounds this factor's raw values are physically capable of
+    # taking, or None.
+    #
+    # NONE MEANS UNDEFINED, NOT PASSED. The two are different states and the
+    # report distinguishes them: a factor with no declared range has not been
+    # checked, and saying so is the same discipline that keeps an unknown share
+    # count null instead of zero. Reading None as "fine" would make the check
+    # weakest exactly where nobody has thought about the factor yet.
+    #
+    # The bounds are physical, not statistical -- the widest values the quantity
+    # could take and still mean what its name says. A range fitted to observed
+    # data would move whenever the data moved, and would have accepted the
+    # market cap that caused incident 12.
+    plausible_range: tuple[float, float] | None = None
 
     @property
     def factor_id(self) -> str:
@@ -167,6 +181,7 @@ def register(
     factor_id: str,
     tags: tuple[str, ...] = (),
     filing_lag_days: int = 0,
+    plausible_range: tuple[float, float] | None = None,
 ) -> Callable:
     """Decorator registering a factor. The card must already exist.
 
@@ -193,8 +208,20 @@ def register(
         if factor_id in _REGISTRY:
             raise CardError(f"factor {factor_id!r} is already registered")
 
+        if plausible_range is not None:
+            lo, hi = plausible_range
+            if not lo < hi:
+                raise CardError(
+                    f"{factor_id}: plausible_range {plausible_range!r} is not "
+                    "ordered (low, high)"
+                )
+
         _REGISTRY[factor_id] = Factor(
-            card=card, compute=fn, tags=tags, filing_lag_days=filing_lag_days
+            card=card,
+            compute=fn,
+            tags=tags,
+            filing_lag_days=filing_lag_days,
+            plausible_range=plausible_range,
         )
         return fn
 
@@ -249,6 +276,14 @@ def summary_table() -> pd.DataFrame:
                 "tags": ", ".join(f.tags),
                 "filing_lag_days": f.filing_lag_days,
                 "n_falsification_criteria": len(f.card.falsification),
+                # Rendered as text so "undefined" cannot be mistaken for a
+                # bound, and so the column reads the same in the report as the
+                # state it describes.
+                "plausible_range": (
+                    "undefined"
+                    if f.plausible_range is None
+                    else f"{f.plausible_range[0]:g} .. {f.plausible_range[1]:g}"
+                ),
                 "reference": f.card.references[0] if f.card.references else "",
             }
         )

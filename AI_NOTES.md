@@ -358,16 +358,73 @@ checked that the column it named held what it claimed.
   neighbouring column had also changed. The question to ask of a provider change
   is not "which field broke" but "which fields moved".
 
-**Still open, found while writing this up.** The reconstruction fixed the price
-but not its counterpart: `shares_out` is the last count *filed* as of the signal
-date, while the price is the one *quoted* that day, and a split moves the two out
-of step until the next filing reports the new count. Apple's 7:1 split took
-effect on 2014-06-09; at the 2014-06-30 signal date the store pairs a post-split
-price of 92.93 with the pre-split count of 861,381,000, giving a market cap of
-$80.0bn against an actual $560bn — low by exactly seven. The resulting
-`bm_ratio` of 1.50 sits squarely inside the plausible range, so the magnitude
-assertion proposed above would not catch it. That is the same lesson again, one
-level down.
+### The magnitude check, and what it is known not to cover
+
+The constraint above was implemented rather than filed: `plausible_range` on the
+factor registry, checked in `compute_factor` before any cleaning, raising when
+more than 1% of a factor's raw values fall outside it. Four factors declare a
+range; six declare `None`, which the report renders as **undefined** and not as
+passing — the same distinction the store keeps between a null share count and a
+zero one. A guessed bound would be worse than the gap, because a range set too
+wide never fires while making the table look guarded. That is the shape of
+incident 9's failure, where a check's name and its behaviour had come apart.
+
+Its coverage, stated so nobody has to infer it:
+
+* **Caught:** a quantity wrong by orders of magnitude — the 5752 above, and
+  anything else produced by a unit error, a mis-scaled column or a wrong
+  denominator. A regression test reproduces incident 12's market cap and asserts
+  the check refuses it.
+* **Not caught:** a value that is wrong but physically ordinary, and any fault
+  affecting fewer rows than the tolerance. Both live cases are below.
+
+### Still open (1): share counts carried forward for a decade
+
+Found by the magnitude check on its first run against real data, which is the
+strongest argument for it. `bm_ratio` exceeded its range on 4.67% of rows and
+`ep_ratio` on 4.01%, all from a single company.
+
+**What it is.** SEC's own `companyfacts` stops reporting
+`dei:EntityCommonStockSharesOutstanding` for multi-class issuers once they begin
+reporting per class: Visa has 2 facts ending 2010-02-03, Mastercard 4 ending
+2010-11-02, Berkshire 7 ending 2011-05-06. `attach_shares_outstanding` joins
+as-of with no staleness bound, so `merge_asof` carries the last value forward
+indefinitely — fifteen years, in Berkshire's case. Worse, the value carried is
+941,481, the Class A count, while the price is Class B's. Berkshire's market cap
+comes out at $141m in 2014.
+
+**Scope.** Three of thirty companies. Every other company's share counts run to
+2026.
+
+**Why it is not fixed here.** It is a different fault from the two this commit
+addresses, and the right fix is a design question rather than a correction: cap
+how long a share count may be carried, and drop the row past that; or resolve
+share classes properly, which needs a source the consolidated DEI tag does not
+provide. Choosing between those decides what the universe contains, so it is not
+a change to make in passing.
+
+**What holds until then.** The magnitude check refuses to score the affected
+factors rather than reporting a plausible number from them. That is the intended
+behaviour: a run that stops is better than a table that is quietly wrong.
+
+### Still open (2): a split separates the price from the share count
+
+The reconstruction fixed the price but not its counterpart. `shares_out` is the
+last count *filed* as of the signal date, while the price is the one *quoted*
+that day, and a split moves the two out of step until the next filing reports the
+new count. Apple's 7:1 split took effect on 2014-06-09; at the 2014-06-30 signal
+date the store pairs a post-split price of 92.93 with the pre-split count of
+861,381,000, giving a market cap of $80.0bn against an actual $560bn — low by
+exactly seven.
+
+**Why the check above does not catch this one.** The resulting `bm_ratio` is
+1.50. It is seven times wrong and sits in the middle of any honest range. The fix
+is to rescale a filed share count by any split effective between its filing date
+and the signal date, using the split history already downloaded for the prices
+— which is tractable, and is the same data the reconstruction depends on.
+
+That is the lesson of this incident recurring one level down: the number that
+looks reasonable is the one that does not get checked.
 
 ---
 

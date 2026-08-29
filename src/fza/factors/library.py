@@ -337,7 +337,15 @@ def _ratio_to_market_cap(
     return out.replace([np.inf, -np.inf], np.nan).dropna(subset=["value"])
 
 
-@register("bm_ratio", tags=("StockholdersEquity",), filing_lag_days=2)
+# A firm at a hundred times its book, or at a hundredth of it, is already
+# extraordinary; past that the number is not a book-to-market. Incident 12
+# produced 5752 here.
+@register(
+    "bm_ratio",
+    tags=("StockholdersEquity",),
+    filing_lag_days=2,
+    plausible_range=(0.01, 100.0),
+)
 def book_to_market(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
     """Filed common equity over market capitalisation.
 
@@ -348,13 +356,28 @@ def book_to_market(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame
     return _ratio_to_market_cap(store, signal_dates, "StockholdersEquity")
 
 
-@register("ep_ratio", tags=("NetIncomeLoss",), filing_lag_days=2)
+# Losses are excluded, so the ratio is positive. The upper bound is a P/E of
+# 0.1 and the lower a P/E of a hundred thousand: both absurd, which is the
+# point of a physical bound.
+@register(
+    "ep_ratio",
+    tags=("NetIncomeLoss",),
+    filing_lag_days=2,
+    plausible_range=(1e-5, 10.0),
+)
 def earnings_to_price(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
     """Filed net income over market capitalisation. Losses are excluded."""
     return _ratio_to_market_cap(store, signal_dates, "NetIncomeLoss")
 
 
-@register("roe", tags=("NetIncomeLoss", "StockholdersEquity"), filing_lag_days=2)
+# Net income at ten times equity, in either direction. Equity is already
+# constrained positive at the query site, so the sign here is income's.
+@register(
+    "roe",
+    tags=("NetIncomeLoss", "StockholdersEquity"),
+    filing_lag_days=2,
+    plausible_range=(-10.0, 10.0),
+)
 def return_on_equity(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
     """Filed net income over filed equity, both point-in-time.
 
@@ -375,7 +398,14 @@ def return_on_equity(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFra
     return out.replace([np.inf, -np.inf], np.nan).dropna(subset=["value"])
 
 
-@register("asset_growth", tags=("Assets",), filing_lag_days=2)
+# Year-on-year asset growth of a thousand per cent either way, and the sign
+# is already inverted by the factor.
+@register(
+    "asset_growth",
+    tags=("Assets",),
+    filing_lag_days=2,
+    plausible_range=(-10.0, 10.0),
+)
 def asset_growth(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
     """Negative year-over-year growth in total assets, so low growth is long.
 
@@ -409,3 +439,21 @@ def asset_growth(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
             rows.append({"ticker": ticker, "signal_date": date, "value": -growth})
 
     return pd.DataFrame(rows, columns=["ticker", "signal_date", "value"])
+
+# ----------------------------------------------------------------------
+# Factors with no declared plausible range
+# ----------------------------------------------------------------------
+# mom_12_1, mom_6_1, rev_1m, log_mktcap, idio_vol and turnover register with
+# plausible_range left at None, which the registry reports as "undefined" and
+# NOT as passing. Each needs a bound stated in its own units before it can have
+# one, and guessing would be worse than the gap: a range set too wide never
+# fires while making the table look guarded.
+#
+#   log_mktcap  stores -log(mktcap), so the bound belongs on the log, not on
+#               1e6..1e13 as one would first write it
+#   idio_vol    is a residual standard deviation whose scale depends on the
+#               regression window and on whether it is annualised
+#   turnover    changed scale when volume was put back into point-in-time share
+#               terms, so any bound written before that is stale
+#   momentum    and reversal are returns over different horizons and cannot
+#               share one bound

@@ -27,7 +27,12 @@ from fza.pipeline.protocol import (
     quantile_portfolios,
     run_protocol,
 )
-from fza.pipeline.run import compare_vintages, compute_factor
+from fza.pipeline.run import (
+    ImplausibleMagnitudeError,
+    check_plausible_magnitude,
+    compare_vintages,
+    compute_factor,
+)
 from fza.store import Store
 
 SIGNAL_DATES = pd.DatetimeIndex(pd.date_range("2019-01-31", "2021-06-30", freq="ME"))
@@ -252,3 +257,91 @@ def test_restated_read_is_logged(store, factors):
     compare_vintages(factors["bm_ratio"], store, SIGNAL_DATES)
     assert store.access.restated_reads > before
     assert any("bm_ratio" in c for c in store.access.restated_callers)
+
+
+# ----------------------------------------------------------------------
+# Magnitude assertions -- the check incident 12 did not have
+# ----------------------------------------------------------------------
+def test_the_market_cap_of_incident_12_is_caught(store):
+    """The regression test for incident 12, and the reason the check exists.
+
+    A constraint that cannot catch the failure it was written for is decoration.
+    So this reproduces the fault rather than describing it: market capitalisation
+    understated by the factor actually measured on the real data -- an implied
+    $20.9m against an actual $80.0bn for Apple at the 2014-06-30 signal date --
+    and asserts that `bm_ratio` now refuses instead of returning an IC.
+
+    Before the check, this same input produced +0.0365 with a monotonicity of
+    +0.70, a result agreeing with the value literature, and nothing anywhere
+    objected.
+    """
+    understatement = 3832.0  # measured, see AI_NOTES incident 12
+
+    broken = Store()
+    load_fixture_into(broken)
+    broken.con.execute(f"UPDATE prices SET close = close / {understatement}")
+
+    factor = load_all()["bm_ratio"]
+    raw = factor.compute(broken, SIGNAL_DATES)
+    assert not raw.empty, "the fixture must still produce values, only wrong ones"
+
+    with pytest.raises(ImplausibleMagnitudeError) as exc:
+        check_plausible_magnitude(factor, raw)
+
+    message = str(exc.value)
+    assert "bm_ratio" in message
+    assert "0.01" in message and "100" in message
+    # It must point at the data rather than at the factor, which is the mistake
+    # the error in incident 11 made.
+    assert "data problem" in message
+
+    # And the same fault stops the full run, not just the standalone check.
+    with pytest.raises(ImplausibleMagnitudeError):
+        compute_factor(factor, broken, SIGNAL_DATES)
+    broken.close()
+
+
+def test_an_undeclared_range_is_reported_as_unchecked_not_as_passing(store):
+    """`None` means undefined, which is a different state from verified.
+
+    The same distinction the store keeps between a null share count and a zero
+    one. Collapsing the two would make the check weakest exactly where nobody
+    has yet thought about the factor.
+    """
+    factor = load_all()["mom_12_1"]
+    assert factor.plausible_range is None
+
+    result = check_plausible_magnitude(factor, factor.compute(store, SIGNAL_DATES))
+    assert result["checked"] is False
+    assert "unverified" in result["note"]
+    assert "share_outside" not in result, "an unchecked factor has no pass rate"
+
+
+def test_a_declared_range_reports_its_pass_rate(store):
+    """A checked factor carries the numbers behind the verdict, not just a flag."""
+    factor = load_all()["bm_ratio"]
+    result = check_plausible_magnitude(factor, factor.compute(store, SIGNAL_DATES))
+
+    assert result["checked"] is True
+    assert result["range"] == (0.01, 100.0)
+    assert result["n_values"] > 0
+    assert result["share_outside"] == 0.0
+
+
+def test_a_few_out_of_range_values_are_tolerated_but_counted(store):
+    """One bad row is a bad row; a systematically wrong column is a bug.
+
+    The tolerance is what separates them, so it has to be exercised from both
+    sides rather than assumed.
+    """
+    factor = load_all()["bm_ratio"]
+    raw = factor.compute(store, SIGNAL_DATES).copy().reset_index(drop=True)
+    n_bad = int(len(raw) * 0.005)
+    raw.loc[: n_bad - 1, "value"] = 5752.68
+
+    result = check_plausible_magnitude(factor, raw, max_share=0.01)
+    assert result["n_outside"] == n_bad
+    assert 0 < result["share_outside"] < 0.01
+
+    with pytest.raises(ImplausibleMagnitudeError):
+        check_plausible_magnitude(factor, raw, max_share=0.001)
