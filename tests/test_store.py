@@ -31,6 +31,36 @@ def store():
     s.close()
 
 
+def test_legacy_fundamentals_are_preserved_but_not_guessed_into_quarters(tmp_path):
+    """An old database migrates, but missing interval semantics stay unknown."""
+    path = tmp_path / "legacy.duckdb"
+    con = duckdb.connect(str(path))
+    con.execute(
+        """
+        CREATE TABLE fundamentals (
+            cik VARCHAR, tag VARCHAR, period_end DATE, fiscal_year INTEGER,
+            fiscal_period VARCHAR, filed DATE, value DOUBLE, unit VARCHAR,
+            form VARCHAR, accession VARCHAR, source_namespace VARCHAR
+        )
+        """
+    )
+    con.execute(
+        """
+        INSERT INTO fundamentals VALUES
+        ('0000000001', 'NetIncomeLoss', DATE '2023-12-31', 2023, 'FY',
+         DATE '2024-02-15', 70.0, 'USD', '10-K', 'legacy-1', 'us-gaap')
+        """
+    )
+    con.close()
+
+    with Store(str(path)) as migrated:
+        row = migrated.con.execute(
+            "SELECT period_start, period_end, fact_type FROM fundamentals"
+        ).fetchone()
+
+    assert row == (pd.Timestamp("2023-12-31").date(), pd.Timestamp("2023-12-31").date(), "unknown")
+
+
 # ----------------------------------------------------------------------
 # Bitemporal storage
 # ----------------------------------------------------------------------
@@ -50,7 +80,9 @@ def test_restatement_is_stored_as_a_new_row(store):
         "AND period_end = DATE '2018-12-31' ORDER BY filed"
     ).df()
     assert len(rows) == 2
-    assert set(rows["form"]) == {"10-Q", "10-K/A"}
+    # A year-end fact is annual. Calling the original a 10-Q made the old
+    # fixture incapable of exercising FY-minus-Q3 TTM construction.
+    assert set(rows["form"]) == {"10-K", "10-K/A"}
     assert rows["value"].iloc[0] != rows["value"].iloc[1]
 
 
@@ -121,11 +153,11 @@ def test_filing_before_period_end_is_rejected(store):
             # by position, so adding a column to the table turns this into a
             # BinderError and the CHECK constraint stops being exercised at all.
             "INSERT INTO fundamentals "
-            "(cik, tag, period_end, fiscal_year, fiscal_period, filed, value, "
-            " unit, form, accession) "
+            "(cik, tag, period_start, period_end, fiscal_year, fiscal_period, "
+            " filed, value, unit, form, accession, fact_type, duration_days) "
             "VALUES ('0000000001', 'X', "
-            "DATE '2020-12-31', 2020, 'Q4', DATE '2020-06-30', 1.0, 'USD', "
-            "'10-K', 'acc')"
+            "DATE '2020-10-01', DATE '2020-12-31', 2020, 'Q4', "
+            "DATE '2020-06-30', 1.0, 'USD', '10-K', 'acc', 'duration', 91)"
         )
 
 

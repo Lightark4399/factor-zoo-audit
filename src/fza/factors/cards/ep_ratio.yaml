@@ -14,13 +14,15 @@ persistence_conditions: >
   earnings restatements are both more common and more consequential than
   restatements of equity.
 definition: >
-  Most recently filed net income divided by market capitalisation at the signal
-  date. Negative earnings are excluded rather than winsorised: a firm losing
-  money has no meaningful earnings yield, and ranking losses by size would order
-  stocks by a quantity unrelated to the mechanism claimed.
+  Trailing-twelve-month net income constructed only from filing contexts public
+  by the signal date, divided by market capitalisation at that date. Quarterly,
+  year-to-date and annual contexts are distinguished by their start and end; Q4
+  is FY minus Q3 YTD, so FY and Q4 are never counted twice. Negative earnings are
+  excluded rather than winsorised.
 timing:
   signal_computed: month_end_close
-  earliest_execution: next_trading_day_open
+  earliest_execution: next_trading_day_close
+  execution_price: adjusted_close
   data_lag_days: 2
 falsification:
   - Decile returns show no monotonic pattern

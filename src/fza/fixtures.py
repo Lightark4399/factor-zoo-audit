@@ -116,11 +116,20 @@ def build_fixture(spec: FixtureSpec | None = None) -> dict[str, pd.DataFrame]:
             # fixture. A fixture that cannot exercise the library is not a
             # fixture for it.
             years_elapsed = (period_end.year - pd.Timestamp(spec.start).year)
+            income_margin = 0.02 + 0.01 * (i % 5)
+            income_ytd = sum(
+                5e8
+                * (1.0 + 0.3 * (i % 4))
+                * (1.0 + 0.02 * quarter)
+                * income_margin
+                for quarter in range(1, period_end.quarter + 1)
+            )
             values_by_tag = {
                 "StockholdersEquity": equity,
-                # Income scales with equity so ROE is stable per firm and varies
-                # across them -- otherwise the factor has no cross-section to rank.
-                "NetIncomeLoss": equity * (0.02 + 0.01 * (i % 5)),
+                # SEC income facts are cumulative within a fiscal year. The TTM
+                # path must difference Q2/Q3 YTD and FY to recover quarters; a
+                # fixture of four standalone values would not exercise that rule.
+                "NetIncomeLoss": income_ytd,
                 # Assets grow at a firm-specific rate, which is what asset growth
                 # measures. A constant would make the factor degenerate.
                 "Assets": equity * 3.0 * (1.0 + 0.05 * (i % 6)) ** years_elapsed,
@@ -128,20 +137,32 @@ def build_fixture(spec: FixtureSpec | None = None) -> dict[str, pd.DataFrame]:
             }
 
             for tag, value in values_by_tag.items():
+                is_duration = tag == "NetIncomeLoss"
+                period_start = (
+                    pd.Timestamp(year=period_end.year, month=1, day=1)
+                    if is_duration
+                    else period_end
+                )
+                is_fy = period_end.quarter == 4
                 fundamentals.append(
                     {
                         "cik": cik,
                         "tag": tag,
+                        "period_start": period_start.date(),
                         "period_end": period_end.date(),
                         "fiscal_year": period_end.year,
-                        "fiscal_period": f"Q{period_end.quarter}",
+                        "fiscal_period": "FY" if is_fy else f"Q{period_end.quarter}",
                         "filed": filed.date(),
                         "value": value,
                         "unit": "shares"
                         if tag == "CommonStockSharesOutstanding"
                         else "USD",
-                        "form": "10-Q",
+                        "form": "10-K" if is_fy else "10-Q",
                         "accession": f"{cik}-{period_end.date()}-orig",
+                        "source_namespace": "us-gaap",
+                        "frame": "",
+                        "fact_type": "duration" if is_duration else "instant",
+                        "duration_days": (period_end - period_start).days,
                     }
                 )
 
@@ -154,6 +175,7 @@ def build_fixture(spec: FixtureSpec | None = None) -> dict[str, pd.DataFrame]:
                         {
                             "cik": cik,
                             "tag": "StockholdersEquity",
+                            "period_start": period_end.date(),
                             "period_end": period_end.date(),
                             "fiscal_year": period_end.year,
                             "fiscal_period": f"Q{period_end.quarter}",
@@ -162,6 +184,10 @@ def build_fixture(spec: FixtureSpec | None = None) -> dict[str, pd.DataFrame]:
                             "unit": "USD",
                             "form": "10-K/A",
                             "accession": f"{cik}-{period_end.date()}-amended",
+                            "source_namespace": "us-gaap",
+                            "frame": "",
+                            "fact_type": "instant",
+                            "duration_days": 0,
                         }
                     )
 

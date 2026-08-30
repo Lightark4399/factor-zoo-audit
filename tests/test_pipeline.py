@@ -151,6 +151,32 @@ def test_quantiles_and_long_short_are_consistent(store, factors):
     assert set(q["quantile"]) == {0, 1, 2, 3, 4}
 
 
+def test_protocol_reports_the_distribution_of_quantile_breadth():
+    """An average must not hide a month whose quantile portfolios nearly vanish."""
+    rows = []
+    for date, n_names in [("2024-01-31", 20), ("2024-02-29", 25), ("2024-03-31", 30)]:
+        for i in range(n_names):
+            rows.append(
+                {
+                    "ticker": f"T{i:03d}",
+                    "signal_date": pd.Timestamp(date),
+                    "prediction": float(i),
+                    "label": float(i) / 100.0,
+                }
+            )
+    panel = pd.DataFrame(rows)
+
+    summary = run_protocol("breadth", panel).summary
+
+    assert summary["names_per_quantile_avg"] == pytest.approx(5.0)
+    assert summary["names_per_quantile_min"] == 4
+    assert summary["names_per_quantile_p10"] >= 4
+    assert summary["names_per_quantile_median"] == 5
+    assert summary["names_per_quantile_p90"] <= 6
+    assert summary["names_per_quantile_max"] == 6
+    assert summary["n_dates_dropped_insufficient_cross_section"] == 0
+
+
 def test_perfect_signal_is_monotone_and_has_ic_one():
     """A factor equal to the forward return must score at the ceiling."""
     dates = pd.date_range("2020-01-31", periods=12, freq="ME")

@@ -25,7 +25,8 @@ definition: >
 
 timing:
   signal_computed: month_end_close
-  earliest_execution: next_trading_day_open
+  earliest_execution: next_trading_day_close
+  execution_price: adjusted_close
   # The physical constraint is filed <= signal_date. The additional lag below is
   # a deliberate margin: filings appear on EDGAR during the day, and a signal
   # formed at a month-end close cannot rely on same-day availability.

@@ -255,6 +255,9 @@ def run_protocol(
     subs = subperiod_split(ls)
 
     ls_sd = ls.std(ddof=1) if len(ls) > 1 else float("nan")
+    breadth = quantiles["n"].astype(float) if len(quantiles) else pd.Series(dtype=float)
+    quantile_dates = int(quantiles["signal_date"].nunique()) if len(quantiles) else 0
+    panel_dates = int(panel["signal_date"].nunique())
     summary = {
         "ic_mean": float(ic.mean()) if len(ic) else float("nan"),
         "ic_std": float(ic.std(ddof=1)) if len(ic) > 1 else float("nan"),
@@ -262,7 +265,14 @@ def run_protocol(
         "ls_mean": float(ls.mean()) if len(ls) else float("nan"),
         "ls_sharpe": float(ls.mean() / ls_sd) if np.isfinite(ls_sd) and ls_sd > 0 else float("nan"),
         "ls_hit_rate": float((ls > 0).mean()) if len(ls) else float("nan"),
-        "n_quantile_dates": int(quantiles["signal_date"].nunique()) if len(quantiles) else 0,
+        "n_quantile_dates": quantile_dates,
+        "names_per_quantile_avg": float(breadth.mean()) if len(breadth) else float("nan"),
+        "names_per_quantile_min": int(breadth.min()) if len(breadth) else 0,
+        "names_per_quantile_p10": float(breadth.quantile(0.10)) if len(breadth) else float("nan"),
+        "names_per_quantile_median": float(breadth.median()) if len(breadth) else float("nan"),
+        "names_per_quantile_p90": float(breadth.quantile(0.90)) if len(breadth) else float("nan"),
+        "names_per_quantile_max": int(breadth.max()) if len(breadth) else 0,
+        "n_dates_dropped_insufficient_cross_section": panel_dates - quantile_dates,
     }
 
     return ProtocolResult(

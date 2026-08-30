@@ -31,7 +31,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from ..store import ReadRecord, Store
+from ..store import Store
 from .registry import register
 
 
@@ -149,24 +149,10 @@ def _fundamental_history(
     rows = []
     for date in signal_dates:
         asof = (pd.Timestamp(date) - pd.Timedelta(days=lag_days)).date()
-        placeholders = ", ".join(f"'{t}'" for t in tags)
-        got = store.con.execute(
-            f"SELECT * FROM fundamentals_asof(DATE '{asof.isoformat()}') "
-            f"WHERE tag IN ({placeholders})"
-        ).df()
-        # Logged by hand because this path goes through the macro directly rather
-        # than through the store's read helper; without the record the read-path
-        # check would not cover this factor at all.
-        max_filed = pd.to_datetime(got["filed"]).max() if len(got) else None
-        store.access.pit_reads += 1
-        store.access.reads.append(
-            ReadRecord(
-                requested_asof=pd.Timestamp(asof),
-                intended_signal_date=pd.Timestamp(date),
-                max_filed=None if max_filed is None or pd.isna(max_filed) else max_filed,
-                n_rows=len(got),
-                tags=tuple(tags),
-            )
+        got = store.fundamentals_history_asof(
+            asof,
+            tags=tags,
+            intended_signal_date=date,
         )
         if got.empty:
             continue
@@ -178,6 +164,91 @@ def _fundamental_history(
     if not rows:
         return pd.DataFrame(columns=["ticker", "signal_date", "tag", "value", "period_end"])
     return pd.concat(rows, ignore_index=True)
+
+
+def _ttm_value(facts: pd.DataFrame) -> float | None:
+    """Construct one trailing-twelve-month flow from explicit SEC intervals.
+
+    Companyfacts often supplies Q1, Q2 YTD, Q3 YTD and FY. Those are cumulative
+    contexts, not four values to add. Within each common period start we take
+    successive differences, which makes Q4 ``FY - Q3 YTD`` and prevents the FY
+    total from double-counting its first three quarters. Direct quarter contexts
+    are preferred when SEC supplies both representations.
+    """
+    if facts.empty or "period_start" not in facts:
+        return None
+    work = facts.copy()
+    work["period_start"] = pd.to_datetime(work["period_start"], errors="coerce")
+    work["period_end"] = pd.to_datetime(work["period_end"], errors="coerce")
+    work["filed"] = pd.to_datetime(work.get("filed"), errors="coerce")
+    work["value"] = pd.to_numeric(work["value"], errors="coerce")
+    work = work.dropna(subset=["period_start", "period_end", "value"])
+    work = work.loc[work["period_end"] >= work["period_start"]]
+    if work.empty:
+        return None
+
+    # Keep the latest visible filing for an exact interval. Different starts are
+    # deliberately retained: that is the distinction the old ingest destroyed.
+    work = (
+        work.sort_values("filed")
+        .drop_duplicates(["period_start", "period_end"], keep="last")
+        .sort_values(["period_start", "period_end"])
+    )
+
+    annual = work.loc[(work["period_end"] - work["period_start"]).dt.days.between(300, 430)]
+    discrete: list[dict] = []
+    for period_start, group in work.groupby("period_start", sort=True):
+        previous_value = 0.0
+        previous_end = period_start
+        for row in group.sort_values("period_end").itertuples():
+            interval_days = (row.period_end - previous_end).days
+            delta = float(row.value) - previous_value
+            original_days = (row.period_end - row.period_start).days
+            if 45 <= interval_days <= 130 and np.isfinite(delta):
+                discrete.append(
+                    {
+                        "period_end": row.period_end,
+                        "value": delta,
+                        # A directly reported quarter is preferred over the same
+                        # quarter recovered as a difference of cumulative facts.
+                        "priority": 0 if original_days <= 130 else 1,
+                        "filed": row.filed,
+                    }
+                )
+            previous_value = float(row.value)
+            previous_end = row.period_end
+
+    if discrete:
+        quarters = pd.DataFrame(discrete).sort_values(["period_end", "priority", "filed"])
+        quarters = quarters.drop_duplicates("period_end", keep="first").sort_values("period_end")
+        latest = quarters.tail(4)
+        if len(latest) == 4:
+            gaps = latest["period_end"].diff().dropna().dt.days
+            if gaps.between(60, 130).all():
+                return float(latest["value"].sum())
+
+    # Annual-only filers still have a genuine trailing-twelve-month observation.
+    # It updates only annually, which is disclosed rather than filled with an
+    # invented quarterly path.
+    if not annual.empty:
+        return float(annual.sort_values(["period_end", "filed"]).iloc[-1]["value"])
+    return None
+
+
+def _ttm_fundamental_panel(
+    store: Store,
+    signal_dates: pd.DatetimeIndex,
+    tag: str,
+    lag_days: int = 2,
+) -> pd.DataFrame:
+    """Point-in-time TTM values for a duration tag at each signal date."""
+    history = _fundamental_history(store, signal_dates, [tag], lag_days=lag_days)
+    rows = []
+    for (ticker, signal_date), group in history.groupby(["ticker", "signal_date"]):
+        value = _ttm_value(group)
+        if value is not None and np.isfinite(value):
+            rows.append({"ticker": ticker, "signal_date": signal_date, "value": value})
+    return pd.DataFrame(rows, columns=["ticker", "signal_date", "value"])
 
 
 def _fundamental_panel(
@@ -410,8 +481,23 @@ def book_to_market(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame
     plausible_range=(1e-5, 10.0),
 )
 def earnings_to_price(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
-    """Filed net income over market capitalisation. Losses are excluded."""
-    return _ratio_to_market_cap(store, signal_dates, "NetIncomeLoss")
+    """Point-in-time TTM net income over market capitalisation; losses excluded."""
+    income = _ttm_fundamental_panel(store, signal_dates, "NetIncomeLoss")
+    if income.empty:
+        return income
+    caps = _market_cap(store, signal_dates)
+    if caps.empty:
+        return pd.DataFrame(columns=["ticker", "signal_date", "value"])
+    cap_long = caps.stack(future_stack=True).rename("mktcap").reset_index()
+    cap_long.columns = ["signal_date", "ticker", "mktcap"]
+    merged = income.rename(columns={"value": "income"}).merge(
+        cap_long, on=["ticker", "signal_date"], how="inner"
+    )
+    merged = merged.loc[(merged["income"] > 0) & (merged["mktcap"] > 0)].copy()
+    merged["value"] = merged["income"] / merged["mktcap"]
+    return merged[["ticker", "signal_date", "value"]].replace(
+        [np.inf, -np.inf], np.nan
+    ).dropna(subset=["value"])
 
 
 # Net income at ten times equity, in either direction. Equity is already
@@ -423,21 +509,22 @@ def earnings_to_price(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFr
     plausible_range=(-10.0, 10.0),
 )
 def return_on_equity(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
-    """Filed net income over filed equity, both point-in-time.
+    """Point-in-time TTM net income over latest positive filed equity.
 
     Both quantities come from the same read, so they are the same vintage. Taking
     income from one date's filing and equity from another's would produce a ratio
     that never appeared in any single report.
     """
-    panel = _fundamental_panel(
-        store, signal_dates, tags=["NetIncomeLoss", "StockholdersEquity"]
-    )
-    wide = _pivot_tags(panel)
-    if wide.empty or "NetIncomeLoss" not in wide or "StockholdersEquity" not in wide:
+    income = _ttm_fundamental_panel(store, signal_dates, "NetIncomeLoss")
+    equity = _fundamental_panel(store, signal_dates, tags=["StockholdersEquity"])
+    if income.empty or equity.empty:
         return pd.DataFrame(columns=["ticker", "signal_date", "value"])
-
-    usable = wide.loc[wide["StockholdersEquity"] > 0].copy()
-    usable["value"] = usable["NetIncomeLoss"] / usable["StockholdersEquity"]
+    equity = equity[["ticker", "signal_date", "value"]].rename(columns={"value": "equity"})
+    usable = income.rename(columns={"value": "income"}).merge(
+        equity, on=["ticker", "signal_date"], how="inner"
+    )
+    usable = usable.loc[usable["equity"] > 0].copy()
+    usable["value"] = usable["income"] / usable["equity"]
     out = usable[["ticker", "signal_date", "value"]]
     return out.replace([np.inf, -np.inf], np.nan).dropna(subset=["value"])
 

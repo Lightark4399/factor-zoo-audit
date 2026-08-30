@@ -314,6 +314,29 @@ def main(argv: list[str] | None = None) -> int:
     emit("  numbers because none were computed -- the run stopped at the check")
     emit("  named in the status, and that row is excluded from every table below.")
 
+    emit(_header("CROSS-SECTION BREADTH"))
+    emit()
+    emit("  Names per quantile are reported as a distribution. The average alone")
+    emit("  can hide a month whose portfolios nearly disappeared.")
+    emit()
+    emit(
+        f"  {'factor':<14}{'avg':>7}{'min':>7}{'p10':>7}{'median':>9}"
+        f"{'p90':>7}{'max':>7}{'dropped':>10}"
+    )
+    for factor_id, run in runs.items():
+        s = run.protocol.summary
+        emit(
+            f"  {factor_id:<14}{s['names_per_quantile_avg']:>7.1f}"
+            f"{s['names_per_quantile_min']:>7}{s['names_per_quantile_p10']:>7.1f}"
+            f"{s['names_per_quantile_median']:>9.1f}{s['names_per_quantile_p90']:>7.1f}"
+            f"{s['names_per_quantile_max']:>7}"
+            f"{s['n_dates_dropped_insufficient_cross_section']:>10}"
+        )
+    emit()
+    emit("  'dropped' counts signal dates present in the aligned panel but absent")
+    emit("  from quantile portfolios because the cross-section was too small or")
+    emit("  ties prevented all five groups from being formed.")
+
     emit(_header("THE TRAP, MEASURED"))
     emit()
     emit("  How much would a naive query have read early? This is the hazard the")

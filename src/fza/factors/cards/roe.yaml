@@ -14,12 +14,15 @@ persistence_conditions: >
   making. Expected to be strongest when combined with value, since the identity
   holds book-to-market fixed.
 definition: >
-  Most recently filed net income divided by most recently filed stockholders'
-  equity, both read through the point-in-time view. Negative equity is excluded:
-  the ratio changes sign for reasons unrelated to profitability.
+  Point-in-time trailing-twelve-month net income divided by the most recently
+  filed stockholders' equity. TTM is built from explicit start/end contexts and
+  differences cumulative Q2/Q3/FY facts before summing four discrete quarters.
+  Negative equity is excluded: the ratio changes sign for reasons unrelated to
+  profitability.
 timing:
   signal_computed: month_end_close
-  earliest_execution: next_trading_day_open
+  earliest_execution: next_trading_day_close
+  execution_price: adjusted_close
   data_lag_days: 2
 falsification:
   - Decile returns show no monotonic pattern

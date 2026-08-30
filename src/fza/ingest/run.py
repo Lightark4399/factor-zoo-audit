@@ -35,6 +35,7 @@ from .sec import (
 # returned anything usable -- and a gap means companies answered and gave
 # nothing back.
 COVERAGE_GAP_WARNING = 0.05
+RUN_PURPOSE_DIAGNOSTIC = "diagnostic_scale"
 
 
 def _warn_on_coverage_gap(
@@ -148,6 +149,10 @@ def main(argv: list[str] | None = None) -> int:
         print("no tickers selected", file=sys.stderr)
         return 2
     print(f"  {len(tickers)} companies selected", flush=True)
+    print(
+        "  run purpose: diagnostic_scale (coverage/quality measurement, not research evidence)",
+        flush=True,
+    )
 
     print("fetching filings...", flush=True)
     fundamentals, sec_report = ingest_companies(
@@ -180,6 +185,8 @@ def main(argv: list[str] | None = None) -> int:
     # including the reason the prices had failed. Diagnostics that only survive a
     # successful run are diagnostics for the case that needs them least.
     report = {
+        "run_purpose": RUN_PURPOSE_DIAGNOSTIC,
+        "research_evidence": False,
         "sec": sec_report.to_dict(),
         "prices": price_report.to_dict() if price_report else None,
         "n_companies": len(tickers),
