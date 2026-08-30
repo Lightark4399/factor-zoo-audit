@@ -620,3 +620,260 @@ def test_a_company_that_keeps_filing_is_never_nulled():
 
     assert out["shares_out"].notna().all()
     assert list(out["shares_out"]) == [1e6, 2e6, 3e6, 4e6]
+
+
+# ----------------------------------------------------------------------
+# Two coverage numbers, because one of them was measuring the wrong thing
+# ----------------------------------------------------------------------
+def _foreign_payload(form: str = "20-F", namespace: str = "us-gaap") -> dict:
+    """A payload from a foreign private issuer: real tags, unusual form."""
+    return {
+        "cik": 937966,
+        "facts": {
+            namespace: {
+                "Assets": {
+                    "units": {
+                        "USD": [
+                            {"end": "2020-12-31", "val": 3.0e10, "filed": "2021-02-10",
+                             "form": form, "accn": "x-1", "fy": 2020, "fp": "FY"},
+                            {"end": "2021-12-31", "val": 3.4e10, "filed": "2022-02-09",
+                             "form": form, "accn": "x-2", "fy": 2021, "fp": "FY"},
+                        ]
+                    }
+                }
+            }
+        },
+    }
+
+
+def test_request_success_and_data_coverage_are_different_numbers():
+    """The check that was measuring HTTP instead of data.
+
+    On the first sixty-company run the reported coverage was 98.3% while twelve
+    of the fifty-nine "covered" companies had produced zero rows. The rate was
+    counting requests that returned 200. Both numbers are now reported, and this
+    test is what keeps them from collapsing back into one.
+    """
+    from fza.ingest.sec import IngestReport
+
+    rep = IngestReport(n_companies_requested=4, n_companies_fetched=4)
+    rep.rows_per_company = {"A": 120, "B": 0, "C": 45, "D": 0}
+
+    assert rep.request_success_rate == 1.0
+    assert rep.data_coverage_rate == 0.5
+    assert rep.n_companies_with_rows == 2
+
+
+def test_a_company_that_parsed_to_nothing_names_itself():
+    """Same rule as column_coverage: the empty thing has to say so.
+
+    An aggregate cannot name the company that contributed nothing, and without
+    the name the failure surfaces much later as a thin cross-section.
+    """
+    from fza.ingest.sec import IngestReport
+
+    rep = IngestReport(n_companies_requested=3, n_companies_fetched=3)
+    rep.rows_per_company = {"0000000002": 0, "0000000001": 10, "0000000003": 0}
+
+    assert rep.companies_without_rows == ["0000000002", "0000000003"]
+
+
+def test_a_failed_request_is_not_the_same_as_an_empty_one():
+    """Absent from rows_per_company means it never answered; present with 0
+    means it answered and gave nothing. The two need different fixes."""
+    from fza.ingest.sec import IngestReport
+
+    rep = IngestReport(n_companies_requested=2, n_companies_fetched=1, n_companies_failed=1)
+    rep.rows_per_company = {"0000000001": 0}
+
+    assert rep.companies_without_rows == ["0000000001"]
+    assert rep.request_success_rate == 0.5
+    assert rep.data_coverage_rate == 0.0
+
+
+def test_the_coverage_gap_warning_names_the_tickers(capsys):
+    """A warning that says '12 companies' and not which ones is not a warning."""
+    from fza.ingest.run import _warn_on_coverage_gap
+    from fza.ingest.sec import IngestReport
+
+    rep = IngestReport(n_companies_requested=3, n_companies_fetched=3)
+    rep.rows_per_company = {"0000000001": 50, "0000000002": 0, "0000000003": 0}
+    rep.accounting_rows_per_company = {
+        "0000000001": 40, "0000000002": 0, "0000000003": 0,
+    }
+    rep.standard_per_company = {
+        "0000000001": "us-gaap", "0000000002": "ifrs", "0000000003": "unknown",
+    }
+    tickers = pd.DataFrame(
+        {"ticker": ["AAA", "BBB", "CCC"],
+         "cik": ["0000000001", "0000000002", "0000000003"]}
+    )
+
+    labels = _warn_on_coverage_gap(rep, tickers)
+    assert labels == ["BBB (ifrs, no rows)", "CCC (unknown, no rows)"]
+
+    out = capsys.readouterr().out
+    assert "BBB (ifrs, no rows)" in out and "CCC (unknown, no rows)" in out
+    assert "AAA" not in out
+    assert "accounting series" in out
+
+
+def test_no_warning_when_every_company_produced_rows(capsys):
+    from fza.ingest.run import _warn_on_coverage_gap
+    from fza.ingest.sec import IngestReport
+
+    rep = IngestReport(n_companies_requested=2, n_companies_fetched=2)
+    rep.rows_per_company = {"0000000001": 50, "0000000002": 3}
+    rep.accounting_rows_per_company = {"0000000001": 45, "0000000002": 3}
+    tickers = pd.DataFrame({"ticker": ["AAA", "BBB"],
+                            "cik": ["0000000001", "0000000002"]})
+
+    assert _warn_on_coverage_gap(rep, tickers) == []
+    assert capsys.readouterr().out == ""
+
+
+def test_both_rates_reach_the_report_json():
+    """Reporting only the first is how twelve empty companies hid behind 98.3%."""
+    from fza.ingest.sec import IngestReport
+
+    rep = IngestReport(n_companies_requested=2, n_companies_fetched=2)
+    rep.rows_per_company = {"0000000001": 5, "0000000002": 0}
+    rep.accounting_rows_per_company = {"0000000001": 4, "0000000002": 0}
+    d = rep.to_dict()
+
+    assert d["request_success_rate"] == 1.0
+    assert d["data_coverage_rate"] == 0.5
+    assert d["accounting_coverage_rate"] == 0.5
+    assert d["companies_without_rows"] == ["0000000002"]
+    assert d["companies_without_accounting_rows"] == ["0000000002"]
+
+
+# ----------------------------------------------------------------------
+# 20-F: a change of contract, stated as one
+# ----------------------------------------------------------------------
+def test_a_twenty_f_annual_report_is_accepted():
+    """Five of the first sixty companies were dropped whole for filing 20-F.
+
+    ASML, BABA, ARM, MUFG and TM report under us-gaap with every tag this
+    project reads; only the form differed. See AI_NOTES incident 14.
+    """
+    report = IngestReport()
+    df = parse_companyfacts(_foreign_payload("20-F"), report=report)
+
+    assert len(df) == 2
+    assert set(df["form"]) == {"20-F"}
+    assert report.n_excluded_form == 0
+
+
+def test_a_six_k_is_still_excluded_and_counted():
+    """6-K is a current report, not a periodic one.
+
+    Its facts do not describe a completed accounting period the way a 10-Q's do,
+    so admitting it would put two meanings of period_end in one column.
+    """
+    report = IngestReport()
+    df = parse_companyfacts(_foreign_payload("6-K"), report=report)
+
+    assert df.empty
+    assert report.n_excluded_form == 2
+
+
+# ----------------------------------------------------------------------
+# The taxonomy a filer reports under, recorded rather than assumed
+# ----------------------------------------------------------------------
+def test_an_ifrs_filer_is_labelled_ifrs():
+    from fza.ingest.sec import infer_accounting_standard
+
+    payload = {"cik": 1, "facts": {"ifrs-full": {"Assets": {"units": {}}}, "dei": {}}}
+    assert infer_accounting_standard(payload) == "ifrs"
+
+
+def test_a_usgaap_namespace_without_the_tags_is_not_a_usgaap_filer():
+    """BHP's shape: a us-gaap namespace carrying none of the tags read here,
+    with the accounts themselves under ifrs-full. Testing for the namespace
+    rather than the tags would have mislabelled it."""
+    from fza.ingest.sec import infer_accounting_standard
+
+    payload = {
+        "cik": 1,
+        "facts": {
+            "us-gaap": {"SomeTagWeDoNotRead": {"units": {}}},
+            "ifrs-full": {"Assets": {"units": {}}},
+        },
+    }
+    assert infer_accounting_standard(payload) == "ifrs"
+
+
+def test_a_filer_on_excluded_forms_is_still_a_usgaap_filer():
+    """The taxonomy is a fact about the filer, not about this parser's filters.
+
+    Labelling a company by what we happen to keep would blame the taxonomy for a
+    decision made here.
+    """
+    from fza.ingest.sec import infer_accounting_standard
+
+    assert infer_accounting_standard(_foreign_payload("6-K")) == "us-gaap"
+
+
+def test_a_payload_with_neither_taxonomy_is_unknown_not_usgaap():
+    from fza.ingest.sec import infer_accounting_standard
+
+    assert infer_accounting_standard({"cik": 1, "facts": {"dei": {}}}) == "unknown"
+
+
+def test_a_share_count_alone_does_not_count_as_coverage():
+    """The hole the 20-F fix opened in the check built one step earlier.
+
+    Accepting 20-F let five IFRS filers through on a DEI cover-page share count
+    and nothing else. `data_coverage_rate` rose from 80% to 95% and the gap
+    warning went quiet, while not one of those companies had become readable by
+    a value factor. A check that a fix can silence without fixing anything is
+    worse than no check.
+    """
+    from fza.ingest.sec import IngestReport
+
+    rep = IngestReport(n_companies_requested=4, n_companies_fetched=4)
+    rep.rows_per_company = {"A": 200, "B": 6, "C": 150, "D": 0}
+    # B carries the cover-page share count and no accounting series.
+    rep.accounting_rows_per_company = {"A": 180, "B": 0, "C": 140, "D": 0}
+
+    assert rep.data_coverage_rate == 0.75  # B clears this bar
+    assert rep.accounting_coverage_rate == 0.5  # and fails this one
+    assert rep.companies_without_accounting_rows == ["B", "D"]
+
+
+def test_the_warning_says_which_kind_of_empty_each_company_is(capsys):
+    """'No rows' and 'share count only' need different fixes: one is a missing
+    form or a 404, the other is a taxonomy this project cannot read."""
+    from fza.ingest.run import _warn_on_coverage_gap
+    from fza.ingest.sec import IngestReport
+
+    rep = IngestReport(n_companies_requested=3, n_companies_fetched=3)
+    rep.rows_per_company = {"0000000001": 90, "0000000002": 6, "0000000003": 0}
+    rep.accounting_rows_per_company = {
+        "0000000001": 80, "0000000002": 0, "0000000003": 0,
+    }
+    rep.standard_per_company = {
+        "0000000001": "us-gaap", "0000000002": "ifrs", "0000000003": "unknown",
+    }
+    tickers = pd.DataFrame(
+        {"ticker": ["AAA", "SHEL", "CYATY"],
+         "cik": ["0000000001", "0000000002", "0000000003"]}
+    )
+
+    labels = _warn_on_coverage_gap(rep, tickers)
+    assert labels == ["SHEL (ifrs, share count only)", "CYATY (unknown, no rows)"]
+    assert "share count only" in capsys.readouterr().out
+
+
+def test_companies_per_tag_counts_companies_not_rows():
+    """One company filing quarterly for fifteen years can make a tag look
+    universal. `tag_coverage` counts rows; this counts companies."""
+    from fza.ingest.sec import SHARE_COUNT_TAG, IngestReport
+
+    rep = IngestReport()
+    rep.companies_per_tag = {"Assets": 48, SHARE_COUNT_TAG: 57}
+    d = rep.to_dict()
+
+    assert d["companies_per_tag"]["Assets"] == 48
+    assert d["companies_per_tag"][SHARE_COUNT_TAG] == 57

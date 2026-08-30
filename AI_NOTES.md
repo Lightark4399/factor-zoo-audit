@@ -550,12 +550,156 @@ was structurally incapable of showing.
 
 ---
 
+## Incident 14 — a coverage number that was counting HTTP responses
+
+Found while sizing the universe up from thirty companies to sixty, before any
+factor ran. The run reported `coverage 98%`. Twelve of the fifty-nine companies
+it called covered had produced **zero rows of fundamentals**.
+
+**What the number was.** `IngestReport.coverage_rate` was
+`n_companies_fetched / n_companies_requested` — the share of companyfacts
+requests that did not raise. That was an honest measurement when the parser had
+no filters. By the time it had four (namespace, form, unit, filing date), a
+company could answer HTTP 200 and contribute nothing, and the rate could not see
+it. The name said coverage; the behaviour said uptime.
+
+This is incident 9's shape a second time, and the mechanism is worth naming
+because it is not carelessness: nobody changed the check. The checked-for
+property drifted out from under a name that stayed still. A check is only as
+good as the last time somebody asked what it now measures.
+
+**The fix.** Two rates, both reported and both in `report.json`:
+`request_success_rate` (the old number, renamed to what it is) and
+`data_coverage_rate` (companies that produced at least one row). When they
+differ by more than 5% the run prints the gap and **names the companies**, with
+the taxonomy each reports under. `IngestReport` now keeps `rows_per_company`,
+recorded even when the count is zero — a company missing from that mapping
+failed its request, one present with 0 answered and gave nothing back, and the
+two want different fixes.
+
+Same principle as `Store.column_coverage`, and deliberately so: an entirely null
+column has to name itself, or the failure surfaces several steps later as
+"factor produced no values" and blames the factor. A company that parsed to
+nothing is the row-wise form of that null column.
+
+### What the twelve turned out to be
+
+The number, once it existed, split into three unrelated faults. A single
+coverage percentage would have hidden all three behind one figure.
+
+**Five were filing 20-F.** ASML, BABA, ARM, MUFG and TM report under the
+`us-gaap` taxonomy with every tag this project reads. `ACCEPTED_FORMS` held only
+10-K/10-Q and their amendments, so all of it was dropped: 383 facts for ASML
+alone. 20-F and 20-F/A are now accepted.
+
+That is a change of contract and is written down as one. The old list implied
+"every row comes from a US periodic report"; it now says "from a periodic
+report, including a foreign private issuer's annual report". 6-K is deliberately
+still excluded — it is a current report, the analogue of an 8-K, and its facts
+do not describe a completed accounting period the way a 10-Q's do.
+
+The consequence to watch: 20-F is annual with no quarterly counterpart, so these
+companies file about a quarter as often as US ones, and factors needing two
+consecutive periods see them on fewer signal dates. That is a real reduction in
+their contribution, not a bug, and it is measured rather than assumed.
+
+**Seven were IFRS filers.** SHEL, NVS, BHP, AZN, HSBC, RY and SAP publish under
+`ifrs-full`, whose tag names do not overlap the ones read here at all. This is
+not a filter problem and no form list fixes it. They are excluded from the
+fundamental universe explicitly, by an `accounting_standard` column on
+`securities`, and they stay in `securities` and `prices` because the price
+factors can use them.
+
+A mapping table was considered and rejected. IFRS and US GAAP do not define
+shareholders' equity identically, and a mapping would bury that difference
+inside one line of code — the opposite of what this project is for. Leaving them
+in silently, which is what the code did before, was the worst of the three
+options: the demo said "60 securities" while the value factors saw 47, and
+nothing said so.
+
+**One was a 404.** CIK 0002070829 (`CYATY`) has no companyfacts document. That
+one the old rate did catch, which is why it was the only one visible.
+
+**The taxonomy is inferred from what the filer publishes, not from what this
+parser keeps.** A company reporting us-gaap tags on forms this project excludes
+is still a us-gaap filer; calling it something else would blame the taxonomy for
+a decision made here. And the test is on the tags rather than on the namespace,
+because BHP carries a `us-gaap` namespace holding none of the tags read here
+while reporting its accounts under `ifrs-full`.
+
+### The check was still one level too coarse, and the 20-F fix silenced it
+
+Worth recording in full, because it happened inside the same commit that was
+supposed to prevent it.
+
+`data_coverage_rate` counted a company that produced **at least one row**. The
+cover-page share count is a row, it comes from the `dei` namespace, and every
+filer populates `dei` regardless of taxonomy. So once 20-F was accepted, five of
+the seven IFRS filers started contributing exactly one tag —
+`CommonStockSharesOutstanding`, six to ten rows each — and nothing else. No
+`Assets`, no `StockholdersEquity`, no `NetIncomeLoss`.
+
+The reported numbers went from `requests 98%, data 80%` to `requests 98%, data
+95%`, the gap fell under the 5% threshold, and the warning went quiet. Nothing
+about those companies had become readable by a value factor. **The fix silenced
+the check without fixing what the check was for**, which is a worse outcome than
+having no check, because the run now prints a number that looks fine.
+
+The bar was wrong, not the idea. There are three questions and they were being
+asked as two:
+
+* `request_success_rate` — did the request work?
+* `data_coverage_rate` — did anything come back?
+* `accounting_coverage_rate` — did anything a fundamental factor can read come
+  back? Rows excluding the cover-page share count.
+
+The gap warning now fires on the third, and it labels each company with *which
+kind* of empty it is: `SHEL (ifrs, share count only)` and `CYATY (unknown, no
+rows)` need different fixes, and a single "empty" would have merged them. The
+report also carries `companies_per_tag` — how many **companies** hold each tag,
+not how many rows, since one company filing quarterly for fifteen years can make
+a tag look universal.
+
+At sixty companies the three read 98% / 95% / 80%: 48 of 60 have a readable
+accounting series. That last figure is the one the value factors actually
+operate on, and it was never visible before.
+
+**A fourth failure mode surfaced from the same measurement.** ASML and MUFG file
+20-F under us-gaap and were expected to be recovered by the form change. They
+were not: they report in EUR and JPY, and the unit filter admits only USD and
+share counts, so every monetary fact is dropped before the form is even looked
+at. They now sit in the "share count only" bucket alongside the IFRS filers. The
+20-F change recovered three companies with real accounting data — TM, ARM and
+BABA — not five, and the number is three because something measured it rather
+than because the change was scoped that way.
+
+### The order these were done in, and why it matters
+
+The coverage check was built first, before either fix. Without it the claim
+"adding 20-F recovered five companies" would have had nothing behind it — the
+only available number was the one that already read 98% while five of those
+companies were contributing nothing. A measurement that cannot see the problem
+cannot score the fix either.
+
+And the ordering paid off immediately in the direction that matters: the
+measurement contradicted the fix. The claim would have been five companies
+recovered; it was three, and two of the five turned out to have a different
+problem entirely. That is what a check is for, and it only works if the check
+exists before there is a result to be pleased about.
+
+---
+
 ## What the live data changed
 
 The first thirty companies produced facts, not assumptions:
 
-* **SEC coverage was complete** — 30 of 30, 33,599 rows. The `us-gaap` restriction
-  costs less than the SPEC's caution implied, at least among large filers.
+* **SEC coverage looked complete and was not.** The first thirty companies
+  reported 30 of 30 and 33,599 rows; a later run of the same thirty reported 29
+  of 30, and at sixty companies the figure was 59 of 60 with twelve of those
+  fifty-nine producing nothing. The `us-gaap` restriction costs far more than
+  the SPEC's caution implied — it excludes every IFRS filer outright — and the
+  cost was invisible for as long as the coverage number counted HTTP responses.
+  See incident 14.
 * **Impossible filing dates are real**, not a hypothetical. The exclusion count is
   now part of every run's report.
 * **Free price sources are the fragile link**, not SEC. The fundamentals arrived

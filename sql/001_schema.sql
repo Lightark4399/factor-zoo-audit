@@ -33,6 +33,13 @@ CREATE TABLE IF NOT EXISTS securities (
     -- free price source still carries its ticker.
     first_filing   DATE,
     last_filing    DATE,
+    -- Which accounting taxonomy the filer publishes under: 'us-gaap', 'ifrs' or
+    -- 'unknown'. An IFRS filer reports under `ifrs-full`, whose tag names do not
+    -- overlap the ones read here, so it has no rows in `fundamentals` at all.
+    -- Without this column that is indistinguishable from a us-gaap filer whose
+    -- ingest failed, and the fundamental universe would silently be smaller than
+    -- the security count suggests.
+    accounting_standard VARCHAR DEFAULT 'unknown',
     PRIMARY KEY (cik, ticker),
     CHECK (last_filing IS NULL OR first_filing IS NULL OR last_filing >= first_filing)
 );

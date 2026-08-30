@@ -307,3 +307,56 @@ def test_delisted_security_stops_having_prices():
     px = data["prices"]
     last = px.groupby("ticker")["trade_date"].max()
     assert last["TST07"] < last["TST00"]
+
+
+# ----------------------------------------------------------------------
+# The taxonomy a filer reports under, carried on the security
+# ----------------------------------------------------------------------
+def test_securities_carry_their_accounting_standard():
+    """An IFRS filer has prices and no fundamentals, and that has to be legible.
+
+    Without the column it is indistinguishable from a us-gaap filer whose ingest
+    failed, and the fundamental universe is silently smaller than the security
+    count implies. See AI_NOTES incident 14.
+    """
+    s = Store()
+    s.load_securities(
+        pd.DataFrame(
+            {
+                "cik": ["0000000001", "0000000002"],
+                "ticker": ["AAA", "BBB"],
+                "name": ["A", "B"],
+                "sic": [None, None],
+                "first_filing": ["2015-01-01", "2015-01-01"],
+                "last_filing": ["2020-01-01", "2020-01-01"],
+                "accounting_standard": ["us-gaap", "ifrs"],
+            }
+        )
+    )
+    got = dict(
+        s.con.execute("SELECT ticker, accounting_standard FROM securities").fetchall()
+    )
+    assert got == {"AAA": "us-gaap", "BBB": "ifrs"}
+    s.close()
+
+
+def test_an_unstated_accounting_standard_is_unknown_not_usgaap():
+    """A caller that does not know says so. Assuming us-gaap on its behalf is the
+    same error as writing 0 for an unknown share count."""
+    s = Store()
+    s.load_securities(
+        pd.DataFrame(
+            {
+                "cik": ["0000000001"],
+                "ticker": ["AAA"],
+                "name": ["A"],
+                "sic": [None],
+                "first_filing": ["2015-01-01"],
+                "last_filing": ["2020-01-01"],
+            }
+        )
+    )
+    assert s.con.execute(
+        "SELECT accounting_standard FROM securities"
+    ).fetchone()[0] == "unknown"
+    s.close()

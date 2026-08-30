@@ -100,6 +100,16 @@ def describe_data(store: Store, mode: str) -> dict:
     """Counts that determine how the rest of the output should be read."""
     con = store.con
     n_sec = con.execute("SELECT count(*) FROM securities").fetchone()[0]
+    # Split by taxonomy, because the two numbers are not interchangeable. An
+    # IFRS filer has prices and no fundamentals, so it counts towards the
+    # universe a momentum factor sees and not towards the one a value factor
+    # sees. Reporting only the total would overstate the second by the size
+    # of the first, silently.
+    by_standard = dict(
+        con.execute(
+            "SELECT accounting_standard, count(*) FROM securities GROUP BY 1"
+        ).fetchall()
+    )
     n_fun = con.execute("SELECT count(*) FROM fundamentals").fetchone()[0]
     n_px = con.execute("SELECT count(*) FROM prices").fetchone()[0]
     n_rev = len(store.restatements())
@@ -111,6 +121,8 @@ def describe_data(store: Store, mode: str) -> dict:
     return {
         "mode": mode,
         "securities": n_sec,
+        "securities_by_standard": by_standard,
+        "securities_usgaap": by_standard.get("us-gaap", 0),
         "fundamentals": n_fun,
         "prices": n_px,
         "restatements": n_rev,
@@ -188,6 +200,17 @@ def main(argv: list[str] | None = None) -> int:
         emit(f"  DATA: {args.db}")
     emit()
     emit(f"  securities     {info['securities']:>10,}")
+    emit(
+        f"  with us-gaap   {info['securities_usgaap']:>10,}   "
+        f"(fundamental factors see only these)"
+    )
+    other = {
+        k: v for k, v in info['securities_by_standard'].items() if k != 'us-gaap'
+    }
+    if other:
+        detail = ", ".join(f"{v} {k}" for k, v in sorted(other.items()))
+        emit(f"  excluded       {detail:>10}   "
+             f"(prices only -- no readable fundamentals)")
     emit(f"  fundamentals   {info['fundamentals']:>10,}")
     emit(f"  prices         {info['prices']:>10,}")
     emit(f"  restatements   {info['restatements']:>10,}   "

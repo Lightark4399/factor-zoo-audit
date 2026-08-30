@@ -240,6 +240,43 @@ standing next to a **Class B** price, which was wrong on the day it was filed
 rather than wrong because it aged. Fixing that needs per-class share counts from
 a source this tag cannot supply. AI_NOTES incident 13 has the full account.
 
+## Who is in the universe, and who only half is
+
+Two counts, not one. `securities` holds every company the ingest selected;
+`fundamentals` holds only the ones this project can read. The demo prints both,
+and the `accounting_standard` column on `securities` says which is which.
+
+**IFRS filers are excluded from the fundamental universe, on purpose.** Seven of
+the first sixty companies — SHEL, NVS, BHP, AZN, HSBC, RY, SAP — publish under
+the `ifrs-full` taxonomy, whose tag names have no overlap with the ones read
+here. A mapping table would let them in, and is deliberately not built: IFRS and
+US GAAP do not define shareholders' equity identically, and a mapping would bury
+that difference in one line of code. They stay in `securities` and in `prices`,
+so the price-only factors (momentum, reversal, idiosyncratic volatility) still
+use them; the fundamental factors do not.
+
+**Foreign private issuers that file 20-F are included.** `ACCEPTED_FORMS` covers
+10-K, 10-Q, 20-F and their amendments. 20-F is an annual report with no
+quarterly counterpart, so these companies file about a quarter as often as US
+ones and appear on fewer signal dates for any factor needing two consecutive
+periods. 6-K is excluded: it is a current report, and its facts do not describe
+a completed accounting period.
+
+**Three coverage numbers are reported, and reading only one is how this was
+missed.** `request_success_rate` is the share of companyfacts requests that
+succeeded; `data_coverage_rate` is the share that produced any row at all;
+`accounting_coverage_rate` is the share that produced a row a fundamental factor
+can read. On a sixty-company run they are 98% / 95% / 80% — the first hid twelve
+empty companies, and the second hid seven more that supply a cover-page share
+count and no accounting series. When the request and accounting rates differ by
+more than 5% the ingest prints the gap and names the companies, saying which
+kind of empty each one is. AI_NOTES incident 14 has the full account.
+
+**Non-USD reporters lose their monetary facts.** ASML and MUFG file 20-F under
+us-gaap but report in EUR and JPY, and only USD and share counts are admitted.
+They contribute a share count and nothing else, which makes them usable by
+`log_mktcap` and `turnover` and by no value or profitability factor.
+
 ## Running it
 
 The test suite and the demo need no network and no credentials — everything runs

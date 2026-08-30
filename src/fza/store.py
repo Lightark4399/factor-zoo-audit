@@ -131,11 +131,18 @@ class Store:
     # Loading
     # ------------------------------------------------------------------
     def load_securities(self, frame: pd.DataFrame) -> int:
-        cols = ["cik", "ticker", "name", "sic", "first_filing", "last_filing"]
+        cols = [
+            "cik", "ticker", "name", "sic", "first_filing", "last_filing",
+            "accounting_standard",
+        ]
         df = frame.reindex(columns=cols).copy()
         df["cik"] = df["cik"].astype(str).str.zfill(10)
         for c in ("first_filing", "last_filing"):
             df[c] = pd.to_datetime(df[c], errors="coerce").dt.date
+        # A caller that does not know the taxonomy says so, rather than having
+        # 'us-gaap' assumed on its behalf. The distinction is the whole reason
+        # the column exists.
+        df["accounting_standard"] = df["accounting_standard"].fillna("unknown")
         return self._insert("securities", df)
 
     def load_prices(self, frame: pd.DataFrame) -> int:

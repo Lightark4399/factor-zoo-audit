@@ -21,7 +21,63 @@ import pandas as pd
 
 from ..store import Store
 from .prices import attach_shares_outstanding, ingest_prices
-from .sec import CORE_TAGS, SECClient, derive_filing_history, ingest_companies
+from .sec import (
+    CORE_TAGS,
+    STANDARD_UNKNOWN,
+    IngestReport,
+    SECClient,
+    derive_filing_history,
+    ingest_companies,
+)
+
+# How far the two coverage numbers may drift before the run says something.
+# They measure different things -- one that the request worked, one that it
+# returned anything usable -- and a gap means companies answered and gave
+# nothing back.
+COVERAGE_GAP_WARNING = 0.05
+
+
+def _warn_on_coverage_gap(
+    report: IngestReport, tickers: pd.DataFrame, threshold: float = COVERAGE_GAP_WARNING
+) -> list[str]:
+    """Name the companies a fundamental factor cannot read.
+
+    The same rule as the price column check below: a coverage number that
+    only aggregates cannot say which company is missing, and the failure then
+    surfaces much later as a thin cross-section that nobody traces back. On
+    the first sixty-company run twelve companies sat in this gap while the
+    reported coverage read 98%.
+
+    The bar is an accounting row, not any row. Accepting 20-F let five IFRS
+    filers through on a DEI cover-page share count alone, which lifted
+    ``data_coverage_rate`` to 95% and closed the gap below this threshold
+    while nothing about those companies had become readable. A check that a
+    fix can silence without fixing anything is worse than no check.
+
+    Returns the tickers named, so a caller can assert on them."""
+    unusable = set(report.companies_without_accounting_rows)
+    if not unusable:
+        return []
+
+    empty = set(report.companies_without_rows)
+    named = tickers.loc[tickers["cik"].isin(unusable), ["ticker", "cik"]]
+    labels = []
+    for row in named.itertuples():
+        standard = report.standard_per_company.get(row.cik, STANDARD_UNKNOWN)
+        why = "no rows" if row.cik in empty else "share count only"
+        labels.append(f"{row.ticker} ({standard}, {why})")
+
+    gap = report.request_success_rate - report.accounting_coverage_rate
+    if gap > threshold:
+        print(
+            f"  WARNING: {len(unusable)} companies answered but carry no "
+            f"readable accounting series ({gap:.0%} of the universe).",
+            flush=True,
+        )
+        print("  Fundamental factors will not see them:", flush=True)
+        for label in labels:
+            print(f"    {label}", flush=True)
+    return labels
 
 
 def _progress(label: str):
@@ -97,7 +153,14 @@ def main(argv: list[str] | None = None) -> int:
     fundamentals, sec_report = ingest_companies(
         client, tickers["cik"].tolist(), tags=CORE_TAGS, on_progress=_progress("filings")
     )
-    print(f"  {len(fundamentals):,} rows, coverage {sec_report.coverage_rate:.0%}", flush=True)
+    print(
+        f"  {len(fundamentals):,} rows, "
+        f"requests {sec_report.request_success_rate:.0%}, "
+        f"data {sec_report.data_coverage_rate:.0%}, "
+        f"accounting {sec_report.accounting_coverage_rate:.0%}",
+        flush=True,
+    )
+    _warn_on_coverage_gap(sec_report, tickers)
 
     prices = pd.DataFrame()
     price_report = None
@@ -141,6 +204,12 @@ def main(argv: list[str] | None = None) -> int:
     history = derive_filing_history(fundamentals)
     securities = tickers.merge(history, on="cik", how="left")
     securities["sic"] = None
+    # Recorded on the security, not inferred later from an empty join. An
+    # IFRS filer has no fundamentals here, and without this column that is
+    # indistinguishable from a us-gaap filer whose ingest failed.
+    securities["accounting_standard"] = (
+        securities["cik"].map(sec_report.standard_per_company).fillna(STANDARD_UNKNOWN)
+    )
     store.load_securities(securities)
     store.load_fundamentals(fundamentals)
 
@@ -172,7 +241,16 @@ def main(argv: list[str] | None = None) -> int:
     print(f"fundamentals {len(fundamentals):>8,}")
     print(f"prices       {len(prices):>8,}")
     print(f"restatements {report['n_restatements']:>8,}")
-    print(f"coverage     {sec_report.coverage_rate:>8.0%}")
+    print(f"requests ok  {sec_report.request_success_rate:>8.0%}")
+    print(f"data coverage{sec_report.data_coverage_rate:>8.0%}")
+    print(f"accounting   {sec_report.accounting_coverage_rate:>8.0%}")
+    by_standard = securities["accounting_standard"].value_counts().to_dict()
+    report["securities_by_standard"] = {k: int(v) for k, v in by_standard.items()}
+    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    print(
+        "taxonomy     "
+        + ", ".join(f"{k} {v}" for k, v in sorted(by_standard.items()))
+    )
     if price_report and pd.notna(price_report.survivorship_prone_share):
         print(
             f"of prices, {price_report.survivorship_prone_share:.0%} came from a "

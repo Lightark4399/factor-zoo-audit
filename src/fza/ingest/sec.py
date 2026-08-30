@@ -93,11 +93,71 @@ DEI_TAG_ALIASES: dict[str, str] = {
     "EntityCommonStockSharesOutstanding": "CommonStockSharesOutstanding",
 }
 
-# Only annual and quarterly reports and their amendments. Anything else (8-K, S-1)
-# carries values that are not comparable across the panel.
-ACCEPTED_FORMS: tuple[str, ...] = ("10-K", "10-Q", "10-K/A", "10-Q/A")
+# The cover-page share count, singled out because it is the one tag a filer
+# can supply while supplying no accounting data at all. It comes from the DEI
+# namespace, which every filer populates regardless of taxonomy, so an IFRS
+# company reports it and nothing else. A coverage number that counts "at least
+# one row" therefore passes companies that no value factor can read -- see
+# AI_NOTES incident 14.
+SHARE_COUNT_TAG = "CommonStockSharesOutstanding"
+
+# Periodic reports and their amendments. Anything else (8-K, S-1) carries values
+# that are not comparable across the panel.
+#
+# 20-F IS A CHANGE OF CONTRACT, and a deliberate one. The list used to imply
+# "every row comes from a US periodic report"; it now says "from a periodic
+# report, including a foreign private issuer's annual report". Five of the
+# first sixty companies -- ASML, BABA, ARM, MUFG, TM -- file 20-F under the
+# us-gaap taxonomy, carrying every tag this project reads, and were being
+# dropped whole.
+#
+# 6-K is deliberately NOT here. It is a foreign issuer's *current* report, the
+# rough analogue of an 8-K, and its facts do not describe a completed
+# accounting period the way a 10-Q's do. Admitting it would mix two different
+# meanings of period_end into one column.
+#
+# The consequence to keep in mind: 20-F is an annual report with no quarterly
+# counterpart, so these companies file roughly a quarter as often as US ones.
+# Factors needing two consecutive periods (asset_growth, roe) therefore see
+# them on fewer signal dates. See AI_NOTES incident 14.
+ACCEPTED_FORMS: tuple[str, ...] = (
+    "10-K", "10-Q", "10-K/A", "10-Q/A", "20-F", "20-F/A",
+)
 
 MIN_REQUEST_INTERVAL = 0.11  # seconds; SEC allows 10 requests per second
+
+# The accounting taxonomy a filer reports under, recorded per company because
+# it decides whether this project can read them at all. IFRS filers publish
+# under `ifrs-full`, whose tag names have no overlap with the ones read here,
+# so they are excluded from the fundamental universe by construction rather
+# than by a mapping table. A mapping would bury a real difference -- IFRS and
+# US GAAP do not define shareholders equity identically -- inside one line of
+# code, and this project exists to lay assumptions out rather than embed them.
+# IFRS filers stay in `securities` and in `prices`: the price factors can use
+# them, and dropping them from the universe entirely would reintroduce a
+# selection this project spends its effort removing.
+STANDARD_USGAAP = "us-gaap"
+STANDARD_IFRS = "ifrs"
+STANDARD_UNKNOWN = "unknown"
+
+
+def infer_accounting_standard(payload: dict, tags: tuple[str, ...] = CORE_TAGS) -> str:
+    """Which taxonomy a filer reports under, from the payload's namespaces.
+
+    Decided by what the filer publishes, not by what this parser keeps: a
+    company reporting us-gaap tags on forms this project excludes is still a
+    us-gaap filer, and calling it something else would blame the taxonomy for
+    a decision made here.
+
+    Presence of the `us-gaap` namespace alone is not enough. BHP carries one
+    holding none of the tags read here while reporting its accounts under
+    `ifrs-full`, so the test is on the tags, not on the namespace."""
+    facts = payload.get("facts", {})
+    if any(tag in facts.get("us-gaap", {}) for tag in tags):
+        return STANDARD_USGAAP
+    if "ifrs-full" in facts:
+        return STANDARD_IFRS
+    return STANDARD_UNKNOWN
 
 
 class SECError(RuntimeError):
@@ -127,19 +187,113 @@ class IngestReport:
     n_shares_from_dei: int = 0
     failures: list[str] = field(default_factory=list)
     tag_coverage: dict[str, int] = field(default_factory=dict)
+    # Rows parsed per company, and the taxonomy each reports under. Both are
+    # per-company on purpose: an aggregate cannot say which company
+    # contributed nothing, and that is the question a coverage number gets
+    # asked.
+    rows_per_company: dict[str, int] = field(default_factory=dict)
+    standard_per_company: dict[str, str] = field(default_factory=dict)
+    # Rows excluding the cover-page share count, and companies per tag. Both
+    # exist because "at least one row" turned out to be a lower bar than the
+    # factors need: five IFRS filers cleared it on a DEI share count alone.
+    accounting_rows_per_company: dict[str, int] = field(default_factory=dict)
+    companies_per_tag: dict[str, int] = field(default_factory=dict)
 
     @property
-    def coverage_rate(self) -> float:
+    def request_success_rate(self) -> float:
+        """Share of requested companies whose companyfacts request succeeded.
+
+        THIS IS NOT A DATA COVERAGE NUMBER, and it used to be called one. On
+        the first sixty-company run it read 98.3% while twelve of the
+        fifty-nine "covered" companies had produced zero rows: they answered
+        HTTP 200 and then turned out to file under a taxonomy, or on forms,
+        this parser drops.
+
+        A check whose name promises more than its behaviour delivers is the
+        shape of incident 9, and it recurred here because the name was never
+        revisited as the parser grew filters. Pair it with
+        ``data_coverage_rate``, never read it alone."""
         if not self.n_companies_requested:
             return float("nan")
         return self.n_companies_fetched / self.n_companies_requested
+
+    @property
+    def n_companies_with_rows(self) -> int:
+        return sum(1 for n in self.rows_per_company.values() if n > 0)
+
+    @property
+    def data_coverage_rate(self) -> float:
+        """Share of requested companies that produced at least one usable row.
+
+        The number the rest of the pipeline actually depends on, and the same
+        principle as ``Store.column_coverage``: an entirely null column has to
+        name itself, because otherwise the failure surfaces several steps
+        later as "factor produced no values" and names the factor instead. A
+        company that parsed to nothing is the row-wise form of that."""
+        if not self.n_companies_requested:
+            return float("nan")
+        return self.n_companies_with_rows / self.n_companies_requested
+
+    @property
+    def companies_without_rows(self) -> list[str]:
+        """CIKs that were fetched successfully and yielded nothing.
+
+        Distinct from ``failures``, which lists the ones that never answered.
+        A silent zero and a loud error need different fixes."""
+        return sorted(c for c, n in self.rows_per_company.items() if n == 0)
+
+    @property
+    def n_companies_with_accounting_rows(self) -> int:
+        return sum(1 for n in self.accounting_rows_per_company.values() if n > 0)
+
+    @property
+    def accounting_coverage_rate(self) -> float:
+        """Share of requested companies with a readable accounting series.
+
+        ``data_coverage_rate`` counts a company that produced any row at all,
+        and the cover-page share count is a row. On the sixty-company run
+        that let five IFRS filers and two non-USD reporters clear the bar
+        with a share count and nothing else -- readable by `log_mktcap` and
+        `turnover`, useless to every value or profitability factor.
+
+        Three numbers rather than one because there are three questions, and
+        collapsing them is exactly how the first version of this check came
+        to report 98% while a fifth of the universe was empty."""
+        if not self.n_companies_requested:
+            return float("nan")
+        return self.n_companies_with_accounting_rows / self.n_companies_requested
+
+    @property
+    def companies_without_accounting_rows(self) -> list[str]:
+        """Fetched companies that no fundamental factor can read.
+
+        Includes the ones that produced nothing at all, and the ones that
+        produced only a share count."""
+        return sorted(
+            c for c, n in self.accounting_rows_per_company.items() if n == 0
+        )
 
     def to_dict(self) -> dict:
         return {
             "n_companies_requested": self.n_companies_requested,
             "n_companies_fetched": self.n_companies_fetched,
             "n_companies_failed": self.n_companies_failed,
-            "coverage_rate": self.coverage_rate,
+            # Both rates are recorded. Reporting only the first is how twelve
+            # empty companies hid behind a 98.3%.
+            "request_success_rate": self.request_success_rate,
+            "data_coverage_rate": self.data_coverage_rate,
+            "accounting_coverage_rate": self.accounting_coverage_rate,
+            "n_companies_with_rows": self.n_companies_with_rows,
+            "n_companies_with_accounting_rows": self.n_companies_with_accounting_rows,
+            "companies_without_rows": list(self.companies_without_rows),
+            "companies_without_accounting_rows": list(
+                self.companies_without_accounting_rows
+            ),
+            # Per tag, how many COMPANIES carry it -- not how many rows, which
+            # `tag_coverage` already gives. One company filing quarterly for
+            # fifteen years can make a tag look universal.
+            "companies_per_tag": dict(self.companies_per_tag),
+            "standard_per_company": dict(self.standard_per_company),
             "n_rows": self.n_rows,
             "n_excluded_non_usgaap": self.n_excluded_non_usgaap,
             "n_excluded_form": self.n_excluded_form,
@@ -410,6 +564,20 @@ def ingest_companies(
             if not frame.empty:
                 frames.append(frame)
             report.n_companies_fetched += 1
+            # Recorded even when it is zero -- especially when it is zero. A
+            # company missing from this mapping failed its request; one
+            # present with 0 answered and gave nothing back, and the two call
+            # for different fixes.
+            report.rows_per_company[cik] = len(frame)
+            accounting = (
+                frame.loc[frame["tag"] != SHARE_COUNT_TAG]
+                if not frame.empty
+                else frame
+            )
+            report.accounting_rows_per_company[cik] = len(accounting)
+            for tag in frame["tag"].unique() if not frame.empty else ():
+                report.companies_per_tag[tag] = report.companies_per_tag.get(tag, 0) + 1
+            report.standard_per_company[cik] = infer_accounting_standard(payload, tags)
         except Exception as exc:
             report.n_companies_failed += 1
             report.failures.append(f"{cik}: {type(exc).__name__}: {exc}")

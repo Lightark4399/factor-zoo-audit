@@ -206,3 +206,17 @@ def test_an_undeclared_range_is_printed_as_undefined_not_as_a_pass(capsys):
     assert "undefined" in registered  # the six that have none
     assert "0.01 .. 100" in registered  # bm_ratio, which has one
     assert "NOT that the factor passed" in out
+
+
+def test_the_universe_is_reported_by_taxonomy_not_as_one_number(capsys):
+    """'60 securities' overstates what a value factor sees by the IFRS filers.
+
+    Seven of the first sixty companies report under ifrs-full and so have no
+    fundamentals at all. They belong in the universe a momentum factor sees and
+    not in the one a value factor sees, and a single count cannot say that.
+    """
+    main(_FAST)
+    out = capsys.readouterr().out
+
+    assert "with us-gaap" in out
+    assert "fundamental factors see only these" in out

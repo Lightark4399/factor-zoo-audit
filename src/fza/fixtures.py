@@ -63,6 +63,11 @@ def build_fixture(spec: FixtureSpec | None = None) -> dict[str, pd.DataFrame]:
                 delist_date if i == delisted_idx else dates[-1]
                 for i in range(spec.n_securities)
             ],
+            # Every fixture company files us-gaap. The fixture exists to
+            # exercise the machinery, and an IFRS filer there would test the
+            # exclusion rather than the pipeline; the real ingest is where that
+            # case belongs.
+            "accounting_standard": ["us-gaap"] * spec.n_securities,
         }
     )
 
