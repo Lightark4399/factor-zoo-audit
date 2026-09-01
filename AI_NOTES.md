@@ -710,6 +710,25 @@ This is the second known blind spot of `check_plausible_magnitude`, beside a
 share count lagging a split. Its docstring now names both. A range assertion is a
 unit and scale check, never proof that a quantity means what its column says.
 
+**The third blind spot is the score used to judge the factor.** On the 200-name
+diagnostic run, restricting both arms to the same quarterly filers and the same
+`(ticker, signal_date)` rows moved E/P IC by only -0.0037 and ROE IC by -0.0028.
+Those changes look immaterial. The raw inputs did not: 80.2% of common values
+changed, the median absolute relative change was 51.6% for E/P and 58.2% for ROE,
+and their 90th percentiles were 330% and 342%. E/P also had 921 rows available
+only under the old rule and 303 only under TTM. ROE had 696 old-only rows and no
+TTM-only rows, direct evidence that the four-quarter guard is conservative in
+live data: if four quarters cannot be constructed, it returns nothing rather
+than assembling a plausible substitute.
+
+This is incident 13's lesson with a different hidden variable. There, a rank
+could not distinguish 5,752 from 3; here, it largely cannot distinguish one
+quarter, a YTD interval and twelve months. A magnitude assertion cannot see the
+semantic error, and the IC used to judge the factor is almost insensitive to it.
+Only a direct comparison of the raw values and their coverage exposed the size
+of the change. A small IC delta is therefore not evidence that an accounting-
+semantics defect is small.
+
 **The fix.** Fundamentals now retain `period_start`, `frame`, `fact_type` and
 `duration_days`, and their key distinguishes contexts with different intervals.
 E/P and ROE use a point-in-time TTM constructor. Within a common fiscal-year
