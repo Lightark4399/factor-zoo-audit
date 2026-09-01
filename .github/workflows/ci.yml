@@ -12,7 +12,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e ".[dev]"
+      - run: pip install -e ".[dev]" build
       - name: lint
         run: ruff check src tests
       # The suite runs on fixtures, so CI needs no credentials and no network
@@ -23,3 +23,19 @@ jobs:
       # end to end. A regression the unit tests miss still fails the build.
       - name: demo smoke test
         run: python -m fza.demo --outdir /tmp/demo_out
+      # Editable installs can borrow SQL/YAML from the checkout and therefore
+      # cannot prove the release artifact is complete. Incident 16 requires the
+      # actual wheel to work with no repository beside it.
+      - name: wheel clean-install PIT smoke test
+        run: |
+          python -m build --wheel
+          python -m venv /tmp/fza-wheel-smoke
+          /tmp/fza-wheel-smoke/bin/pip install dist/*.whl
+          /tmp/fza-wheel-smoke/bin/python - <<'PY'
+          from fza.factors.registry import load_all
+          from fza.store import Store
+
+          with Store(":memory:") as store:
+              assert store.fundamentals_asof("2020-01-01").empty
+          assert len(load_all()) == 10
+          PY

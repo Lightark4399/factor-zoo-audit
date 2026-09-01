@@ -72,7 +72,11 @@ CREATE TABLE IF NOT EXISTS prices (
 CREATE TABLE IF NOT EXISTS fundamentals (
     cik          VARCHAR NOT NULL,
     tag          VARCHAR NOT NULL,   -- us-gaap concept, e.g. 'StockholdersEquity'
-    -- The accounting period the value describes.
+    -- The accounting interval the value describes. Instant facts use the same
+    -- date for start and end. Keeping start is mandatory for duration facts:
+    -- quarterly, year-to-date and annual income can share an end date while
+    -- representing different quantities.
+    period_start DATE    NOT NULL,
     period_end   DATE    NOT NULL,
     fiscal_year  INTEGER,
     fiscal_period VARCHAR,           -- FY, Q1..Q4
@@ -82,8 +86,8 @@ CREATE TABLE IF NOT EXISTS fundamentals (
     filed        DATE    NOT NULL,
     value        DOUBLE,
     unit         VARCHAR,
-    form         VARCHAR,            -- 10-K, 10-Q, 8-K...
-    accession    VARCHAR,            -- the filing this came from, for provenance
+    form         VARCHAR NOT NULL,   -- 10-K, 10-Q, 8-K...
+    accession    VARCHAR NOT NULL,   -- the filing this came from, for provenance
     -- Which XBRL namespace the fact was taken from. Almost always 'us-gaap'.
     -- Shares outstanding is the exception: it is a cover-page fact that us-gaap
     -- does not define, so it comes from 'dei' and is written under the us-gaap
@@ -91,18 +95,23 @@ CREATE TABLE IF NOT EXISTS fundamentals (
     -- rename auditable -- `WHERE source_namespace = 'dei'` shows exactly which
     -- rows were renamed, instead of the rename being visible only in a comment.
     source_namespace VARCHAR DEFAULT 'us-gaap',
+    frame        VARCHAR NOT NULL DEFAULT '', -- SEC calendrical context, when supplied
+    fact_type    VARCHAR NOT NULL CHECK (fact_type IN ('instant', 'duration', 'unknown')),
+    duration_days INTEGER,
 
     -- A restatement is a NEW ROW with a later `filed`, never an update. Without
     -- this, the historical record becomes the current view of the past and no
     -- query can reconstruct what was knowable at the time.
-    PRIMARY KEY (cik, tag, period_end, filed, form),
+    PRIMARY KEY (cik, tag, period_start, period_end, filed, form, accession, frame),
 
     -- A filing cannot predate the period it reports on.
-    CHECK (filed >= period_end)
+    CHECK (filed >= period_end),
+    CHECK (period_end >= period_start),
+    CHECK (duration_days IS NULL OR duration_days >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS fundamentals_pit_idx
-    ON fundamentals (cik, tag, period_end, filed);
+    ON fundamentals (cik, tag, period_start, period_end, filed);
 
 CREATE INDEX IF NOT EXISTS fundamentals_filed_idx ON fundamentals (filed);
 
@@ -116,10 +125,11 @@ CREATE INDEX IF NOT EXISTS fundamentals_filed_idx ON fundamentals (filed);
 -- here so the point-in-time gap can be measured, which is one of this project's
 -- headline numbers.
 CREATE OR REPLACE VIEW fundamentals_restated AS
-SELECT DISTINCT ON (cik, tag, period_end)
-    cik, tag, period_end, fiscal_year, fiscal_period, filed, value, unit, form
+SELECT DISTINCT ON (cik, tag, period_start, period_end)
+    cik, tag, period_start, period_end, fiscal_year, fiscal_period, filed, value,
+    unit, form, accession, source_namespace, frame, fact_type, duration_days
 FROM fundamentals
-ORDER BY cik, tag, period_end, filed DESC;
+ORDER BY cik, tag, period_start, period_end, filed DESC;
 
 -- POINT-IN-TIME: for a given signal date, the most recent filing for each
 -- (cik, tag, period) that had actually been published by then.
@@ -133,19 +143,21 @@ ORDER BY cik, tag, period_end, filed DESC;
 -- ASOF is reserved in DuckDB (it has a native ASOF JOIN), so the parameter is
 -- named `signal_date`.
 CREATE OR REPLACE MACRO fundamentals_asof(signal_date) AS TABLE
-    SELECT DISTINCT ON (cik, tag, period_end)
-        cik, tag, period_end, fiscal_year, fiscal_period, filed, value, unit, form
+    SELECT DISTINCT ON (cik, tag, period_start, period_end)
+        cik, tag, period_start, period_end, fiscal_year, fiscal_period, filed,
+        value, unit, form, accession, source_namespace, frame, fact_type, duration_days
     FROM fundamentals
     WHERE filed <= signal_date
       AND period_end <= signal_date
-    ORDER BY cik, tag, period_end, filed DESC;
+    ORDER BY cik, tag, period_start, period_end, filed DESC;
 
 -- The single most recent value known at a signal date, per (cik, tag) -- the
 -- form a factor usually wants, since it asks "what was the latest reported book
 -- value when I formed this portfolio".
 CREATE OR REPLACE MACRO latest_fundamental_asof(signal_date) AS TABLE
     SELECT DISTINCT ON (cik, tag)
-        cik, tag, period_end, filed, value, unit, form
+        cik, tag, period_start, period_end, fiscal_year, fiscal_period, filed,
+        value, unit, form, accession, source_namespace, frame, fact_type, duration_days
     FROM fundamentals
     WHERE filed <= signal_date
       AND period_end <= signal_date
@@ -171,19 +183,19 @@ CREATE OR REPLACE MACRO universe_asof(signal_date) AS TABLE
 -- explicitly rather than letting a zero read as an all-clear.
 CREATE OR REPLACE VIEW restatements AS
 WITH first_filing AS (
-    SELECT DISTINCT ON (cik, tag, period_end)
-        cik, tag, period_end, filed AS first_filed, value AS first_value
+    SELECT DISTINCT ON (cik, tag, period_start, period_end)
+        cik, tag, period_start, period_end, filed AS first_filed, value AS first_value
     FROM fundamentals
-    ORDER BY cik, tag, period_end, filed ASC
+    ORDER BY cik, tag, period_start, period_end, filed ASC
 ),
 last_filing AS (
-    SELECT DISTINCT ON (cik, tag, period_end)
-        cik, tag, period_end, filed AS last_filed, value AS last_value
+    SELECT DISTINCT ON (cik, tag, period_start, period_end)
+        cik, tag, period_start, period_end, filed AS last_filed, value AS last_value
     FROM fundamentals
-    ORDER BY cik, tag, period_end, filed DESC
+    ORDER BY cik, tag, period_start, period_end, filed DESC
 )
 SELECT
-    f.cik, f.tag, f.period_end,
+    f.cik, f.tag, f.period_start, f.period_end,
     f.first_filed, l.last_filed,
     f.first_value, l.last_value,
     l.last_value - f.first_value AS revision,
@@ -192,7 +204,7 @@ SELECT
     END AS revision_pct,
     date_diff('day', f.first_filed, l.last_filed) AS revision_lag_days
 FROM first_filing f
-JOIN last_filing l USING (cik, tag, period_end)
+JOIN last_filing l USING (cik, tag, period_start, period_end)
 WHERE f.first_filed <> l.last_filed;
 
 -- ---------------------------------------------------------------------------

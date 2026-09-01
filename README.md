@@ -138,7 +138,9 @@ built and tested; the audit pipeline is in progress.
 ✓ Column coverage reported at load — an entirely null column names itself
 ✓ Magnitude assertions on raw factor values, before any cleaning can hide them
 ✓ Share counts bounded at 400 days; failed factors keep a labelled row in the report
-✓ 133 tests, CI green
+✓ Duration facts retain start/end context; E/P and ROE use point-in-time TTM income
+✓ Wheel contains its SQL schema and ten hypothesis cards; clean-install smoke tested
+✓ 151 tests at the pre-M4.1 baseline; CI stays green as incident tests are added
 ○ Audit layer wired to backtest-audit
 ○ Style orthogonalisation, factor structure (PCA), costs
 ```
@@ -275,7 +277,17 @@ kind of empty each one is. AI_NOTES incident 14 has the full account.
 **Non-USD reporters lose their monetary facts.** ASML and MUFG file 20-F under
 us-gaap but report in EUR and JPY, and only USD and share counts are admitted.
 They contribute a share count and nothing else, which makes them usable by
-`log_mktcap` and `turnover` and by no value or profitability factor.
+`log_mktcap` and `turnover` and by no value or profitability factor. Currency
+conversion is deliberately deferred: balance-sheet stocks and income-statement
+flows require different FX timing, and adding a rate without that contract would
+replace a visible exclusion with a hidden assumption.
+
+**Flow facts are trailing-twelve-month, not "the latest row".** SEC can publish
+a standalone quarter and a year-to-date number with the same end date. The store
+retains both starts; E/P and ROE difference cumulative Q2/Q3/FY contexts into
+discrete quarters and sum the latest four. Q4 is `FY - Q3 YTD`, so it is not
+counted once inside FY and again as a quarter. Annual-only 20-F filers retain the
+latest genuine annual TTM observation rather than receiving invented quarters.
 
 ## Running it
 
@@ -294,6 +306,18 @@ Ingestion is the only step that reaches the internet:
 pip install -e ".[ingest]"
 python -m fza.ingest.run --user-agent "Your Name you@example.com" --limit 30
 ```
+
+The 200-company expansion is a diagnostic scale run, not research evidence:
+
+```bash
+python -m fza.ingest.run --user-agent "Your Name you@example.com" \
+  --limit 200 --price-source yfinance,stooq
+```
+
+Its report is labelled `run_purpose: diagnostic_scale`. The demo reports
+names-per-quantile as average/min/p10/median/p90/max plus the number of dates
+dropped for a thin or tied cross-section; a healthy average is not allowed to
+hide a nearly empty month.
 
 SEC requires a User-Agent identifying you, with a contact address — it is a
 condition of the fair-access policy, and requests without one are refused. The

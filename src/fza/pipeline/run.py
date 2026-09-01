@@ -135,13 +135,14 @@ def check_plausible_magnitude(
     It catches a quantity that is wrong by orders of magnitude, which is what a
     unit error, a mis-scaled column or a wrong denominator produce.
 
-    It does NOT catch a value that is wrong but physically ordinary. The known
-    live example is in AI_NOTES incident 12: `shares_out` is the last count
-    filed while the price is the one quoted, so between a split and the next
-    filing the market cap is off by the split factor. Apple's 2014 book-to-market
-    comes out at 1.50 instead of 0.21 -- seven times wrong, and comfortably
-    inside any honest range. It also misses anything affecting fewer rows than
-    ``max_share``.
+    It does NOT catch a value that is wrong but physically ordinary. There are
+    now two known blind spots. First, `shares_out` can lag a split while price is
+    current: Apple's 2014 book-to-market was seven times wrong and still inside
+    an honest range (incident 12). Second, a quarterly or YTD income fact can be
+    mistaken for TTM income: both produce ordinary E/P and ROE magnitudes even
+    though they answer different accounting questions (incident 15). Magnitude
+    is a unit/scale check, not a semantic-period check. It also misses anything
+    affecting fewer rows than ``max_share``.
 
     And a range set too wide fails silently in the direction that matters: it
     never fires, and its presence in the table says the factor is guarded. That
@@ -350,6 +351,7 @@ def compare_vintages(
     restated_frame["period_end"] = pd.to_datetime(restated_frame["period_end"])
 
     original = store.fundamentals_asof
+    original_history = store.fundamentals_history_asof
 
     def leaking_asof(signal_date, tags=None, intended_signal_date=None):
         # Mirrors the real signature so a factor can be swapped onto this path
@@ -369,13 +371,22 @@ def compare_vintages(
             .last()
         )
 
+    def leaking_history_asof(signal_date, tags=None, intended_signal_date=None):
+        """Restated arm retaining every start/end context needed for TTM."""
+        out = restated_frame
+        if tags:
+            out = out.loc[out["tag"].isin(tags)]
+        return out.loc[out["period_end"] <= pd.Timestamp(signal_date)].copy()
+
     try:
         store.fundamentals_asof = leaking_asof  # type: ignore[method-assign]
+        store.fundamentals_history_asof = leaking_history_asof  # type: ignore[method-assign]
         restated_run = compute_factor(
             factor, store, signal_dates, groups=groups, vintage="restated", **kwargs
         )
     finally:
         store.fundamentals_asof = original  # type: ignore[method-assign]
+        store.fundamentals_history_asof = original_history  # type: ignore[method-assign]
 
     # Score both arms on the dates they share. Without this the gap would partly
     # be a comparison of different samples -- the same confound that produced a

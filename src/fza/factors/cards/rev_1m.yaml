@@ -18,7 +18,8 @@ definition: >
   closes at the month-end signal date.
 timing:
   signal_computed: month_end_close
-  earliest_execution: next_trading_day_open
+  earliest_execution: next_trading_day_close
+  execution_price: adjusted_close
   data_lag_days: 0
 falsification:
   - Decile returns show no monotonic pattern

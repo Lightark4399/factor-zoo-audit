@@ -29,6 +29,10 @@ dev = ["pytest>=7.4", "ruff>=0.4"]
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+fza = ["sql/*.sql"]
+"fza.factors" = ["cards/*.yaml"]
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]

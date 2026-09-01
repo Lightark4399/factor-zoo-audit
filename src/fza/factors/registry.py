@@ -33,12 +33,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from importlib.resources import files
 from pathlib import Path
 
 import pandas as pd
 import yaml
 
-CARDS_DIR = Path(__file__).resolve().parent / "cards"
+CARDS_DIR = files("fza.factors").joinpath("cards")
 
 REQUIRED_CARD_FIELDS = (
     "factor_id",
@@ -85,7 +86,7 @@ class HypothesisCard:
     raw: dict = field(default_factory=dict)
 
     @classmethod
-    def from_yaml(cls, path: Path) -> HypothesisCard:
+    def from_yaml(cls, path) -> HypothesisCard:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
         missing = [f for f in REQUIRED_CARD_FIELDS if f not in data or data[f] in (None, "")]
         if missing:
@@ -97,7 +98,7 @@ class HypothesisCard:
             )
 
         timing = data["timing"]
-        for key in ("signal_computed", "earliest_execution"):
+        for key in ("signal_computed", "earliest_execution", "execution_price"):
             if key not in timing:
                 raise CardError(f"{path.name}: timing.{key} is required")
 
@@ -192,8 +193,8 @@ def register(
     """
 
     def decorator(fn: Callable[..., pd.DataFrame]) -> Callable[..., pd.DataFrame]:
-        card_path = CARDS_DIR / f"{factor_id}.yaml"
-        if not card_path.exists():
+        card_path = CARDS_DIR.joinpath(f"{factor_id}.yaml")
+        if not card_path.is_file():
             raise CardError(
                 f"no hypothesis card at {card_path}. Write the card before the "
                 "implementation: its falsification criteria are only meaningful "

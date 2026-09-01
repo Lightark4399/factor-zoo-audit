@@ -689,6 +689,88 @@ exists before there is a result to be pleased about.
 
 ---
 
+## Incident 15 — an ordinary number that described the wrong accounting period
+
+**What happened.** `parse_companyfacts` kept `end`, `filed`, `form` and value but
+discarded SEC's `start` and `frame`. It then de-duplicated on `(cik, tag,
+period_end, filed, form)` with `keep="first"`, on the assumption that contexts
+sharing an end agreed. Duration facts do not obey that assumption: one 10-Q can
+carry a standalone quarter and a year-to-date value with the same end, filing
+date and form. `ep_ratio` and ROE then used whichever row JSON order put first as
+if it were the latest annual earnings.
+
+**Why this is the most serious failure so far.** It has incident 12's dangerous
+shape — a broken quantity continues through rank-based code and produces a
+credible IC — but the fault is semantic rather than scalar. Quarterly income
+divided by market cap still lands comfortably inside `(1e-5, 10)`. The magnitude
+assertion can catch a million-vs-billion unit error; it cannot tell whether an
+ordinary number means one quarter, six months or twelve months.
+
+This is the second known blind spot of `check_plausible_magnitude`, beside a
+share count lagging a split. Its docstring now names both. A range assertion is a
+unit and scale check, never proof that a quantity means what its column says.
+
+**The fix.** Fundamentals now retain `period_start`, `frame`, `fact_type` and
+`duration_days`, and their key distinguishes contexts with different intervals.
+E/P and ROE use a point-in-time TTM constructor. Within a common fiscal-year
+start it differences Q2 YTD from Q1, Q3 YTD from Q2 YTD, and FY from Q3 YTD;
+therefore Q4 is recovered without adding FY to quarters already contained in
+it. A table-driven test uses cumulative 10/25/45/70 and proves the four quarters
+are 10/15/20/25, not 10/25/45/70.
+
+**Constraint added.** Every flow fact must preserve its information interval.
+Tests for financial ratios must partition input by accounting semantics —
+quarter, YTD, FY, TTM and annual-only — not only by numeric magnitude. Missing
+interval metadata is `unknown`; it is never guessed into a quarter.
+
+## Incident 16 — a repaired release shape stayed broken in the sibling repository
+
+**What happened.** The source checkout ran because `Store` reached upward to
+`sql/001_schema.sql` and the registry read YAML cards beside the source. Neither
+resource was included in the wheel. A wheel could build successfully and still
+fail immediately in a clean directory with `schema not found`; loading the
+factor library would then fail on missing cards.
+
+The same release-shape defect had already been found and fixed in
+`backtest-audit`. That fix changed one repository, not the development habit,
+and this sibling was never rechecked.
+
+**The fix.** SQL moved under `src/fza/sql`, SQL and YAML are explicit package
+data, and both are read through `importlib.resources`. CI now builds the actual
+wheel, installs it into a clean virtual environment, instantiates
+`Store(':memory:')`, executes a PIT read, and loads all ten cards.
+
+**Constraint added.** “Fixed once” is not a cross-repository invariant. When an
+incident reveals a reusable failure class — packaging, provenance, non-finite
+input, false scope — every sibling repository gets an explicit audit item. An
+editable install is not release verification because it can borrow files from
+the checkout.
+
+## Incident 17 — the hypothesis card promised a price the implementation never used
+
+**What happened.** Every card declared `next_trading_day_open`, while
+`forward_returns` entered at the next available `close_adj`. The implementation
+did not look ahead, but it measured a different holding period from the one the
+card promised.
+
+**Why the card makes this worse.** The card is the project's evidence that the
+hypothesis and timing contract were written before results. A false card does
+not merely omit documentation; it creates positive evidence for a rule that was
+never run. A card that says something untrue is therefore worse than no card.
+
+**The fix.** The available public sources do not provide a sufficiently reliable
+next-open series for this universe, while adjusted closes are available and are
+the price actually used. All cards now state `next_trading_day_close` and
+`execution_price: adjusted_close`. A registry-wide test makes the timing contract
+agree with the protocol for every factor.
+
+**Constraint added.** A declarative research contract must be tested against the
+executable path. When the available data cannot support the desired contract,
+the contract is narrowed and the limitation is disclosed; the implementation is
+not relabelled after the fact to sound more realistic.
+
+---
+
 ## What the live data changed
 
 The first thirty companies produced facts, not assumptions:

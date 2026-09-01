@@ -66,6 +66,19 @@ CORE_TAGS: tuple[str, ...] = (
     "PaymentsToAcquirePropertyPlantAndEquipment",
 )
 
+# Income-statement and cash-flow concepts describe an interval, not an instant.
+# SEC can publish a quarter and a year-to-date context with the same ``end``;
+# treating them as interchangeable is the semantic failure recorded in incident 15.
+DURATION_TAGS: frozenset[str] = frozenset(
+    {
+        "Revenues",
+        "NetIncomeLoss",
+        "OperatingIncomeLoss",
+        "GrossProfit",
+        "PaymentsToAcquirePropertyPlantAndEquipment",
+    }
+)
+
 # The one tag this project reads from outside us-gaap, and why.
 #
 # Shares outstanding is not a us-gaap concept. It lives on the filing's cover
@@ -449,10 +462,28 @@ def parse_companyfacts(
                 if end is None or val is None:
                     continue
 
+                start = e.get("start")
+                if start is not None:
+                    duration_days = (pd.Timestamp(end) - pd.Timestamp(start)).days
+                    fact_type = "duration"
+                    period_start = start
+                elif out_tag in DURATION_TAGS:
+                    # Do not guess a duration for a flow fact. Keeping the row as
+                    # unknown makes the missing contract visible and prevents TTM
+                    # construction from treating it as a quarter.
+                    duration_days = None
+                    fact_type = "unknown"
+                    period_start = end
+                else:
+                    duration_days = 0
+                    fact_type = "instant"
+                    period_start = end
+
                 rows.append(
                     {
                         "cik": cik,
                         "tag": out_tag,
+                        "period_start": period_start,
                         "period_end": end,
                         "fiscal_year": e.get("fy"),
                         "fiscal_period": e.get("fp"),
@@ -462,6 +493,9 @@ def parse_companyfacts(
                         "form": form,
                         "accession": e.get("accn"),
                         "source_namespace": namespace,
+                        "frame": e.get("frame") or "",
+                        "fact_type": fact_type,
+                        "duration_days": duration_days,
                     }
                 )
                 rep.tag_coverage[out_tag] = rep.tag_coverage.get(out_tag, 0) + 1
@@ -481,18 +515,22 @@ def parse_companyfacts(
     frame = pd.DataFrame(
         rows,
         columns=[
-            "cik", "tag", "period_end", "fiscal_year", "fiscal_period",
-            "filed", "value", "unit", "form", "accession", "source_namespace",
+            "cik", "tag", "period_start", "period_end", "fiscal_year",
+            "fiscal_period", "filed", "value", "unit", "form", "accession",
+            "source_namespace", "frame", "fact_type", "duration_days",
         ],
     )
 
     if not frame.empty:
-        # The same (cik, tag, period, filed, form) can appear more than once when
-        # a filing reports a figure in several contexts. They agree, so the first
-        # is kept -- but the primary key would reject the duplicate, so it is
-        # resolved here where the reason can be stated.
+        # Exact duplicate contexts sometimes appear in the payload. Different
+        # starts or frames are NOT duplicates: a quarter, YTD and FY fact can end
+        # on the same date and carry ordinary but economically different values.
         frame = frame.drop_duplicates(
-            subset=["cik", "tag", "period_end", "filed", "form"], keep="first"
+            subset=[
+                "cik", "tag", "period_start", "period_end", "filed", "form",
+                "accession", "frame",
+            ],
+            keep="first",
         )
 
         # A filing cannot predate the period it reports on, and the schema

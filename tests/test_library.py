@@ -19,6 +19,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+from fza.factors.library import _ttm_value
 from fza.factors.registry import VALID_CATEGORIES, all_factors, load_all, summary_table
 from fza.fixtures import load_fixture_into
 from fza.pipeline.run import compute_factor
@@ -125,6 +126,39 @@ def test_sign_convention_is_documented_for_inverted_factors(factors):
         card = factors[factor_id].card
         text = (card.definition + card.economic_rationale).lower()
         assert "negat" in text or "invert" in text or "long side" in text
+
+
+def test_cards_state_the_close_price_the_protocol_actually_uses(factors):
+    """A hypothesis card is a contract, so a false execution time is worse than none."""
+    for factor_id, factor in factors.items():
+        assert factor.card.timing["earliest_execution"] == "next_trading_day_close", factor_id
+        assert factor.card.timing["execution_price"] == "adjusted_close", factor_id
+
+
+def test_ttm_uses_four_discrete_quarters_without_counting_fy_and_q4_twice():
+    """TTM must turn cumulative SEC contexts into quarters before summing them.
+
+    Q4 is normally FY minus Q3 YTD. Adding FY to Q1/Q2/Q3 would count the first
+    three quarters twice while still yielding a perfectly plausible E/P ratio.
+    """
+    facts = pd.DataFrame(
+        [
+            (2023, "Q1", "2023-01-01", "2023-03-31", 10.0),
+            (2023, "Q2", "2023-01-01", "2023-06-30", 25.0),
+            (2023, "Q3", "2023-01-01", "2023-09-30", 45.0),
+            (2023, "FY", "2023-01-01", "2023-12-31", 70.0),
+            (2024, "Q1", "2024-01-01", "2024-03-31", 12.0),
+            (2024, "Q2", "2024-01-01", "2024-06-30", 30.0),
+        ],
+        columns=["fiscal_year", "fiscal_period", "period_start", "period_end", "value"],
+    )
+    facts["period_start"] = pd.to_datetime(facts["period_start"])
+    facts["period_end"] = pd.to_datetime(facts["period_end"])
+    facts["duration_days"] = (facts["period_end"] - facts["period_start"]).dt.days
+    facts["filed"] = facts["period_end"] + pd.Timedelta(days=45)
+
+    assert _ttm_value(facts.iloc[:4]) == pytest.approx(70.0)
+    assert _ttm_value(facts) == pytest.approx(75.0)
 
 
 # ----------------------------------------------------------------------

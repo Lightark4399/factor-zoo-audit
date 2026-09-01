@@ -7,6 +7,8 @@ regardless of which factor asked, and a comparison must vary exactly one thing.
 
 from __future__ import annotations
 
+import dataclasses
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -151,6 +153,32 @@ def test_quantiles_and_long_short_are_consistent(store, factors):
     assert set(q["quantile"]) == {0, 1, 2, 3, 4}
 
 
+def test_protocol_reports_the_distribution_of_quantile_breadth():
+    """An average must not hide a month whose quantile portfolios nearly vanish."""
+    rows = []
+    for date, n_names in [("2024-01-31", 20), ("2024-02-29", 25), ("2024-03-31", 30)]:
+        for i in range(n_names):
+            rows.append(
+                {
+                    "ticker": f"T{i:03d}",
+                    "signal_date": pd.Timestamp(date),
+                    "prediction": float(i),
+                    "label": float(i) / 100.0,
+                }
+            )
+    panel = pd.DataFrame(rows)
+
+    summary = run_protocol("breadth", panel).summary
+
+    assert summary["names_per_quantile_avg"] == pytest.approx(5.0)
+    assert summary["names_per_quantile_min"] == 4
+    assert summary["names_per_quantile_p10"] >= 4
+    assert summary["names_per_quantile_median"] == 5
+    assert summary["names_per_quantile_p90"] <= 6
+    assert summary["names_per_quantile_max"] == 6
+    assert summary["n_dates_dropped_insufficient_cross_section"] == 0
+
+
 def test_perfect_signal_is_monotone_and_has_ic_one():
     """A factor equal to the forward return must score at the ceiling."""
     dates = pd.date_range("2020-01-31", periods=12, freq="ME")
@@ -241,6 +269,99 @@ def test_leaking_path_relaxes_only_the_filing_constraint(store, factors):
     c = compare_vintages(factors["bm_ratio"], store, SIGNAL_DATES)
     # Both arms see the same number of observations; only the values differ.
     assert c.pit.n_observations == c.restated.n_observations
+
+
+def test_ttm_leaking_path_changes_only_filing_visibility(factors):
+    """TTM must receive the same contexts on both vintage arms.
+
+    A row-count assertion cannot detect a start/end context being silently
+    replaced by another row.  Use a date after the original FY filing but before
+    its amendment so both arms must expose the same context keys; the restated
+    arm may differ only by selecting the future-filed version of that FY context.
+    """
+    audited = Store()
+    info = load_fixture_into(audited)
+    cik = info["restated_cik"]
+    original = audited.con.execute(
+        """
+        SELECT * FROM fundamentals
+        WHERE cik = ? AND tag = 'NetIncomeLoss'
+          AND period_start = DATE '2018-01-01'
+          AND period_end = DATE '2018-12-31'
+        """,
+        [cik],
+    ).df()
+    assert len(original) == 1
+
+    amendment = original.copy()
+    amendment["filed"] = pd.Timestamp("2019-08-13")
+    amendment["value"] = amendment["value"] * 0.5
+    amendment["form"] = "10-K/A"
+    amendment["accession"] = f"{cik}-2018-12-31-amended-income"
+    audited.load_fundamentals(amendment)
+
+    audit_signal = pd.Timestamp("2019-02-28")
+    audit_asof = audit_signal - pd.Timedelta(days=2)
+    seen: list[pd.DataFrame] = []
+    ep_ratio = factors["ep_ratio"]
+
+    def recording_compute(store, signal_dates):
+        seen.append(
+            store.fundamentals_history_asof(
+                audit_asof,
+                tags=["NetIncomeLoss"],
+                intended_signal_date=audit_signal,
+            ).copy()
+        )
+        return ep_ratio.compute(store, signal_dates)
+
+    instrumented = dataclasses.replace(ep_ratio, compute=recording_compute)
+    signal_dates = pd.DatetimeIndex(
+        pd.date_range("2019-02-28", "2019-07-31", freq="ME")
+    )
+    try:
+        compare_vintages(instrumented, audited, signal_dates)
+    finally:
+        audited.close()
+
+    assert len(seen) == 2
+    pit, restated = seen
+    context = ["cik", "tag", "period_start", "period_end", "fact_type"]
+    pit = pit.sort_values(context).set_index(context)
+    restated = restated.sort_values(context).set_index(context)
+
+    assert pit.index.equals(restated.index)
+    assert (
+        pd.to_datetime(pit.index.get_level_values("period_end")) <= audit_asof
+    ).all()
+    assert (
+        pd.to_datetime(restated.index.get_level_values("period_end")) <= audit_asof
+    ).all()
+    assert (pd.to_datetime(pit["filed"]) <= audit_asof).all()
+
+    changed = pit.index[
+        pd.to_datetime(pit["filed"]).to_numpy()
+        != pd.to_datetime(restated["filed"]).to_numpy()
+    ].tolist()
+    expected = (
+        cik,
+        "NetIncomeLoss",
+        pd.Timestamp("2018-01-01"),
+        pd.Timestamp("2018-12-31"),
+        "duration",
+    )
+    assert changed == [expected]
+    assert pd.Timestamp(restated.loc[expected, "filed"]) > audit_asof
+
+    stable = [
+        "fiscal_year",
+        "fiscal_period",
+        "unit",
+        "source_namespace",
+        "frame",
+        "duration_days",
+    ]
+    pd.testing.assert_frame_equal(pit[stable], restated[stable])
 
 
 def test_restatements_without_predictive_content_produce_no_gap(store, factors):

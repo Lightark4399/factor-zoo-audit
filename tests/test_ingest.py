@@ -470,6 +470,58 @@ def test_the_adopted_dei_tag_is_not_counted_as_an_exclusion():
     assert len(df[df["tag"] == "CommonStockSharesOutstanding"]) == 2
 
 
+def test_duration_contexts_with_the_same_end_are_not_collapsed():
+    """Quarter, YTD and annual facts can share an end date and mean different things.
+
+    The old key ignored ``start`` and ``frame``, then kept the first context. That
+    turns arbitrary JSON order into an accounting convention. A magnitude check
+    cannot catch the error because both values are physically ordinary.
+    """
+    payload = {
+        "cik": 1,
+        "facts": {
+            "us-gaap": {
+                "NetIncomeLoss": {
+                    "units": {
+                        "USD": [
+                            {
+                                "start": "2024-01-01",
+                                "end": "2024-06-30",
+                                "val": 25.0,
+                                "filed": "2024-08-01",
+                                "form": "10-Q",
+                                "accn": "0001-24-000002",
+                                "fy": 2024,
+                                "fp": "Q2",
+                                "frame": "CY2024Q2YTD",
+                            },
+                            {
+                                "start": "2024-04-01",
+                                "end": "2024-06-30",
+                                "val": 15.0,
+                                "filed": "2024-08-01",
+                                "form": "10-Q",
+                                "accn": "0001-24-000002",
+                                "fy": 2024,
+                                "fp": "Q2",
+                                "frame": "CY2024Q2",
+                            },
+                        ]
+                    }
+                }
+            }
+        },
+    }
+
+    got = parse_companyfacts(payload, tags=("NetIncomeLoss",))
+
+    assert len(got) == 2
+    assert set(got["period_start"].astype(str)) == {"2024-01-01", "2024-04-01"}
+    assert set(got["frame"]) == {"CY2024Q2YTD", "CY2024Q2"}
+    assert set(got["duration_days"]) == {90, 181}
+    assert set(got["fact_type"]) == {"duration"}
+
+
 # ----------------------------------------------------------------------
 # Unadjusted prices are reconstructed from the split history
 # ----------------------------------------------------------------------

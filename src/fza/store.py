@@ -25,7 +25,7 @@ in CI rather than in review.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
+from importlib.resources import files
 
 import pandas as pd
 
@@ -34,7 +34,7 @@ try:
 except ImportError as exc:  # pragma: no cover
     raise ImportError("duckdb is required: pip install duckdb") from exc
 
-SCHEMA_PATH = Path(__file__).resolve().parents[2] / "sql" / "001_schema.sql"
+SCHEMA_RESOURCE = files("fza").joinpath("sql", "001_schema.sql")
 
 
 class LookaheadError(AssertionError):
@@ -123,9 +123,55 @@ class Store:
         self.access = AccessLog()
 
     def _apply_schema(self) -> None:
-        if not SCHEMA_PATH.exists():
-            raise FileNotFoundError(f"schema not found at {SCHEMA_PATH}")
-        self.con.execute(SCHEMA_PATH.read_text(encoding="utf-8"))
+        if not SCHEMA_RESOURCE.is_file():
+            raise FileNotFoundError("packaged schema fza/sql/001_schema.sql is missing")
+        schema = SCHEMA_RESOURCE.read_text(encoding="utf-8")
+        migrated = self._prepare_legacy_fundamentals_migration()
+        self.con.execute(schema)
+        if migrated:
+            # Old rows did not retain ``start``. Preserve them for instant-value
+            # factors, but mark their interval semantics unknown so TTM cannot
+            # silently invent quarters. A fresh SEC ingest upgrades those rows.
+            self.con.execute(
+                """
+                INSERT INTO fundamentals
+                SELECT cik, tag, period_end, period_end, fiscal_year, fiscal_period,
+                       filed, value, unit, COALESCE(form, 'unknown'),
+                       COALESCE(accession, 'legacy-unknown'),
+                       COALESCE(source_namespace, 'us-gaap'), '', 'unknown', NULL
+                FROM fundamentals_legacy
+                """
+            )
+            self.con.execute("DROP TABLE fundamentals_legacy")
+
+    def _prepare_legacy_fundamentals_migration(self) -> bool:
+        """Move the pre-duration table aside so the schema can rebuild it safely."""
+        exists = self.con.execute(
+            """
+            SELECT count(*)
+            FROM information_schema.tables
+            WHERE table_schema = 'main' AND table_name = 'fundamentals'
+            """
+        ).fetchone()[0]
+        if not exists:
+            return False
+        columns = {
+            row[1] for row in self.con.execute("PRAGMA table_info('fundamentals')").fetchall()
+        }
+        if "period_start" in columns:
+            return False
+
+        for statement in (
+            "DROP VIEW IF EXISTS restatements",
+            "DROP VIEW IF EXISTS fundamentals_restated",
+            "DROP MACRO IF EXISTS latest_fundamental_asof",
+            "DROP MACRO IF EXISTS fundamentals_asof",
+            "DROP INDEX IF EXISTS fundamentals_pit_idx",
+            "DROP INDEX IF EXISTS fundamentals_filed_idx",
+        ):
+            self.con.execute(statement)
+        self.con.execute("ALTER TABLE fundamentals RENAME TO fundamentals_legacy")
+        return True
 
     # ------------------------------------------------------------------
     # Loading
@@ -163,15 +209,21 @@ class Store:
         would bury an ingestion bug.
         """
         cols = [
-            "cik", "tag", "period_end", "fiscal_year", "fiscal_period",
-            "filed", "value", "unit", "form", "accession", "source_namespace",
+            "cik", "tag", "period_start", "period_end", "fiscal_year",
+            "fiscal_period", "filed", "value", "unit", "form", "accession",
+            "source_namespace", "frame", "fact_type", "duration_days",
         ]
         df = frame.reindex(columns=cols).copy()
         df["cik"] = df["cik"].astype(str).str.zfill(10)
         # A frame built before this column existed still loads, as us-gaap --
         # which is what every such row was.
         df["source_namespace"] = df["source_namespace"].fillna("us-gaap")
-        for c in ("period_end", "filed"):
+        df["period_start"] = df["period_start"].fillna(df["period_end"])
+        df["frame"] = df["frame"].fillna("")
+        df["form"] = df["form"].fillna("unknown")
+        df["accession"] = df["accession"].fillna("unknown")
+        df["fact_type"] = df["fact_type"].fillna("unknown")
+        for c in ("period_start", "period_end", "filed"):
             df[c] = pd.to_datetime(df[c]).dt.date
         return self._insert("fundamentals", df)
 
@@ -220,6 +272,35 @@ class Store:
         # Log what was actually returned, not what was asked for. The WHERE
         # clause states the intention; this records the outcome, and the two can
         # only be compared if both exist.
+        max_filed = (
+            pd.to_datetime(out["filed"]).max() if len(out) and "filed" in out else None
+        )
+        self.access.reads.append(
+            ReadRecord(
+                requested_asof=ts,
+                intended_signal_date=intended,
+                max_filed=None if pd.isna(max_filed) else max_filed,
+                n_rows=len(out),
+                tags=tuple(tags or ()),
+            )
+        )
+        return out
+
+    def fundamentals_history_asof(
+        self,
+        signal_date,
+        tags: list[str] | None = None,
+        intended_signal_date=None,
+    ) -> pd.DataFrame:
+        """Every visible accounting context, preserving start/end semantics."""
+        self.access.pit_reads += 1
+        ts = pd.Timestamp(signal_date)
+        intended = ts if intended_signal_date is None else pd.Timestamp(intended_signal_date)
+        sql = f"SELECT * FROM fundamentals_asof(DATE '{ts.date().isoformat()}')"
+        if tags:
+            placeholders = ", ".join(f"'{t}'" for t in tags)
+            sql += f" WHERE tag IN ({placeholders})"
+        out = self.con.execute(sql).df()
         max_filed = (
             pd.to_datetime(out["filed"]).max() if len(out) and "filed" in out else None
         )
