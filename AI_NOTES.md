@@ -395,6 +395,17 @@ a credible capital structure; the upper bound still catches the 5,752 and
 418,300 values caused by broken share-count denominators. A plausible interval
 does not have to be symmetric when the economics are not.
 
+**The fourth known blind spot is the tolerance itself.** Re-evaluating the
+20,531-row diagnostic panel under the corrected range leaves 69 values above
+100: SYK 45, BRK-B 14, CRM 4, AAPL 3 and CSX 3. They are real share-count data
+faults -- scale conflicts for SYK, CRM, AAPL and CSX, and the stale multi-class
+denominator from incident 13 for BRK-B. Seven additional values fall below
+1e-4, so the check reports 76 / 20,531 = 0.3702% outside the range and passes
+under its 1% tolerance. Passing therefore does not mean the data is clean. It
+means only that the measured error rate is below the declared stopping
+threshold; the outlier count remains part of the result and must not be read as
+zero merely because the run continues.
+
 ### Still open (1): share counts carried forward for a decade
 
 *(Mitigated in incident 13 by a staleness bound. The account below is what
