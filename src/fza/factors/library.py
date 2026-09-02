@@ -452,14 +452,16 @@ def _ratio_to_market_cap(
     return out.replace([np.inf, -np.inf], np.nan).dropna(subset=["value"])
 
 
-# A firm at a hundred times its book, or at a hundredth of it, is already
-# extraordinary; past that the number is not a book-to-market. Incident 12
-# produced 5752 here.
+# This range is deliberately asymmetric because its tails fail differently.
+# Buybacks can leave a real, positive book value arbitrarily close to zero, so
+# low B/M remains economically possible down to 1e-4. A B/M above 100 has no
+# corresponding ordinary capital-structure path; incident 12 produced 5752
+# from a broken share-count denominator.
 @register(
     "bm_ratio",
     tags=("StockholdersEquity",),
     filing_lag_days=2,
-    plausible_range=(0.01, 100.0),
+    plausible_range=(1e-4, 100.0),
 )
 def book_to_market(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
     """Filed common equity over market capitalisation.

@@ -144,12 +144,15 @@ def check_plausible_magnitude(
     is a unit/scale check, not a semantic-period check. It also misses anything
     affecting fewer rows than ``max_share``.
 
-    And a range set too wide fails silently in the direction that matters: it
-    never fires, and its presence in the table says the factor is guarded. That
-    is the same shape as incident 9, where the check's name and its behaviour
-    had come apart. Bounds are therefore written as the widest values the
-    quantity could take and still mean what its name says, not fitted to what
-    the data happens to show.
+    A range set too wide fails silently: it never fires, and its presence in the
+    table says the factor is guarded. A range set too tight fails loudly on valid
+    economic extremes. Repeated false alarms teach the operator to ignore the
+    check, so the practical result is the same. That is the same shape as
+    incident 9, where the check's name and its behaviour had come apart. Bounds
+    are therefore written as the widest values the quantity could take and still
+    mean what its name says, not fitted to what the data happens to show. They
+    need not be symmetric: opposite tails can represent different economic and
+    data failure modes.
     """
     if factor.plausible_range is None:
         return {

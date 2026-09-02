@@ -204,7 +204,7 @@ def test_an_undeclared_range_is_printed_as_undefined_not_as_a_pass(capsys):
 
     assert "plausible range" in registered
     assert "undefined" in registered  # the six that have none
-    assert "0.01 .. 100" in registered  # bm_ratio, which has one
+    assert "0.0001 .. 100" in registered  # bm_ratio, deliberately asymmetric
     assert "NOT that the factor passed" in out
 
 

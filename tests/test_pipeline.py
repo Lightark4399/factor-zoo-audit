@@ -411,7 +411,7 @@ def test_the_market_cap_of_incident_12_is_caught(store):
 
     message = str(exc.value)
     assert "bm_ratio" in message
-    assert "0.01" in message and "100" in message
+    assert "0.0001" in message and "100" in message
     # It must point at the data rather than at the factor, which is the mistake
     # the error in incident 11 made.
     assert "data problem" in message
@@ -444,7 +444,7 @@ def test_a_declared_range_reports_its_pass_rate(store):
     result = check_plausible_magnitude(factor, factor.compute(store, SIGNAL_DATES))
 
     assert result["checked"] is True
-    assert result["range"] == (0.01, 100.0)
+    assert result["range"] == (1e-4, 100.0)
     assert result["n_values"] > 0
     assert result["share_outside"] == 0.0
 
@@ -466,3 +466,34 @@ def test_a_few_out_of_range_values_are_tolerated_but_counted(store):
 
     with pytest.raises(ImplausibleMagnitudeError):
         check_plausible_magnitude(factor, raw, max_share=0.001)
+
+
+def test_bm_magnitude_range_is_deliberately_asymmetric():
+    """A real near-zero book value passes; a collapsed positive one does not.
+
+    Buybacks can drive book equity close to zero without corrupting either side
+    of the ratio. The upper tail has no equivalent ordinary path, so the range
+    must encode two different failure modes rather than mirror one threshold.
+    """
+    factor = load_all()["bm_ratio"]
+    raw_rows = {
+        "ticker": ["LOW", "MID"],
+        "signal_date": pd.to_datetime(["2025-01-31", "2025-01-31"]),
+    }
+    plausible_buyback_tail = pd.DataFrame(
+        {**raw_rows, "value": [0.005, 1.0]}
+    )
+
+    result = check_plausible_magnitude(
+        factor, plausible_buyback_tail, max_share=0.0
+    )
+    assert result["range"] == (1e-4, 100.0)
+    assert result["n_outside"] == 0
+
+    collapsed_positive_book = pd.DataFrame(
+        {**raw_rows, "value": [9e-5, 1.0]}
+    )
+    with pytest.raises(ImplausibleMagnitudeError):
+        check_plausible_magnitude(
+            factor, collapsed_positive_book, max_share=0.0
+        )

@@ -348,7 +348,7 @@ checked that the column it named held what it claimed.
   makes it dangerous. The four factors that were wrong all looked reasonable; the
   one number that did not look reasonable was never printed by the demo.
 * **Every factor needs a plausible-magnitude assertion.** Book-to-market between
-  0.01 and 100, market cap between 1e6 and 1e13, returns between -1 and 10. A
+  1e-4 and 100, market cap between 1e6 and 1e13, returns between -1 and 10. A
   value outside physical range must raise, not yield a credible-looking IC. An
   out-of-range value is the only signal that survives a broken input, because
   every downstream statistic is rank-based or standardised and will happily
@@ -377,6 +377,23 @@ Its coverage, stated so nobody has to infer it:
   the check refuses it.
 * **Not caught:** a value that is wrong but physically ordinary, and any fault
   affecting fewer rows than the tolerance. Both live cases are below.
+
+**The opposite calibration failure is over-alarming.** The first B/M bound used
+0.01 at the low end. On the heterogeneous 200-name run, 213 of 20,519 otherwise
+usable rows fell below it even after the catastrophic share-count rows were
+removed. HD, SPGI and BA supplied 47.9% of them. These were not a cluster of bad
+growth-stock denominators: long-running repurchases had driven positive book
+equity close to zero, and Boeing also passed through negative-equity years. A
+bound set too tight does the opposite of a bound set too wide -- it raises on
+valid data rather than accepting invalid data -- but repeated false alarms have
+the same operational result: the user learns to ignore the check.
+
+The B/M range is therefore deliberately asymmetric at **1e-4 to 100**. Its two
+tails encode different failure modes. Negative equity is excluded by the factor
+definition, and the low bound only rejects a positive numerator collapsed past
+a credible capital structure; the upper bound still catches the 5,752 and
+418,300 values caused by broken share-count denominators. A plausible interval
+does not have to be symmetric when the economics are not.
 
 ### Still open (1): share counts carried forward for a decade
 
