@@ -21,7 +21,12 @@ definition: >
   capitalisation at the signal date. Equity is read through the point-in-time
   view, so only filings published before the signal date are visible. Negative
   book values are excluded rather than winsorised, since the ratio has no
-  economic meaning there.
+  economic meaning there. The raw-value plausibility range is deliberately
+  asymmetric at 1e-4 to 100 because its tails have different failure modes:
+  buybacks can leave a real, positive book value close to zero, whereas a value
+  above 100 indicates a broken numerator or market-cap denominator. Negative
+  equity is removed by construction; the lower bound guards positive numerators
+  that have collapsed beyond a credible capital structure.
 
 timing:
   signal_computed: month_end_close
