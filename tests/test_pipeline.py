@@ -39,7 +39,9 @@ from fza.pipeline.run import (
 )
 from fza.store import Store
 
-SIGNAL_DATES = pd.DatetimeIndex(pd.date_range("2019-01-31", "2021-06-30", freq="ME"))
+SIGNAL_DATES = pd.DatetimeIndex(
+    pd.date_range("2019-01-31", "2021-06-30", freq=pd.offsets.MonthEnd())
+)
 
 
 @pytest.fixture(scope="module")
@@ -443,7 +445,7 @@ def test_protocol_reports_the_distribution_of_quantile_breadth():
 
 def test_perfect_signal_is_monotone_and_has_ic_one():
     """A factor equal to the forward return must score at the ceiling."""
-    dates = pd.date_range("2020-01-31", periods=12, freq="ME")
+    dates = pd.date_range("2020-01-31", periods=12, freq=pd.offsets.MonthEnd())
     rows = []
     rng = np.random.default_rng(0)
     for d in dates:
@@ -459,7 +461,7 @@ def test_perfect_signal_is_monotone_and_has_ic_one():
 
 
 def test_independent_signal_has_ic_near_zero():
-    dates = pd.date_range("2020-01-31", periods=24, freq="ME")
+    dates = pd.date_range("2020-01-31", periods=24, freq=pd.offsets.MonthEnd())
     rng = np.random.default_rng(1)
     rows = []
     for d in dates:
@@ -601,7 +603,7 @@ def test_ttm_leaking_path_changes_only_filing_visibility(factors):
 
     instrumented = dataclasses.replace(ep_ratio, compute=recording_compute)
     signal_dates = pd.DatetimeIndex(
-        pd.date_range("2019-02-28", "2019-07-31", freq="ME")
+        pd.date_range("2019-02-28", "2019-07-31", freq=pd.offsets.MonthEnd())
     )
     try:
         compare_vintages(instrumented, audited, signal_dates)

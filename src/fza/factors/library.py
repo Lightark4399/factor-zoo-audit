@@ -141,15 +141,16 @@ def _derived_at_signal_dates(
 
 def _long(frame: pd.DataFrame, name: str = "value") -> pd.DataFrame:
     """Wide panel back to the long factor-value contract."""
+    index_name = frame.index.name or "index"
     out = (
-        frame.stack(future_stack=True)
-        .rename(name)
+        frame.rename_axis(index=index_name, columns="ticker")
         .reset_index()
-        .rename(columns={frame.index.name or "index": "signal_date", "level_0": "signal_date"})
+        .melt(id_vars=index_name, var_name="ticker", value_name=name)
+        .rename(columns={index_name: "signal_date"})
         .dropna(subset=[name])
+        .sort_values(["signal_date", "ticker"])
+        .reset_index(drop=True)
     )
-    if "signal_date" not in out.columns:
-        out = out.rename(columns={out.columns[0]: "signal_date"})
     return out[["ticker", "signal_date", name]]
 
 
@@ -477,8 +478,7 @@ def _ratio_to_market_cap(
     caps = _market_cap(store, signal_dates)
     if caps.empty:
         return pd.DataFrame(columns=["ticker", "signal_date", "value"])
-    cap_long = caps.stack(future_stack=True).rename("mktcap").reset_index()
-    cap_long.columns = ["signal_date", "ticker", "mktcap"]
+    cap_long = _long(caps, "mktcap")
 
     merged = panel.merge(cap_long, on=["ticker", "signal_date"], how="inner")
     if drop_non_positive:
@@ -528,8 +528,7 @@ def earnings_to_price(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFr
     caps = _market_cap(store, signal_dates)
     if caps.empty:
         return pd.DataFrame(columns=["ticker", "signal_date", "value"])
-    cap_long = caps.stack(future_stack=True).rename("mktcap").reset_index()
-    cap_long.columns = ["signal_date", "ticker", "mktcap"]
+    cap_long = _long(caps, "mktcap")
     merged = income.rename(columns={"value": "income"}).merge(
         cap_long, on=["ticker", "signal_date"], how="inner"
     )

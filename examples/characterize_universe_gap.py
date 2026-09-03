@@ -23,7 +23,7 @@ from fza.pipeline.run import check_plausible_magnitude
 from fza.store import Store
 
 SIGNAL_DATES = pd.DatetimeIndex(
-    pd.date_range("2019-01-31", "2021-06-30", freq="ME")
+    pd.date_range("2019-01-31", "2021-06-30", freq=pd.offsets.MonthEnd())
 )
 DELISTED_TICKER = "TST07"
 

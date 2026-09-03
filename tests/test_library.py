@@ -19,13 +19,15 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from fza.factors.library import _ttm_value, idiosyncratic_volatility
+from fza.factors.library import _long, _ttm_value, idiosyncratic_volatility
 from fza.factors.registry import VALID_CATEGORIES, all_factors, load_all, summary_table
 from fza.fixtures import load_fixture_into
 from fza.pipeline.run import compute_factor
 from fza.store import Store
 
-SIGNAL_DATES = pd.DatetimeIndex(pd.date_range("2019-06-30", "2021-12-31", freq="ME"))
+SIGNAL_DATES = pd.DatetimeIndex(
+    pd.date_range("2019-06-30", "2021-12-31", freq=pd.offsets.MonthEnd())
+)
 
 
 @pytest.fixture(scope="module")
@@ -44,6 +46,22 @@ def factors():
 def _factor_ids():
     load_all()
     return sorted(all_factors())
+
+
+def test_wide_to_long_is_stable_across_supported_pandas_versions():
+    dates = pd.DatetimeIndex(["2020-01-31", "2020-02-29"])
+    wide = pd.DataFrame(
+        {"BBB": [2.0, float("nan")], "AAA": [1.0, 3.0]},
+        index=dates,
+    )
+
+    got = _long(wide, "measurement")
+
+    assert got.to_dict(orient="records") == [
+        {"ticker": "AAA", "signal_date": pd.Timestamp("2020-01-31"), "measurement": 1.0},
+        {"ticker": "BBB", "signal_date": pd.Timestamp("2020-01-31"), "measurement": 2.0},
+        {"ticker": "AAA", "signal_date": pd.Timestamp("2020-02-29"), "measurement": 3.0},
+    ]
 
 
 # ----------------------------------------------------------------------

@@ -100,7 +100,9 @@ def build_fixture(spec: FixtureSpec | None = None) -> dict[str, pd.DataFrame]:
     # ---- fundamentals, with the restatement -------------------------
     fundamentals = []
     for i, cik in enumerate(ciks):
-        for period_end in pd.date_range(spec.start, spec.end, freq="QE"):
+        for period_end in pd.date_range(
+            spec.start, spec.end, freq=pd.offsets.QuarterEnd()
+        ):
             # A filing appears roughly 45 days after the period ends, which is
             # the pattern that makes point-in-time matter: for six weeks after a
             # quarter closes, the market does not yet know its numbers.
