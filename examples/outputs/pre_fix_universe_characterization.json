@@ -1,0 +1,139 @@
+{
+  "assertion_status": "NOT_AN_ASSERTION",
+  "environment": {
+    "numpy": "2.5.2",
+    "pandas": "3.0.5",
+    "python": "3.12.13"
+  },
+  "evidence_status": "DIAGNOSTIC_ONLY",
+  "fixture": {
+    "declared_exit_date": "2020-05-27",
+    "delisted_ticker": "TST07",
+    "signal_date_end": "2021-06-30",
+    "signal_date_start": "2019-01-31"
+  },
+  "matrix": [
+    {
+      "cleaned_rows_after_exit": 14,
+      "factor_id": "asset_growth",
+      "labelled_rows_after_exit": 0,
+      "magnitude_checked": true,
+      "magnitude_values_seen": 1200,
+      "max_abs_surviving_zscore_shift": 0.027121378178275757,
+      "raw_exact_zero_after_exit": 0,
+      "raw_rows_after_exit": 14,
+      "rows_dropped_at_label_join": 14,
+      "surviving_rows_with_changed_zscore": 546
+    },
+    {
+      "cleaned_rows_after_exit": 1,
+      "factor_id": "bm_ratio",
+      "labelled_rows_after_exit": 0,
+      "magnitude_checked": true,
+      "magnitude_values_seen": 1187,
+      "max_abs_surviving_zscore_shift": 0.02646694209864231,
+      "raw_exact_zero_after_exit": 0,
+      "raw_rows_after_exit": 1,
+      "rows_dropped_at_label_join": 1,
+      "surviving_rows_with_changed_zscore": 39
+    },
+    {
+      "cleaned_rows_after_exit": 1,
+      "factor_id": "ep_ratio",
+      "labelled_rows_after_exit": 0,
+      "magnitude_checked": true,
+      "magnitude_values_seen": 1147,
+      "max_abs_surviving_zscore_shift": 0.02520537982245341,
+      "raw_exact_zero_after_exit": 0,
+      "raw_rows_after_exit": 1,
+      "rows_dropped_at_label_join": 1,
+      "surviving_rows_with_changed_zscore": 39
+    },
+    {
+      "cleaned_rows_after_exit": 14,
+      "factor_id": "idio_vol",
+      "labelled_rows_after_exit": 0,
+      "magnitude_checked": false,
+      "magnitude_values_seen": 1200,
+      "max_abs_surviving_zscore_shift": 0.03668820129346617,
+      "raw_exact_zero_after_exit": 0,
+      "raw_rows_after_exit": 14,
+      "rows_dropped_at_label_join": 14,
+      "surviving_rows_with_changed_zscore": 546
+    },
+    {
+      "cleaned_rows_after_exit": 1,
+      "factor_id": "log_mktcap",
+      "labelled_rows_after_exit": 0,
+      "magnitude_checked": false,
+      "magnitude_values_seen": 1187,
+      "max_abs_surviving_zscore_shift": 0.022412465760848432,
+      "raw_exact_zero_after_exit": 0,
+      "raw_rows_after_exit": 1,
+      "rows_dropped_at_label_join": 1,
+      "surviving_rows_with_changed_zscore": 39
+    },
+    {
+      "cleaned_rows_after_exit": 14,
+      "factor_id": "mom_12_1",
+      "labelled_rows_after_exit": 0,
+      "magnitude_checked": false,
+      "magnitude_values_seen": 680,
+      "max_abs_surviving_zscore_shift": 0.04509747710983447,
+      "raw_exact_zero_after_exit": 1,
+      "raw_rows_after_exit": 14,
+      "rows_dropped_at_label_join": 14,
+      "surviving_rows_with_changed_zscore": 546
+    },
+    {
+      "cleaned_rows_after_exit": 14,
+      "factor_id": "mom_6_1",
+      "labelled_rows_after_exit": 0,
+      "magnitude_checked": false,
+      "magnitude_values_seen": 920,
+      "max_abs_surviving_zscore_shift": 0.06984741798774796,
+      "raw_exact_zero_after_exit": 7,
+      "raw_rows_after_exit": 14,
+      "rows_dropped_at_label_join": 14,
+      "surviving_rows_with_changed_zscore": 546
+    },
+    {
+      "cleaned_rows_after_exit": 14,
+      "factor_id": "rev_1m",
+      "labelled_rows_after_exit": 0,
+      "magnitude_checked": false,
+      "magnitude_values_seen": 1160,
+      "max_abs_surviving_zscore_shift": 0.03409512218992505,
+      "raw_exact_zero_after_exit": 13,
+      "raw_rows_after_exit": 14,
+      "rows_dropped_at_label_join": 14,
+      "surviving_rows_with_changed_zscore": 546
+    },
+    {
+      "cleaned_rows_after_exit": 14,
+      "factor_id": "roe",
+      "labelled_rows_after_exit": 0,
+      "magnitude_checked": true,
+      "magnitude_values_seen": 1160,
+      "max_abs_surviving_zscore_shift": 0.018019129167872627,
+      "raw_exact_zero_after_exit": 0,
+      "raw_rows_after_exit": 14,
+      "rows_dropped_at_label_join": 14,
+      "surviving_rows_with_changed_zscore": 448
+    },
+    {
+      "cleaned_rows_after_exit": 1,
+      "factor_id": "turnover",
+      "labelled_rows_after_exit": 0,
+      "magnitude_checked": false,
+      "magnitude_values_seen": 1187,
+      "max_abs_surviving_zscore_shift": 0.03939626844850608,
+      "raw_exact_zero_after_exit": 0,
+      "raw_rows_after_exit": 1,
+      "rows_dropped_at_label_join": 1,
+      "surviving_rows_with_changed_zscore": 39
+    }
+  ],
+  "purpose": "Characterise the unwired historical-universe gate before the target invariant is implemented. Numeric rows must not become regression expectations.",
+  "status": "PRE_FIX"
+}
