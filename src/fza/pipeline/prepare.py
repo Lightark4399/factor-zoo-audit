@@ -225,15 +225,20 @@ def prepare_cross_sections(
 def _forward_return_candidates(
     prices: pd.DataFrame,
     signal_dates: pd.DatetimeIndex,
-    horizon_days: int = 21,
-    execution_lag: int = 1,
-) -> tuple[pd.DataFrame, set[pd.Timestamp]]:
+    horizon_sessions: int = 21,
+    execution_lag_sessions: int = 1,
+) -> tuple[pd.DataFrame, set[pd.Timestamp], set[pd.Timestamp]]:
     """Return every price-history candidate and its label outcome.
 
     Unlike the public ``forward_returns``, this retains rows with missing entry
     or exit prices so the label join can count why a cleaned factor row was
-    dropped. Numerical timing is deliberately unchanged here.
+    dropped.
     """
+    if horizon_sessions < 1:
+        raise ValueError("horizon_sessions must be at least 1")
+    if execution_lag_sessions < 0:
+        raise ValueError("execution_lag_sessions cannot be negative")
+
     px = prices.copy()
     px["trade_date"] = pd.to_datetime(px["trade_date"])
     wide = px.pivot_table(
@@ -241,13 +246,22 @@ def _forward_return_candidates(
     ).sort_index()
 
     rows = []
+    dates_without_formation: set[pd.Timestamp] = set()
     dates_without_horizon: set[pd.Timestamp] = set()
     all_dates = wide.index
     for date in signal_dates:
         signal_date = pd.Timestamp(date)
-        pos = all_dates.searchsorted(signal_date)
-        entry_idx = pos + execution_lag
-        exit_idx = entry_idx + horizon_days
+        # A calendar month-end may be a weekend or exchange holiday. Formation
+        # is the last market session on or before that research date; lag zero
+        # means its close and lag one means the next market session. Using the
+        # first session on or after the date made lag one mean two sessions on a
+        # non-trading month-end.
+        formation_idx = all_dates.searchsorted(signal_date, side="right") - 1
+        if formation_idx < 0:
+            dates_without_formation.add(signal_date)
+            continue
+        entry_idx = formation_idx + execution_lag_sessions
+        exit_idx = entry_idx + horizon_sessions
         if exit_idx >= len(all_dates):
             dates_without_horizon.add(signal_date)
             continue
@@ -270,6 +284,7 @@ def _forward_return_candidates(
                     "ticker": ret.index,
                     "signal_date": signal_date,
                     "forward_return": ret.where(finite).to_numpy(),
+                    "formation_session": all_dates[formation_idx],
                     "entry_date": all_dates[entry_idx],
                     "exit_date": all_dates[exit_idx],
                     "label_outcome": outcome.to_numpy(),
@@ -281,46 +296,59 @@ def _forward_return_candidates(
         "ticker": pd.Series(dtype="object"),
         "signal_date": pd.Series(dtype="datetime64[ns]"),
         "forward_return": pd.Series(dtype="float64"),
+        "formation_session": pd.Series(dtype="datetime64[ns]"),
         "entry_date": pd.Series(dtype="datetime64[ns]"),
         "exit_date": pd.Series(dtype="datetime64[ns]"),
         "label_outcome": pd.Series(dtype="object"),
     }
     candidates = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(columns)
-    return candidates, dates_without_horizon
+    return candidates, dates_without_formation, dates_without_horizon
 
 
 def forward_returns(
     prices: pd.DataFrame,
     signal_dates: pd.DatetimeIndex,
-    horizon_days: int = 21,
-    execution_lag: int = 1,
+    horizon_sessions: int = 21,
+    execution_lag_sessions: int = 1,
 ) -> pd.DataFrame:
     """Return realised over the holding period, starting after the execution lag.
 
-    ``execution_lag=1`` is the honest default: a signal formed at a close cannot
-    trade at that close, so the position opens at the next available price. The
-    lag is a parameter so the execution-timing audit can vary it and measure what
-    the assumption is worth — a strategy that only works at lag 0 is trading at a
-    price that did not exist when the signal did.
+    ``execution_lag_sessions=1`` is the honest default: a signal formed at a
+    close cannot trade at that close, so the position opens at the next market
+    session. The lag is a parameter so the execution-timing audit can vary it
+    and measure what the assumption is worth — a strategy that only works at lag
+    zero is trading at a price that did not exist when the signal did.
+
+    Both lag and horizon count rows of the market-session calendar, never
+    calendar days. A missing ticker price on the chosen entry or exit session is
+    not deferred until that security next trades; it is missing and is counted
+    by ``build_panel_with_report``.
 
     Returns are computed from adjusted closes, so splits and dividends are
     already handled; using raw closes here would introduce fake jumps that the
     factor would appear to predict.
     """
-    candidates, _ = _forward_return_candidates(
-        prices, signal_dates, horizon_days, execution_lag
+    candidates, _, _ = _forward_return_candidates(
+        prices, signal_dates, horizon_sessions, execution_lag_sessions
     )
     return candidates.loc[
         candidates["label_outcome"] == "matched",
-        ["ticker", "signal_date", "forward_return", "entry_date", "exit_date"],
+        [
+            "ticker",
+            "signal_date",
+            "forward_return",
+            "formation_session",
+            "entry_date",
+            "exit_date",
+        ],
     ].reset_index(drop=True)
 
 
 def build_panel(
     factor_values: pd.DataFrame,
     prices: pd.DataFrame,
-    horizon_days: int = 21,
-    execution_lag: int = 1,
+    horizon_sessions: int = 21,
+    execution_lag_sessions: int = 1,
 ) -> pd.DataFrame:
     """Join cleaned factor values to forward returns.
 
@@ -332,8 +360,8 @@ def build_panel(
     panel, _ = build_panel_with_report(
         factor_values,
         prices,
-        horizon_days=horizon_days,
-        execution_lag=execution_lag,
+        horizon_sessions=horizon_sessions,
+        execution_lag_sessions=execution_lag_sessions,
     )
     return panel
 
@@ -341,15 +369,15 @@ def build_panel(
 def build_panel_with_report(
     factor_values: pd.DataFrame,
     prices: pd.DataFrame,
-    horizon_days: int = 21,
-    execution_lag: int = 1,
+    horizon_sessions: int = 21,
+    execution_lag_sessions: int = 1,
 ) -> tuple[pd.DataFrame, LabelJoinReport]:
     """Join labels and count every cleaned factor row that cannot be labelled."""
     signal_dates = pd.DatetimeIndex(
         sorted(pd.to_datetime(factor_values["signal_date"]).unique())
     )
-    candidates, dates_without_horizon = _forward_return_candidates(
-        prices, signal_dates, horizon_days, execution_lag
+    candidates, dates_without_formation, dates_without_horizon = _forward_return_candidates(
+        prices, signal_dates, horizon_sessions, execution_lag_sessions
     )
 
     fv = factor_values.copy()
@@ -364,7 +392,9 @@ def build_panel_with_report(
         candidates["signal_date"] = candidates["signal_date"].astype("datetime64[ns]")
 
     joined = fv.merge(candidates, on=["ticker", "signal_date"], how="left")
+    no_formation = joined["signal_date"].isin(dates_without_formation)
     no_horizon = joined["signal_date"].isin(dates_without_horizon)
+    joined.loc[no_formation, "label_outcome"] = "no_formation_session"
     joined.loc[no_horizon, "label_outcome"] = "no_full_horizon"
     joined["label_outcome"] = joined["label_outcome"].fillna("no_price_history")
 
@@ -381,13 +411,25 @@ def build_panel_with_report(
     panel = matched.rename(
         columns={"value": "prediction", "forward_return": "label"}
     )[
-        ["ticker", "signal_date", "prediction", "label", "entry_date", "exit_date"]
+        [
+            "ticker",
+            "signal_date",
+            "prediction",
+            "label",
+            "formation_session",
+            "entry_date",
+            "exit_date",
+        ]
     ]
     report = LabelJoinReport(
         n_input=int(len(fv)),
         n_output=int(len(panel)),
         n_dropped_without_label=int(len(fv) - len(panel)),
         outcome_counts=outcome_counts,
-        detail={"dropped_by_date": dropped_by_date},
+        detail={
+            "dropped_by_date": dropped_by_date,
+            "horizon_sessions": horizon_sessions,
+            "execution_lag_sessions": execution_lag_sessions,
+        },
     )
     return panel.reset_index(drop=True), report

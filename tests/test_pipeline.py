@@ -241,15 +241,64 @@ def test_post_exit_ghost_cannot_enter_or_displace_magnitude_extremes(store, fact
 def test_forward_returns_start_after_the_execution_lag(store):
     """A signal formed at a close cannot trade at that close."""
     px = store.prices()
-    rets = forward_returns(px, SIGNAL_DATES[:5], horizon_days=21, execution_lag=1)
+    rets = forward_returns(
+        px, SIGNAL_DATES[:5], horizon_sessions=21, execution_lag_sessions=1
+    )
+    assert (rets["formation_session"] <= rets["signal_date"]).all()
+    assert (rets["entry_date"] > rets["formation_session"]).all()
     assert (pd.to_datetime(rets["entry_date"]) > pd.to_datetime(rets["signal_date"])).all()
 
 
-def test_zero_lag_enters_on_the_signal_date(store):
+def test_zero_lag_enters_on_the_formation_session(store):
     """Available so the execution-timing audit can price the assumption."""
     px = store.prices()
-    rets = forward_returns(px, SIGNAL_DATES[:5], horizon_days=21, execution_lag=0)
-    assert (pd.to_datetime(rets["entry_date"]) >= pd.to_datetime(rets["signal_date"])).all()
+    rets = forward_returns(
+        px, SIGNAL_DATES[:5], horizon_sessions=21, execution_lag_sessions=0
+    )
+    assert (rets["entry_date"] == rets["formation_session"]).all()
+    assert (pd.to_datetime(rets["entry_date"]) <= pd.to_datetime(rets["signal_date"])).all()
+
+
+def test_weekend_month_end_lag_one_enters_on_monday_not_tuesday():
+    prices = pd.DataFrame(
+        {
+            "ticker": ["A", "A", "A"],
+            "trade_date": pd.to_datetime(
+                ["2023-12-29", "2024-01-02", "2024-01-03"]
+            ),
+            "close_adj": [10.0, 11.0, 12.0],
+        }
+    )
+
+    result = forward_returns(
+        prices,
+        pd.DatetimeIndex(["2023-12-31"]),
+        horizon_sessions=1,
+        execution_lag_sessions=1,
+    ).iloc[0]
+
+    assert result["formation_session"] == pd.Timestamp("2023-12-29")
+    assert result["entry_date"] == pd.Timestamp("2024-01-02")
+    assert result["exit_date"] == pd.Timestamp("2024-01-03")
+
+
+def test_horizon_counts_market_sessions_not_calendar_days():
+    sessions = pd.to_datetime(
+        ["2024-01-05", "2024-01-08", "2024-01-09", "2024-01-10"]
+    )
+    prices = pd.DataFrame(
+        {"ticker": "A", "trade_date": sessions, "close_adj": [10.0, 11.0, 12.0, 13.0]}
+    )
+
+    result = forward_returns(
+        prices,
+        pd.DatetimeIndex(["2024-01-05"]),
+        horizon_sessions=2,
+        execution_lag_sessions=1,
+    ).iloc[0]
+
+    assert result["entry_date"] == pd.Timestamp("2024-01-08")
+    assert result["exit_date"] == pd.Timestamp("2024-01-10")
 
 
 def test_empty_forward_returns_keep_their_dtypes(store):
@@ -288,8 +337,8 @@ def test_label_join_counts_each_missing_return_outcome():
     panel, report = build_panel_with_report(
         factors,
         pd.DataFrame(price_rows),
-        horizon_days=1,
-        execution_lag=0,
+        horizon_sessions=1,
+        execution_lag_sessions=0,
     )
 
     assert panel["ticker"].tolist() == ["A"]
@@ -319,11 +368,31 @@ def test_label_join_counts_dates_without_a_full_horizon():
     )
 
     panel, report = build_panel_with_report(
-        factors, prices, horizon_days=1, execution_lag=0
+        factors, prices, horizon_sessions=1, execution_lag_sessions=0
     )
 
     assert panel.empty
     assert report.outcome_counts == {"no_full_horizon": 1}
+
+
+def test_label_join_counts_signal_dates_before_the_market_calendar():
+    prices = pd.DataFrame(
+        {
+            "ticker": ["A", "A"],
+            "trade_date": pd.to_datetime(["2024-01-02", "2024-01-03"]),
+            "close_adj": [10.0, 11.0],
+        }
+    )
+    factors = pd.DataFrame(
+        {"ticker": ["A"], "signal_date": [pd.Timestamp("2024-01-01")], "value": [1.0]}
+    )
+
+    panel, report = build_panel_with_report(
+        factors, prices, horizon_sessions=1, execution_lag_sessions=0
+    )
+
+    assert panel.empty
+    assert report.outcome_counts == {"no_formation_session": 1}
 
 
 def test_factor_run_exposes_label_attrition_separately(store, factors):

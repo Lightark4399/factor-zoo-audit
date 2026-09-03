@@ -370,8 +370,8 @@ def compute_factor(
     store: Store,
     signal_dates: pd.DatetimeIndex,
     groups: pd.Series | None = None,
-    horizon_days: int = 21,
-    execution_lag: int = 1,
+    horizon_sessions: int = 21,
+    execution_lag_sessions: int = 1,
     n_quantiles: int = 5,
     vintage: str = "pit",
     universe_membership: pd.DataFrame | None = None,
@@ -411,7 +411,10 @@ def compute_factor(
 
     cleaned, report = prepare_cross_sections(raw, groups=groups)
     panel, label_report = build_panel_with_report(
-        cleaned, store.prices(), horizon_days=horizon_days, execution_lag=execution_lag
+        cleaned,
+        store.prices(),
+        horizon_sessions=horizon_sessions,
+        execution_lag_sessions=execution_lag_sessions,
     )
 
     if factor.tags:
