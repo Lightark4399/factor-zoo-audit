@@ -568,6 +568,44 @@ def return_on_equity(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFra
     return out.replace([np.inf, -np.inf], np.nan).dropna(subset=["value"])
 
 
+def _annual_asset_growth_value(facts: pd.DataFrame) -> float | None:
+    """Return signed asset growth from two consecutive visible FY contexts.
+
+    Quarterly balance-sheet observations are economically valid assets, but
+    they are not the annual characteristic Cooper, Gulen and Schill define.
+    Requiring consecutive fiscal years also prevents a missing year from being
+    presented as one-year growth.
+    """
+    if facts.empty or "fiscal_period" not in facts:
+        return None
+    annual = facts.loc[
+        facts["fiscal_period"].astype(str).str.upper().eq("FY")
+    ].copy()
+    annual["period_end"] = pd.to_datetime(annual["period_end"], errors="coerce")
+    annual["filed"] = pd.to_datetime(annual.get("filed"), errors="coerce")
+    annual["fiscal_year"] = pd.to_numeric(annual["fiscal_year"], errors="coerce")
+    annual["value"] = pd.to_numeric(annual["value"], errors="coerce")
+    annual = annual.dropna(
+        subset=["period_end", "fiscal_year", "value"]
+    ).sort_values(["fiscal_year", "period_end", "filed"])
+    # An amendment or duplicate context for one fiscal year replaces the older
+    # visible belief; it does not become a second annual observation.
+    annual = annual.drop_duplicates("fiscal_year", keep="last")
+    if len(annual) < 2:
+        return None
+
+    latest = annual.iloc[-1]
+    prior = annual.loc[annual["fiscal_year"] == latest["fiscal_year"] - 1]
+    if prior.empty:
+        return None
+    earlier = prior.iloc[-1]
+    gap_days = (latest["period_end"] - earlier["period_end"]).days
+    if not 300 <= gap_days <= 430 or earlier["value"] <= 0:
+        return None
+    growth = (latest["value"] / earlier["value"]) - 1.0
+    return -float(growth) if np.isfinite(growth) else None
+
+
 # Year-on-year asset growth of a thousand per cent either way, and the sign
 # is already inverted by the factor.
 @register(
@@ -588,25 +626,11 @@ def asset_growth(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
     if panel.empty:
         return pd.DataFrame(columns=["ticker", "signal_date", "value"])
 
-    panel = panel.copy()
-    panel["period_end"] = pd.to_datetime(panel["period_end"])
-
     rows = []
     for (ticker, date), group in panel.groupby(["ticker", "signal_date"]):
-        group = group.sort_values("period_end")
-        if len(group) < 2:
-            continue
-        latest = group.iloc[-1]
-        # The comparison period is the observation closest to a year before the
-        # latest one, chosen from what was visible at this signal date.
-        target = latest["period_end"] - pd.DateOffset(years=1)
-        earlier = group.iloc[(group["period_end"] - target).abs().argsort().iloc[0]]
-
-        if earlier["period_end"] >= latest["period_end"] or earlier["value"] <= 0:
-            continue
-        growth = (latest["value"] / earlier["value"]) - 1.0
-        if np.isfinite(growth):
-            rows.append({"ticker": ticker, "signal_date": date, "value": -growth})
+        value = _annual_asset_growth_value(group)
+        if value is not None:
+            rows.append({"ticker": ticker, "signal_date": date, "value": value})
 
     return pd.DataFrame(rows, columns=["ticker", "signal_date", "value"])
 

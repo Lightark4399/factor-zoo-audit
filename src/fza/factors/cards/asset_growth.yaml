@@ -15,13 +15,21 @@ persistence_conditions: >
   denominator of every other ratio.
 definition: >
   Negative of the year-over-year growth in total assets, computed from the two
-  most recent annual filings available at the signal date. Signed so that low
-  growth is the long side.
+  most recent consecutive FY contexts available at the signal date. Quarterly
+  balance-sheet contexts are excluded. Signed so that low growth is the long
+  side.
 timing:
   signal_computed: month_end_close
   earliest_execution: next_trading_day_close
   execution_price: adjusted_close
   data_lag_days: 2
+documented_variants:
+  - dimension: portfolio_formation
+    published_definition: Previous-fiscal-year assets, with portfolios formed each June.
+    implementation: Monthly point-in-time refresh after the annual filing becomes available.
+    consequence: >
+      The characteristic uses the published annual measurement but does not
+      reproduce Cooper-Gulen-Schill's June-only portfolio formation calendar.
 falsification:
   - Decile returns show no monotonic pattern
   - The effect disappears after controlling for size and book-to-market

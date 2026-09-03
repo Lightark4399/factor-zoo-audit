@@ -19,7 +19,12 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from fza.factors.library import _long, _ttm_value, idiosyncratic_volatility
+from fza.factors.library import (
+    _annual_asset_growth_value,
+    _long,
+    _ttm_value,
+    idiosyncratic_volatility,
+)
 from fza.factors.registry import VALID_CATEGORIES, all_factors, load_all, summary_table
 from fza.fixtures import load_fixture_into
 from fza.pipeline.run import compute_factor
@@ -177,6 +182,33 @@ def test_ttm_uses_four_discrete_quarters_without_counting_fy_and_q4_twice():
 
     assert _ttm_value(facts.iloc[:4]) == pytest.approx(70.0)
     assert _ttm_value(facts) == pytest.approx(75.0)
+
+
+def test_asset_growth_uses_consecutive_annual_contexts_only():
+    facts = pd.DataFrame(
+        [
+            (2022, "FY", "2022-12-31", "2023-02-15", 100.0),
+            (2023, "FY", "2023-12-31", "2024-02-15", 110.0),
+            # The old implementation selected this latest quarterly context and
+            # compared it with the nearest date a year earlier.
+            (2024, "Q1", "2024-03-31", "2024-05-15", 990.0),
+        ],
+        columns=["fiscal_year", "fiscal_period", "period_end", "filed", "value"],
+    )
+
+    assert _annual_asset_growth_value(facts) == pytest.approx(-0.10)
+
+
+def test_asset_growth_rejects_a_missing_fiscal_year():
+    facts = pd.DataFrame(
+        [
+            (2021, "FY", "2021-12-31", "2022-02-15", 100.0),
+            (2023, "FY", "2023-12-31", "2024-02-15", 120.0),
+        ],
+        columns=["fiscal_year", "fiscal_period", "period_end", "filed", "value"],
+    )
+
+    assert _annual_asset_growth_value(facts) is None
 
 
 # ----------------------------------------------------------------------
