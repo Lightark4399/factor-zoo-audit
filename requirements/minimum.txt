@@ -1,0 +1,8 @@
+# Lowest direct dependency versions declared by pyproject.toml. CI resolves
+# their transitive dependencies on Python 3.10 and proves the supported floor.
+duckdb==1.0.0
+numpy==1.24.0
+pandas==2.0.0
+PyYAML==6.0
+scipy==1.10.0
+statsmodels==0.14.0

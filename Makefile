@@ -1,7 +1,8 @@
-.PHONY: help install test lint data demo clean
+.PHONY: help install research-install test lint data demo clean
 
 help:
 	@echo "install  install with dev extras"
+	@echo "research-install  install the exact research runtime"
 	@echo "test     run the test suite (no network needed)"
 	@echo "lint     ruff check"
 	@echo "data     download SEC filings and prices into data/fza.duckdb (needs network)"
@@ -9,6 +10,10 @@ help:
 
 install:
 	pip install -e ".[dev,ingest]"
+
+research-install:
+	pip install -r src/fza/research-requirements.lock
+	pip install -e . --no-deps
 
 test:
 	python -m pytest

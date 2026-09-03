@@ -19,7 +19,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from fza.factors.library import _ttm_value
+from fza.factors.library import _ttm_value, idiosyncratic_volatility
 from fza.factors.registry import VALID_CATEGORIES, all_factors, load_all, summary_table
 from fza.fixtures import load_fixture_into
 from fza.pipeline.run import compute_factor
@@ -319,3 +319,42 @@ def test_a_share_count_that_stopped_yields_no_market_cap():
     others = [t for t in tickers if t != dead]
     assert caps.loc[pd.Timestamp("2021-06-30"), others].notna().any()
     s.close()
+
+
+def test_idio_vol_does_not_fabricate_zero_returns_across_a_price_gap():
+    """A missing quote is not a zero return under any supported pandas version.
+
+    pandas 2.x padded ``pct_change`` inputs by default. With that default, AAA's
+    absent middle quote became a zero return and its next real quote produced a
+    seemingly valid volatility. Explicit missing semantics must leave AAA
+    without a signal while the fully observed control remains available.
+    """
+    dates = pd.to_datetime(["2020-01-01", "2020-01-02", "2020-01-03"])
+    rows = []
+    for ticker, observed, closes in (
+        ("AAA", [dates[0], dates[2]], [100.0, 110.0]),
+        ("BBB", list(dates), [100.0, 101.0, 103.0]),
+    ):
+        for date, close in zip(observed, closes, strict=True):
+            rows.append(
+                {
+                    "ticker": ticker,
+                    "trade_date": date,
+                    "open": close,
+                    "high": close,
+                    "low": close,
+                    "close": close,
+                    "close_adj": close,
+                    "volume": 100.0,
+                    "shares_out": 1000.0,
+                }
+            )
+
+    with Store() as sparse:
+        sparse.load_prices(pd.DataFrame(rows))
+        result = idiosyncratic_volatility(
+            sparse, pd.DatetimeIndex([dates[-1]]), window=2
+        )
+
+    assert "AAA" not in set(result["ticker"])
+    assert "BBB" in set(result["ticker"])

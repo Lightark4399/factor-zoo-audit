@@ -394,7 +394,11 @@ def idiosyncratic_volatility(
         return pd.DataFrame(columns=["ticker", "signal_date", "value"])
 
     daily = _wide(prices, "close_adj")
-    returns = daily.pct_change()
+    # Missing prices are unknown returns, not zero returns. pandas 2.x padded
+    # gaps by default while later versions leave them missing, so relying on
+    # the default made the same store and commit produce different volatility
+    # signals across supported environments.
+    returns = daily.pct_change(fill_method=None)
     vol = returns.rolling(window, min_periods=window // 2).std()
     return _long(-_at_signal_dates(vol, signal_dates))
 

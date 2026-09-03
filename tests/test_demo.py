@@ -44,6 +44,9 @@ def test_fixture_mode_is_labelled_as_not_findings(capsys):
 def test_demo_runs_end_to_end_on_fixtures(capsys):
     assert main(["--db", "/definitely/not/a/real/path.duckdb"]) == 0
     out = capsys.readouterr().out
+    assert "RESEARCH ENVIRONMENT" in out
+    assert "lock SHA-256" in out
+    assert "lock status   MATCHED" in out
     assert "STANDARD PROTOCOL" in out
     assert "HISTORICAL UNIVERSE GATE" in out
     assert "POINT-IN-TIME VS RESTATED" in out

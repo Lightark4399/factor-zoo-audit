@@ -37,6 +37,7 @@ from .pipeline.run import (
     compare_vintages,
     compute_factor,
 )
+from .provenance import research_environment
 from .store import Store
 
 DEFAULT_DB = Path("data/fza.duckdb")
@@ -216,6 +217,26 @@ def main(argv: list[str] | None = None) -> int:
     emit(f"  restatements   {info['restatements']:>10,}   "
          f"({info['restatement_rate']:.1%} of fundamental rows)")
     emit(f"  price history  {info['first_date']} .. {info['last_date']}")
+
+    environment = research_environment()
+    emit(_header("RESEARCH ENVIRONMENT"))
+    emit()
+    emit(f"  {'Python':<14}{environment['python']}")
+    for package in ("pandas", "numpy", "scipy", "statsmodels"):
+        emit(f"  {package:<14}{environment[package]}")
+    emit(f"  {'lock':<14}{environment['lock_file']}")
+    emit(f"  {'lock SHA-256':<14}{environment['lock_sha256']}")
+    emit(f"  {'lock status':<14}{environment['lock_status']}")
+    if environment["lock_mismatches"]:
+        for package, versions in environment["lock_mismatches"].items():
+            emit(
+                f"    {package}: installed {versions['installed']}, "
+                f"locked {versions['locked']}"
+            )
+    emit()
+    emit("  These are the versions that produced this report. MATCHED means the")
+    emit("  four numerical libraries equal the exact shipped research lock;")
+    emit("  MISMATCH keeps the report diagnostic and prints every difference.")
 
     coverage = store.column_coverage("prices")
     thin = coverage.loc[coverage["coverage"] < 0.99]

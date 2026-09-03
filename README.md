@@ -125,7 +125,7 @@ built and tested; the audit pipeline is in progress.
 ✓ SPEC.md — research question, six acceptance criteria, falsification standard
 ✓ Point-in-time schema with restatement history
 ✓ Store with enforced as-of access, access logging, look-ahead assertion
-✓ Universe reconstruction from filing activity
+✓ Universe reconstruction from filing activity, gated before factor diagnostics
 ✓ Factor registry requiring a hypothesis card to register
 ✓ Synthetic fixtures with a known restatement and a delisting
 ✓ Cross-sectional pipeline: winsorise, neutralise, standardise, forward returns
@@ -298,6 +298,15 @@ repository.
 ```bash
 pip install -e ".[dev]"
 make test
+```
+
+For a numerical research run, install the exact runtime rather than the broad
+library-compatible ranges. The demo prints Python, pandas, NumPy, SciPy and
+statsmodels versions plus the SHA-256 of this shipped lock in every report:
+
+```bash
+make research-install
+python -m fza.demo --outdir examples/outputs
 ```
 
 Ingestion is the only step that reaches the internet:

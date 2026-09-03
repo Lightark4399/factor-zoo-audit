@@ -1,0 +1,19 @@
+# Exact runtime used for research reports. The library dependency ranges remain
+# in pyproject.toml; this file freezes research runs and is shipped in the wheel
+# so every report can identify it by SHA-256.
+duckdb==1.5.5
+formulaic==1.2.2
+interface_meta==2.0.1
+narwhals==2.25.0
+numpy==2.5.2
+packaging==26.3
+pandas==3.0.5
+patsy==1.0.3
+python-dateutil==2.9.0.post0
+PyYAML==6.0.3
+scipy==1.18.1
+six==1.17.0
+statsmodels==0.15.0
+typing_extensions==4.16.0
+tzdata==2026.3
+wrapt==2.4.0
