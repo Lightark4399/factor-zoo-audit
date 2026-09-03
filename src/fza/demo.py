@@ -314,6 +314,27 @@ def main(argv: list[str] | None = None) -> int:
     emit("  numbers because none were computed -- the run stopped at the check")
     emit("  named in the status, and that row is excluded from every table below.")
 
+    emit(_header("HISTORICAL UNIVERSE GATE"))
+    emit()
+    emit("  Membership is applied to raw factor rows before magnitude checks,")
+    emit("  winsorisation and standardisation. An excluded row therefore cannot")
+    emit("  alter the score of a security that was eligible on the same date.")
+    emit()
+    emit(
+        f"  {'factor':<14}{'raw rows':>12}{'eligible':>12}"
+        f"{'excluded':>12}{'retained':>11}"
+    )
+    for factor_id, run in runs.items():
+        u = run.universe_filter
+        emit(
+            f"  {factor_id:<14}{u.n_input:>12,}{u.n_output:>12,}"
+            f"{u.n_excluded_outside_universe:>12,}{u.retention:>10.1%}"
+        )
+    emit()
+    emit("  'excluded' is reported independently from missing-value cleaning and")
+    emit("  label attrition: outside the historical universe is an eligibility")
+    emit("  decision, not a missing observation.")
+
     emit(_header("CROSS-SECTION BREADTH"))
     emit()
     emit("  Names per quantile are reported as a distribution. The average alone")

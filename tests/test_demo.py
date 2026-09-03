@@ -45,6 +45,7 @@ def test_demo_runs_end_to_end_on_fixtures(capsys):
     assert main(["--db", "/definitely/not/a/real/path.duckdb"]) == 0
     out = capsys.readouterr().out
     assert "STANDARD PROTOCOL" in out
+    assert "HISTORICAL UNIVERSE GATE" in out
     assert "POINT-IN-TIME VS RESTATED" in out
     assert "mom_12_1" in out and "bm_ratio" in out
 

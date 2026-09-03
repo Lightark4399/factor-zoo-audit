@@ -24,6 +24,7 @@ guarded here:
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -95,7 +96,47 @@ class FactorRun:
     # Whether the raw values were within the magnitude the factor declared, or
     # -- distinctly -- whether it declared one at all.
     magnitude_check: dict
+    # What the historical-membership gate removed before any value was allowed
+    # to influence a magnitude check or a cross-sectional statistic.
+    universe_filter: UniverseFilterReport
     vintage: str
+
+
+@dataclass
+class UniverseFilterReport:
+    """Attrition at the historical-membership gate.
+
+    This is separate from ``CleaningReport`` because membership is not data
+    cleaning.  A row outside the declared universe is ineligible even when its
+    value is finite and economically plausible, and it must be removed before
+    either of those properties is inspected.
+    """
+
+    n_input: int
+    n_output: int
+    n_excluded_outside_universe: int
+    n_requested_dates: int
+    n_dates_with_membership: int
+    n_membership_keys: int
+    membership_key_hash: str
+    detail: dict = field(default_factory=dict)
+
+    @property
+    def retention(self) -> float:
+        return self.n_output / self.n_input if self.n_input else float("nan")
+
+    def to_dict(self) -> dict:
+        return {
+            "n_input": self.n_input,
+            "n_output": self.n_output,
+            "n_excluded_outside_universe": self.n_excluded_outside_universe,
+            "retention": self.retention,
+            "n_requested_dates": self.n_requested_dates,
+            "n_dates_with_membership": self.n_dates_with_membership,
+            "n_membership_keys": self.n_membership_keys,
+            "membership_key_hash": self.membership_key_hash,
+            **self.detail,
+        }
 
 
 class ImplausibleMagnitudeError(ValueError):
@@ -109,6 +150,106 @@ class ImplausibleMagnitudeError(ValueError):
     def __init__(self, message: str, detail: dict | None = None) -> None:
         super().__init__(message)
         self.detail: dict = detail or {}
+
+
+def historical_universe_membership(
+    store: Store, signal_dates: pd.DatetimeIndex
+) -> pd.DataFrame:
+    """Return the eligible ``(ticker, signal_date)`` keys for a run.
+
+    The store owns the definition of historical membership.  The runner owns
+    making that definition unavoidable: building the key panel here lets a
+    vintage comparison construct it once and give both arms the exact same
+    keys.
+    """
+    dates = pd.DatetimeIndex(pd.to_datetime(signal_dates)).unique().sort_values()
+    rows: list[pd.DataFrame] = []
+    for date in dates:
+        universe = store.universe_asof(date)
+        if universe.empty:
+            continue
+        rows.append(
+            pd.DataFrame(
+                {
+                    "ticker": universe["ticker"].astype(str),
+                    "signal_date": pd.Timestamp(date),
+                }
+            )
+        )
+
+    if not rows:
+        return pd.DataFrame(
+            {
+                "ticker": pd.Series(dtype="object"),
+                "signal_date": pd.Series(dtype="datetime64[ns]"),
+            }
+        )
+    return (
+        pd.concat(rows, ignore_index=True)
+        .drop_duplicates(["ticker", "signal_date"])
+        .sort_values(["signal_date", "ticker"])
+        .reset_index(drop=True)
+    )
+
+
+def filter_to_historical_universe(
+    raw: pd.DataFrame,
+    membership: pd.DataFrame,
+    signal_dates: pd.DatetimeIndex,
+) -> tuple[pd.DataFrame, UniverseFilterReport]:
+    """Remove ineligible keys before magnitude checks and cross-section work."""
+    required = {"ticker", "signal_date", "value"}
+    missing = required.difference(raw.columns)
+    if missing:
+        raise ValueError(f"factor output is missing required columns: {sorted(missing)}")
+
+    values = raw.copy()
+    values["ticker"] = values["ticker"].astype(str)
+    values["signal_date"] = pd.to_datetime(values["signal_date"])
+    keys = membership[["ticker", "signal_date"]].copy()
+    keys["ticker"] = keys["ticker"].astype(str)
+    keys["signal_date"] = pd.to_datetime(keys["signal_date"])
+    keys = keys.drop_duplicates(["ticker", "signal_date"])
+
+    # A temporary order column makes this an eligibility gate, not an
+    # accidental reordering of factor output that downstream code might expose.
+    values["_universe_input_order"] = np.arange(len(values))
+    filtered = (
+        values.merge(keys, on=["ticker", "signal_date"], how="inner", sort=False)
+        .sort_values("_universe_input_order")
+        .drop(columns="_universe_input_order")
+        .reset_index(drop=True)
+    )
+
+    membership_for_hash = keys.sort_values(["signal_date", "ticker"])
+    hashed = pd.util.hash_pandas_object(
+        membership_for_hash[["ticker", "signal_date"]], index=False
+    )
+    membership_hash = hashlib.sha256(hashed.to_numpy().tobytes()).hexdigest()
+
+    input_counts = values.groupby("signal_date").size()
+    output_counts = filtered.groupby("signal_date").size()
+    dropped = input_counts.sub(output_counts, fill_value=0).astype(int)
+    dropped = dropped.loc[dropped > 0]
+    membership_dates = pd.DatetimeIndex(keys["signal_date"].unique())
+    requested_dates = pd.DatetimeIndex(pd.to_datetime(signal_dates)).unique()
+
+    report = UniverseFilterReport(
+        n_input=int(len(values)),
+        n_output=int(len(filtered)),
+        n_excluded_outside_universe=int(len(values) - len(filtered)),
+        n_requested_dates=int(len(requested_dates)),
+        n_dates_with_membership=int(len(membership_dates)),
+        n_membership_keys=int(len(keys)),
+        membership_key_hash=membership_hash,
+        detail={
+            "excluded_by_date": {
+                str(pd.Timestamp(date).date()): int(count)
+                for date, count in dropped.items()
+            }
+        },
+    )
+    return filtered, report
 
 
 def check_plausible_magnitude(
@@ -226,6 +367,7 @@ def compute_factor(
     execution_lag: int = 1,
     n_quantiles: int = 5,
     vintage: str = "pit",
+    universe_membership: pd.DataFrame | None = None,
 ) -> FactorRun:
     """Compute a factor, clean it, join returns, and run the protocol.
 
@@ -239,10 +381,26 @@ def compute_factor(
 
     raw = factor.compute(store, signal_dates)
 
-    # Before any cleaning. Winsorising would pull an impossible value back to a
-    # plausible one and standardising would erase the units the bound is stated
-    # in, so a check placed after either would be checking the wrong number.
-    magnitude = check_plausible_magnitude(factor, raw)
+    # Eligibility is the first gate.  A value for a name that had already left
+    # the declared universe must not reach the magnitude check, winsor bounds,
+    # neutralisation or standardisation.  Removing it only at the label join is
+    # too late: it has already changed every surviving name's z-score.
+    if universe_membership is None:
+        universe_membership = historical_universe_membership(store, signal_dates)
+    raw, universe_report = filter_to_historical_universe(
+        raw, universe_membership, signal_dates
+    )
+
+    # Before any cleaning, but after eligibility. Winsorising would pull an
+    # impossible value back to a plausible one and standardising would erase
+    # the units the bound is stated in, so a check placed after either would be
+    # checking the wrong number. An ineligible value is not evidence about the
+    # factor at all and must never appear in the extremes table.
+    try:
+        magnitude = check_plausible_magnitude(factor, raw)
+    except ImplausibleMagnitudeError as exc:
+        exc.detail["universe_filter"] = universe_report.to_dict()
+        raise
 
     cleaned, report = prepare_cross_sections(raw, groups=groups)
     panel = build_panel(
@@ -301,6 +459,7 @@ def compute_factor(
         read_path_check=read_check,
         naive_trap=trap,
         magnitude_check=magnitude,
+        universe_filter=universe_report,
         vintage=vintage,
     )
 
@@ -320,7 +479,19 @@ def compare_vintages(
     the mistake rather than describing it is what makes the resulting number a
     measurement.
     """
-    pit_run = compute_factor(factor, store, signal_dates, groups=groups, vintage="pit", **kwargs)
+    # Construct membership once.  Reusing the exact key panel makes it
+    # impossible for the PIT/restated comparison to vary both vintage and
+    # membership by accident.
+    membership = historical_universe_membership(store, signal_dates)
+    pit_run = compute_factor(
+        factor,
+        store,
+        signal_dates,
+        groups=groups,
+        vintage="pit",
+        universe_membership=membership,
+        **kwargs,
+    )
 
     if not factor.uses_fundamentals:
         return VintageComparison(
@@ -385,7 +556,13 @@ def compare_vintages(
         store.fundamentals_asof = leaking_asof  # type: ignore[method-assign]
         store.fundamentals_history_asof = leaking_history_asof  # type: ignore[method-assign]
         restated_run = compute_factor(
-            factor, store, signal_dates, groups=groups, vintage="restated", **kwargs
+            factor,
+            store,
+            signal_dates,
+            groups=groups,
+            vintage="restated",
+            universe_membership=membership,
+            **kwargs,
         )
     finally:
         store.fundamentals_asof = original  # type: ignore[method-assign]
@@ -409,6 +586,15 @@ def compare_vintages(
         pit_protocol, restated_protocol = pit_run.protocol, restated_run.protocol
 
     gap = restated_protocol.summary["ic_mean"] - pit_protocol.summary["ic_mean"]
+
+    if (
+        pit_run.universe_filter.membership_key_hash
+        != restated_run.universe_filter.membership_key_hash
+    ):
+        raise RuntimeError(
+            "PIT and restated runs used different historical-universe keys; "
+            "the vintage comparison is confounded"
+        )
 
     if not np.isfinite(gap):
         passed, verdict = None, "INCONCLUSIVE: one of the vintages could not be scored."
@@ -449,5 +635,14 @@ def compare_vintages(
             "material_gap_threshold": MATERIAL_GAP,
             "read_path_violations": pit_run.read_path_check["n_violations"],
             "naive_trap_rows": pit_run.naive_trap["n_trap_rows"],
+            "universe_membership_key_hash": (
+                pit_run.universe_filter.membership_key_hash
+            ),
+            "universe_rows_excluded_pit": (
+                pit_run.universe_filter.n_excluded_outside_universe
+            ),
+            "universe_rows_excluded_restated": (
+                restated_run.universe_filter.n_excluded_outside_universe
+            ),
         },
     )

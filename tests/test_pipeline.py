@@ -34,6 +34,7 @@ from fza.pipeline.run import (
     check_plausible_magnitude,
     compare_vintages,
     compute_factor,
+    historical_universe_membership,
 )
 from fza.store import Store
 
@@ -113,6 +114,124 @@ def test_cleaning_reports_attrition(store, factors):
     assert report.n_input > 0
     assert 0 < report.retention <= 1.0
     assert report.n_dates > 0
+
+
+# ----------------------------------------------------------------------
+# Historical-universe gate
+# ----------------------------------------------------------------------
+def _fixture_exit_date(store) -> pd.Timestamp:
+    return pd.Timestamp(
+        store.con.execute(
+            "SELECT last_filing FROM securities WHERE ticker = 'TST07'"
+        ).fetchone()[0]
+    )
+
+
+def test_universe_gate_reports_and_removes_post_exit_factor_rows(store, factors):
+    """The existing delisting fixture must reach the factor pipeline.
+
+    Before the gate was wired, ``asset_growth`` produced fourteen post-exit
+    rows for TST07. They passed cleaning, changed 546 surviving z-scores and
+    disappeared only at the label join. The exact buggy counts belong in the
+    diagnostic capture, not in this assertion; the invariant is simply that no
+    post-exit key can survive the eligibility gate.
+    """
+    exit_date = _fixture_exit_date(store)
+    run = compute_factor(factors["asset_growth"], store, SIGNAL_DATES)
+
+    assert run.universe_filter.n_input > run.universe_filter.n_output
+    assert run.universe_filter.n_excluded_outside_universe > 0
+    assert run.universe_filter.detail["excluded_by_date"]
+    assert not (
+        (run.values["ticker"] == "TST07")
+        & (run.values["signal_date"] > exit_date)
+    ).any()
+
+
+def test_post_exit_ghost_is_identical_to_fully_removing_the_security(store, factors):
+    """An ineligible raw value cannot move any surviving result.
+
+    The two inputs differ only by a huge but physically ordinary-looking value
+    for the exited security. After the historical-universe gate, the cleaned
+    cross-sections, labels and protocol summary must be identical to deleting
+    that row at source.
+    """
+    factor = factors["asset_growth"]
+    exit_date = _fixture_exit_date(store)
+
+    def with_ghost(s, dates):
+        raw = factor.compute(s, dates).copy()
+        mask = (raw["ticker"] == "TST07") & (
+            pd.to_datetime(raw["signal_date"]) > exit_date
+        )
+        raw.loc[mask, "value"] = 9.0
+        assert mask.any(), "fixture must produce a post-exit value to exercise the gate"
+        return raw
+
+    def without_ghost(s, dates):
+        raw = with_ghost(s, dates)
+        return raw.loc[
+            ~(
+                (raw["ticker"] == "TST07")
+                & (pd.to_datetime(raw["signal_date"]) > exit_date)
+            )
+        ].copy()
+
+    included = compute_factor(
+        dataclasses.replace(factor, compute=with_ghost), store, SIGNAL_DATES
+    )
+    removed = compute_factor(
+        dataclasses.replace(factor, compute=without_ghost), store, SIGNAL_DATES
+    )
+
+    pd.testing.assert_frame_equal(included.values, removed.values)
+    pd.testing.assert_frame_equal(included.panel, removed.panel)
+    assert included.protocol.summary == removed.protocol.summary
+
+
+def test_post_exit_ghost_cannot_enter_or_displace_magnitude_extremes(store, factors):
+    """Eligibility precedes even the raw-value magnitude check.
+
+    A ghost is made larger than every genuine outlier. Both the input retaining
+    it and the counterfactual deleting it must report the same top-N genuine
+    extremes, with no TST07 row present.
+    """
+    factor = factors["asset_growth"]
+    exit_date = _fixture_exit_date(store)
+    _, hi = factor.plausible_range
+
+    def broken_with_ghost(s, dates):
+        raw = factor.compute(s, dates).copy().reset_index(drop=True)
+        ghost = (raw["ticker"] == "TST07") & (
+            pd.to_datetime(raw["signal_date"]) > exit_date
+        )
+        raw.loc[ghost, "value"] = 1e20
+        genuine = raw.index[raw["ticker"] != "TST07"][:20]
+        raw.loc[genuine, "value"] = hi + 100 + np.arange(len(genuine))
+        assert ghost.any()
+        return raw
+
+    def broken_without_ghost(s, dates):
+        raw = broken_with_ghost(s, dates)
+        ghost = (raw["ticker"] == "TST07") & (
+            pd.to_datetime(raw["signal_date"]) > exit_date
+        )
+        return raw.loc[~ghost].copy()
+
+    with pytest.raises(ImplausibleMagnitudeError) as included:
+        compute_factor(
+            dataclasses.replace(factor, compute=broken_with_ghost), store, SIGNAL_DATES
+        )
+    with pytest.raises(ImplausibleMagnitudeError) as removed:
+        compute_factor(
+            dataclasses.replace(factor, compute=broken_without_ghost), store, SIGNAL_DATES
+        )
+
+    assert included.value.detail["worst"] == removed.value.detail["worst"]
+    assert all(row[0] != "TST07" for row in included.value.detail["worst"])
+    assert included.value.detail["universe_filter"][
+        "n_excluded_outside_universe"
+    ] > 0
 
 
 # ----------------------------------------------------------------------
@@ -257,6 +376,28 @@ def test_vintage_comparison_scores_both_arms_on_shared_dates(store, factors):
     assert c.applicable is True
     assert c.detail["n_shared_dates"] > 0
     assert c.pit.n_dates == c.restated.n_dates
+    assert len(c.detail["universe_membership_key_hash"]) == 64
+
+
+def test_vintage_comparison_builds_one_membership_panel(
+    store, factors, monkeypatch
+):
+    """Vintage is the only dimension the PIT/restated comparison may vary."""
+    import fza.pipeline.run as runner
+
+    original = historical_universe_membership
+    calls = 0
+
+    def counted_membership(s, dates):
+        nonlocal calls
+        calls += 1
+        return original(s, dates)
+
+    monkeypatch.setattr(runner, "historical_universe_membership", counted_membership)
+    comparison = runner.compare_vintages(factors["bm_ratio"], store, SIGNAL_DATES)
+
+    assert calls == 1
+    assert comparison.detail["universe_membership_key_hash"]
 
 
 def test_leaking_path_relaxes_only_the_filing_constraint(store, factors):
