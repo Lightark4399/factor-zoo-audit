@@ -1,0 +1,2633 @@
+{
+  "assertion_status": "NOT_AN_ASSERTION",
+  "commits": [
+    "361c3a9",
+    "770a065",
+    "0991a06",
+    "9a2a193",
+    "e66ab5c",
+    "9e06d2b",
+    "1d51a59",
+    "583d7e9"
+  ],
+  "compatibility_observation": {
+    "blockers": [],
+    "classification": "NONE",
+    "diagnostic_shim": null,
+    "stack_supports_future_stack": true,
+    "unmodified_checkout_runnable": true,
+    "unsupported_frequency_aliases": []
+  },
+  "environment": {
+    "numpy": "2.5.2",
+    "pandas": "3.0.5",
+    "python": "3.12.13",
+    "scipy": "1.18.1",
+    "statsmodels": "0.15.0"
+  },
+  "environment_name": "locked",
+  "rows": [
+    {
+      "after": {
+        "cleaned_n": 1200,
+        "eligible_n": 1200,
+        "ic_mean": -0.018321543748061785,
+        "label_dropped": 15,
+        "ls_sharpe": -0.14096522533028003,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "before": {
+        "cleaned_n": 1200,
+        "eligible_n": 1200,
+        "ic_mean": -0.018321543748061785,
+        "label_dropped": 15,
+        "ls_sharpe": -0.14096522533028003,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "change": "pre-fix characterization only",
+      "changed_fields": [],
+      "commit": "770a065",
+      "factor_id": "asset_growth",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1200
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1187,
+        "eligible_n": 1187,
+        "ic_mean": 0.007270333432079259,
+        "label_dropped": 2,
+        "ls_sharpe": -0.05302021243063816,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1187,
+        "eligible_n": 1187,
+        "ic_mean": 0.007270333432079259,
+        "label_dropped": 2,
+        "ls_sharpe": -0.05302021243063816,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "pre-fix characterization only",
+      "changed_fields": [],
+      "commit": "770a065",
+      "factor_id": "bm_ratio",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1187
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1147,
+        "eligible_n": 1147,
+        "ic_mean": -0.008149603484028697,
+        "label_dropped": 2,
+        "ls_sharpe": -0.13519887510982737,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "before": {
+        "cleaned_n": 1147,
+        "eligible_n": 1147,
+        "ic_mean": -0.008149603484028697,
+        "label_dropped": 2,
+        "ls_sharpe": -0.13519887510982737,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "change": "pre-fix characterization only",
+      "changed_fields": [],
+      "commit": "770a065",
+      "factor_id": "ep_ratio",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1147
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1200,
+        "eligible_n": 1200,
+        "ic_mean": 0.021291432145090692,
+        "label_dropped": 15,
+        "ls_sharpe": 0.10935726627437199,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "before": {
+        "cleaned_n": 1200,
+        "eligible_n": 1200,
+        "ic_mean": 0.021291432145090692,
+        "label_dropped": 15,
+        "ls_sharpe": 0.10935726627437199,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "change": "pre-fix characterization only",
+      "changed_fields": [],
+      "commit": "770a065",
+      "factor_id": "idio_vol",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1200
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1187,
+        "eligible_n": 1187,
+        "ic_mean": -0.0018598795299693929,
+        "label_dropped": 2,
+        "ls_sharpe": -0.08793141689578217,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1187,
+        "eligible_n": 1187,
+        "ic_mean": -0.0018598795299693929,
+        "label_dropped": 2,
+        "ls_sharpe": -0.08793141689578217,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "pre-fix characterization only",
+      "changed_fields": [],
+      "commit": "770a065",
+      "factor_id": "log_mktcap",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1187
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 680,
+        "eligible_n": 680,
+        "ic_mean": -0.05521291364378279,
+        "label_dropped": 15,
+        "ls_sharpe": -0.07667748203699648,
+        "panel_n": 665,
+        "raw_n": 680
+      },
+      "before": {
+        "cleaned_n": 680,
+        "eligible_n": 680,
+        "ic_mean": -0.05521291364378279,
+        "label_dropped": 15,
+        "ls_sharpe": -0.07667748203699648,
+        "panel_n": 665,
+        "raw_n": 680
+      },
+      "change": "pre-fix characterization only",
+      "changed_fields": [],
+      "commit": "770a065",
+      "factor_id": "mom_12_1",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 680
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 920,
+        "eligible_n": 920,
+        "ic_mean": -0.0019281215519425007,
+        "label_dropped": 15,
+        "ls_sharpe": 0.017216219425645815,
+        "panel_n": 905,
+        "raw_n": 920
+      },
+      "before": {
+        "cleaned_n": 920,
+        "eligible_n": 920,
+        "ic_mean": -0.0019281215519425007,
+        "label_dropped": 15,
+        "ls_sharpe": 0.017216219425645815,
+        "panel_n": 905,
+        "raw_n": 920
+      },
+      "change": "pre-fix characterization only",
+      "changed_fields": [],
+      "commit": "770a065",
+      "factor_id": "mom_6_1",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 920
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1160,
+        "eligible_n": 1160,
+        "ic_mean": 0.05153141312231216,
+        "label_dropped": 15,
+        "ls_sharpe": 0.22095275906214726,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "before": {
+        "cleaned_n": 1160,
+        "eligible_n": 1160,
+        "ic_mean": 0.05153141312231216,
+        "label_dropped": 15,
+        "ls_sharpe": 0.22095275906214726,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "change": "pre-fix characterization only",
+      "changed_fields": [],
+      "commit": "770a065",
+      "factor_id": "rev_1m",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1160
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1160,
+        "eligible_n": 1160,
+        "ic_mean": -0.02742675680558596,
+        "label_dropped": 15,
+        "ls_sharpe": -0.16470536767858268,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "before": {
+        "cleaned_n": 1160,
+        "eligible_n": 1160,
+        "ic_mean": -0.02742675680558596,
+        "label_dropped": 15,
+        "ls_sharpe": -0.16470536767858268,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "change": "pre-fix characterization only",
+      "changed_fields": [],
+      "commit": "770a065",
+      "factor_id": "roe",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1160
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1187,
+        "eligible_n": 1187,
+        "ic_mean": 0.029911457819031647,
+        "label_dropped": 2,
+        "ls_sharpe": 0.27513526349862494,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1187,
+        "eligible_n": 1187,
+        "ic_mean": 0.029911457819031647,
+        "label_dropped": 2,
+        "ls_sharpe": 0.27513526349862494,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "pre-fix characterization only",
+      "changed_fields": [],
+      "commit": "770a065",
+      "factor_id": "turnover",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1187
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.018321543748061785,
+        "label_dropped": 1,
+        "ls_sharpe": -0.14096522533028003,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "before": {
+        "cleaned_n": 1200,
+        "eligible_n": 1200,
+        "ic_mean": -0.018321543748061785,
+        "label_dropped": 15,
+        "ls_sharpe": -0.14096522533028003,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "change": "historical-universe eligibility gate",
+      "changed_fields": [
+        "cleaned.key_hash",
+        "cleaned.n_keys",
+        "cleaned.n_rows",
+        "cleaned.value_hash",
+        "eligible.key_hash",
+        "eligible.n_keys",
+        "eligible.n_rows",
+        "eligible.value_hash",
+        "label_attrition.n_dropped_without_label",
+        "label_attrition.n_input",
+        "magnitude.n_values",
+        "panel.value_hash"
+      ],
+      "commit": "0991a06",
+      "factor_id": "asset_growth",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.027121378178275757,
+        "n_added": 0,
+        "n_changed": 546,
+        "n_removed": 14,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.007270333432079259,
+        "label_dropped": 1,
+        "ls_sharpe": -0.05302021243063816,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1187,
+        "eligible_n": 1187,
+        "ic_mean": 0.007270333432079259,
+        "label_dropped": 2,
+        "ls_sharpe": -0.05302021243063816,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "historical-universe eligibility gate",
+      "changed_fields": [
+        "cleaned.key_hash",
+        "cleaned.n_keys",
+        "cleaned.n_rows",
+        "cleaned.value_hash",
+        "eligible.key_hash",
+        "eligible.n_keys",
+        "eligible.n_rows",
+        "eligible.value_hash",
+        "label_attrition.n_dropped_without_label",
+        "label_attrition.n_input",
+        "magnitude.n_values",
+        "panel.value_hash"
+      ],
+      "commit": "0991a06",
+      "factor_id": "bm_ratio",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.02646694209864231,
+        "n_added": 0,
+        "n_changed": 39,
+        "n_removed": 1,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.008149603484028697,
+        "label_dropped": 1,
+        "ls_sharpe": -0.13519887510982737,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "before": {
+        "cleaned_n": 1147,
+        "eligible_n": 1147,
+        "ic_mean": -0.008149603484028697,
+        "label_dropped": 2,
+        "ls_sharpe": -0.13519887510982737,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "change": "historical-universe eligibility gate",
+      "changed_fields": [
+        "cleaned.key_hash",
+        "cleaned.n_keys",
+        "cleaned.n_rows",
+        "cleaned.value_hash",
+        "eligible.key_hash",
+        "eligible.n_keys",
+        "eligible.n_rows",
+        "eligible.value_hash",
+        "label_attrition.n_dropped_without_label",
+        "label_attrition.n_input",
+        "magnitude.n_values",
+        "panel.value_hash"
+      ],
+      "commit": "0991a06",
+      "factor_id": "ep_ratio",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.02520537982245341,
+        "n_added": 0,
+        "n_changed": 39,
+        "n_removed": 1,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.021291432145090692,
+        "label_dropped": 1,
+        "ls_sharpe": 0.10935726627437199,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "before": {
+        "cleaned_n": 1200,
+        "eligible_n": 1200,
+        "ic_mean": 0.021291432145090692,
+        "label_dropped": 15,
+        "ls_sharpe": 0.10935726627437199,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "change": "historical-universe eligibility gate",
+      "changed_fields": [
+        "cleaned.key_hash",
+        "cleaned.n_keys",
+        "cleaned.n_rows",
+        "cleaned.value_hash",
+        "eligible.key_hash",
+        "eligible.n_keys",
+        "eligible.n_rows",
+        "eligible.value_hash",
+        "label_attrition.n_dropped_without_label",
+        "label_attrition.n_input",
+        "magnitude.n_values",
+        "panel.value_hash"
+      ],
+      "commit": "0991a06",
+      "factor_id": "idio_vol",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.03668820129346617,
+        "n_added": 0,
+        "n_changed": 546,
+        "n_removed": 14,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.0018598795299693929,
+        "label_dropped": 1,
+        "ls_sharpe": -0.08793141689578217,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1187,
+        "eligible_n": 1187,
+        "ic_mean": -0.0018598795299693929,
+        "label_dropped": 2,
+        "ls_sharpe": -0.08793141689578217,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "historical-universe eligibility gate",
+      "changed_fields": [
+        "cleaned.key_hash",
+        "cleaned.n_keys",
+        "cleaned.n_rows",
+        "cleaned.value_hash",
+        "eligible.key_hash",
+        "eligible.n_keys",
+        "eligible.n_rows",
+        "eligible.value_hash",
+        "label_attrition.n_dropped_without_label",
+        "label_attrition.n_input",
+        "magnitude.n_values",
+        "panel.value_hash"
+      ],
+      "commit": "0991a06",
+      "factor_id": "log_mktcap",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.022412465760848432,
+        "n_added": 0,
+        "n_changed": 39,
+        "n_removed": 1,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 666,
+        "eligible_n": 666,
+        "ic_mean": -0.05521291364378279,
+        "label_dropped": 1,
+        "ls_sharpe": -0.07667748203699648,
+        "panel_n": 665,
+        "raw_n": 680
+      },
+      "before": {
+        "cleaned_n": 680,
+        "eligible_n": 680,
+        "ic_mean": -0.05521291364378279,
+        "label_dropped": 15,
+        "ls_sharpe": -0.07667748203699648,
+        "panel_n": 665,
+        "raw_n": 680
+      },
+      "change": "historical-universe eligibility gate",
+      "changed_fields": [
+        "cleaned.key_hash",
+        "cleaned.n_keys",
+        "cleaned.n_rows",
+        "cleaned.value_hash",
+        "eligible.key_hash",
+        "eligible.n_keys",
+        "eligible.n_rows",
+        "eligible.value_hash",
+        "label_attrition.n_dropped_without_label",
+        "label_attrition.n_input",
+        "magnitude.n_values",
+        "panel.value_hash"
+      ],
+      "commit": "0991a06",
+      "factor_id": "mom_12_1",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.04509747710983447,
+        "n_added": 0,
+        "n_changed": 546,
+        "n_removed": 14,
+        "n_shared": 666
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 906,
+        "eligible_n": 906,
+        "ic_mean": -0.0019281215519425007,
+        "label_dropped": 1,
+        "ls_sharpe": 0.017216219425645815,
+        "panel_n": 905,
+        "raw_n": 920
+      },
+      "before": {
+        "cleaned_n": 920,
+        "eligible_n": 920,
+        "ic_mean": -0.0019281215519425007,
+        "label_dropped": 15,
+        "ls_sharpe": 0.017216219425645815,
+        "panel_n": 905,
+        "raw_n": 920
+      },
+      "change": "historical-universe eligibility gate",
+      "changed_fields": [
+        "cleaned.key_hash",
+        "cleaned.n_keys",
+        "cleaned.n_rows",
+        "cleaned.value_hash",
+        "eligible.key_hash",
+        "eligible.n_keys",
+        "eligible.n_rows",
+        "eligible.value_hash",
+        "label_attrition.n_dropped_without_label",
+        "label_attrition.n_input",
+        "magnitude.n_values",
+        "panel.value_hash"
+      ],
+      "commit": "0991a06",
+      "factor_id": "mom_6_1",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.06984741798774796,
+        "n_added": 0,
+        "n_changed": 546,
+        "n_removed": 14,
+        "n_shared": 906
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": 0.05153141312231216,
+        "label_dropped": 1,
+        "ls_sharpe": 0.22095275906214726,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "before": {
+        "cleaned_n": 1160,
+        "eligible_n": 1160,
+        "ic_mean": 0.05153141312231216,
+        "label_dropped": 15,
+        "ls_sharpe": 0.22095275906214726,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "change": "historical-universe eligibility gate",
+      "changed_fields": [
+        "cleaned.key_hash",
+        "cleaned.n_keys",
+        "cleaned.n_rows",
+        "cleaned.value_hash",
+        "eligible.key_hash",
+        "eligible.n_keys",
+        "eligible.n_rows",
+        "eligible.value_hash",
+        "label_attrition.n_dropped_without_label",
+        "label_attrition.n_input",
+        "magnitude.n_values",
+        "panel.value_hash"
+      ],
+      "commit": "0991a06",
+      "factor_id": "rev_1m",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.03409512218992505,
+        "n_added": 0,
+        "n_changed": 546,
+        "n_removed": 14,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.02742675680558596,
+        "label_dropped": 1,
+        "ls_sharpe": -0.16470536767858268,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "before": {
+        "cleaned_n": 1160,
+        "eligible_n": 1160,
+        "ic_mean": -0.02742675680558596,
+        "label_dropped": 15,
+        "ls_sharpe": -0.16470536767858268,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "change": "historical-universe eligibility gate",
+      "changed_fields": [
+        "cleaned.key_hash",
+        "cleaned.n_keys",
+        "cleaned.n_rows",
+        "cleaned.value_hash",
+        "eligible.key_hash",
+        "eligible.n_keys",
+        "eligible.n_rows",
+        "eligible.value_hash",
+        "label_attrition.n_dropped_without_label",
+        "label_attrition.n_input",
+        "magnitude.n_values",
+        "panel.value_hash"
+      ],
+      "commit": "0991a06",
+      "factor_id": "roe",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.018019129167872627,
+        "n_added": 0,
+        "n_changed": 448,
+        "n_removed": 14,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.029911457819031647,
+        "label_dropped": 1,
+        "ls_sharpe": 0.27513526349862494,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1187,
+        "eligible_n": 1187,
+        "ic_mean": 0.029911457819031647,
+        "label_dropped": 2,
+        "ls_sharpe": 0.27513526349862494,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "historical-universe eligibility gate",
+      "changed_fields": [
+        "cleaned.key_hash",
+        "cleaned.n_keys",
+        "cleaned.n_rows",
+        "cleaned.value_hash",
+        "eligible.key_hash",
+        "eligible.n_keys",
+        "eligible.n_rows",
+        "eligible.value_hash",
+        "label_attrition.n_dropped_without_label",
+        "label_attrition.n_input",
+        "magnitude.n_values",
+        "panel.value_hash"
+      ],
+      "commit": "0991a06",
+      "factor_id": "turnover",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.03939626844850608,
+        "n_added": 0,
+        "n_changed": 39,
+        "n_removed": 1,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.018321543748061785,
+        "label_dropped": 1,
+        "ls_sharpe": -0.14096522533028003,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.018321543748061785,
+        "label_dropped": 1,
+        "ls_sharpe": -0.14096522533028003,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "change": "explicit pct_change missing-value semantics",
+      "changed_fields": [],
+      "commit": "9a2a193",
+      "factor_id": "asset_growth",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.007270333432079259,
+        "label_dropped": 1,
+        "ls_sharpe": -0.05302021243063816,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.007270333432079259,
+        "label_dropped": 1,
+        "ls_sharpe": -0.05302021243063816,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "explicit pct_change missing-value semantics",
+      "changed_fields": [],
+      "commit": "9a2a193",
+      "factor_id": "bm_ratio",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.008149603484028697,
+        "label_dropped": 1,
+        "ls_sharpe": -0.13519887510982737,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "before": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.008149603484028697,
+        "label_dropped": 1,
+        "ls_sharpe": -0.13519887510982737,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "change": "explicit pct_change missing-value semantics",
+      "changed_fields": [],
+      "commit": "9a2a193",
+      "factor_id": "ep_ratio",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.021291432145090692,
+        "label_dropped": 1,
+        "ls_sharpe": 0.10935726627437199,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.021291432145090692,
+        "label_dropped": 1,
+        "ls_sharpe": 0.10935726627437199,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "change": "explicit pct_change missing-value semantics",
+      "changed_fields": [],
+      "commit": "9a2a193",
+      "factor_id": "idio_vol",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.0018598795299693929,
+        "label_dropped": 1,
+        "ls_sharpe": -0.08793141689578217,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.0018598795299693929,
+        "label_dropped": 1,
+        "ls_sharpe": -0.08793141689578217,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "explicit pct_change missing-value semantics",
+      "changed_fields": [],
+      "commit": "9a2a193",
+      "factor_id": "log_mktcap",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 666,
+        "eligible_n": 666,
+        "ic_mean": -0.05521291364378279,
+        "label_dropped": 1,
+        "ls_sharpe": -0.07667748203699648,
+        "panel_n": 665,
+        "raw_n": 680
+      },
+      "before": {
+        "cleaned_n": 666,
+        "eligible_n": 666,
+        "ic_mean": -0.05521291364378279,
+        "label_dropped": 1,
+        "ls_sharpe": -0.07667748203699648,
+        "panel_n": 665,
+        "raw_n": 680
+      },
+      "change": "explicit pct_change missing-value semantics",
+      "changed_fields": [],
+      "commit": "9a2a193",
+      "factor_id": "mom_12_1",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 666
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 906,
+        "eligible_n": 906,
+        "ic_mean": -0.0019281215519425007,
+        "label_dropped": 1,
+        "ls_sharpe": 0.017216219425645815,
+        "panel_n": 905,
+        "raw_n": 920
+      },
+      "before": {
+        "cleaned_n": 906,
+        "eligible_n": 906,
+        "ic_mean": -0.0019281215519425007,
+        "label_dropped": 1,
+        "ls_sharpe": 0.017216219425645815,
+        "panel_n": 905,
+        "raw_n": 920
+      },
+      "change": "explicit pct_change missing-value semantics",
+      "changed_fields": [],
+      "commit": "9a2a193",
+      "factor_id": "mom_6_1",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 906
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": 0.05153141312231216,
+        "label_dropped": 1,
+        "ls_sharpe": 0.22095275906214726,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "before": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": 0.05153141312231216,
+        "label_dropped": 1,
+        "ls_sharpe": 0.22095275906214726,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "change": "explicit pct_change missing-value semantics",
+      "changed_fields": [],
+      "commit": "9a2a193",
+      "factor_id": "rev_1m",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.02742675680558596,
+        "label_dropped": 1,
+        "ls_sharpe": -0.16470536767858268,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "before": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.02742675680558596,
+        "label_dropped": 1,
+        "ls_sharpe": -0.16470536767858268,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "change": "explicit pct_change missing-value semantics",
+      "changed_fields": [],
+      "commit": "9a2a193",
+      "factor_id": "roe",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.029911457819031647,
+        "label_dropped": 1,
+        "ls_sharpe": 0.27513526349862494,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.029911457819031647,
+        "label_dropped": 1,
+        "ls_sharpe": 0.27513526349862494,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "explicit pct_change missing-value semantics",
+      "changed_fields": [],
+      "commit": "9a2a193",
+      "factor_id": "turnover",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.018321543748061785,
+        "label_dropped": 1,
+        "ls_sharpe": -0.14096522533028003,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.018321543748061785,
+        "label_dropped": 1,
+        "ls_sharpe": -0.14096522533028003,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "change": "bounded freshness for market-derived signals",
+      "changed_fields": [],
+      "commit": "e66ab5c",
+      "factor_id": "asset_growth",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.007270333432079259,
+        "label_dropped": 1,
+        "ls_sharpe": -0.05302021243063816,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.007270333432079259,
+        "label_dropped": 1,
+        "ls_sharpe": -0.05302021243063816,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "bounded freshness for market-derived signals",
+      "changed_fields": [],
+      "commit": "e66ab5c",
+      "factor_id": "bm_ratio",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.008149603484028697,
+        "label_dropped": 1,
+        "ls_sharpe": -0.13519887510982737,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "before": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.008149603484028697,
+        "label_dropped": 1,
+        "ls_sharpe": -0.13519887510982737,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "change": "bounded freshness for market-derived signals",
+      "changed_fields": [],
+      "commit": "e66ab5c",
+      "factor_id": "ep_ratio",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.021291432145090692,
+        "label_dropped": 1,
+        "ls_sharpe": 0.10935726627437199,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.021291432145090692,
+        "label_dropped": 1,
+        "ls_sharpe": 0.10935726627437199,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "change": "bounded freshness for market-derived signals",
+      "changed_fields": [
+        "raw.key_hash",
+        "raw.n_keys",
+        "raw.n_rows",
+        "raw.value_hash"
+      ],
+      "commit": "e66ab5c",
+      "factor_id": "idio_vol",
+      "freshness_effect_masked_by_universe": true,
+      "raw_effect_masked_by_universe": true,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.0018598795299693929,
+        "label_dropped": 1,
+        "ls_sharpe": -0.08793141689578217,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.0018598795299693929,
+        "label_dropped": 1,
+        "ls_sharpe": -0.08793141689578217,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "bounded freshness for market-derived signals",
+      "changed_fields": [],
+      "commit": "e66ab5c",
+      "factor_id": "log_mktcap",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 666,
+        "eligible_n": 666,
+        "ic_mean": -0.05521291364378279,
+        "label_dropped": 1,
+        "ls_sharpe": -0.07667748203699648,
+        "panel_n": 665,
+        "raw_n": 668
+      },
+      "before": {
+        "cleaned_n": 666,
+        "eligible_n": 666,
+        "ic_mean": -0.05521291364378279,
+        "label_dropped": 1,
+        "ls_sharpe": -0.07667748203699648,
+        "panel_n": 665,
+        "raw_n": 680
+      },
+      "change": "bounded freshness for market-derived signals",
+      "changed_fields": [
+        "raw.key_hash",
+        "raw.n_keys",
+        "raw.n_rows",
+        "raw.value_hash"
+      ],
+      "commit": "e66ab5c",
+      "factor_id": "mom_12_1",
+      "freshness_effect_masked_by_universe": true,
+      "raw_effect_masked_by_universe": true,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 666
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 906,
+        "eligible_n": 906,
+        "ic_mean": -0.0019281215519425007,
+        "label_dropped": 1,
+        "ls_sharpe": 0.017216219425645815,
+        "panel_n": 905,
+        "raw_n": 908
+      },
+      "before": {
+        "cleaned_n": 906,
+        "eligible_n": 906,
+        "ic_mean": -0.0019281215519425007,
+        "label_dropped": 1,
+        "ls_sharpe": 0.017216219425645815,
+        "panel_n": 905,
+        "raw_n": 920
+      },
+      "change": "bounded freshness for market-derived signals",
+      "changed_fields": [
+        "raw.key_hash",
+        "raw.n_keys",
+        "raw.n_rows",
+        "raw.value_hash"
+      ],
+      "commit": "e66ab5c",
+      "factor_id": "mom_6_1",
+      "freshness_effect_masked_by_universe": true,
+      "raw_effect_masked_by_universe": true,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 906
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": 0.05153141312231216,
+        "label_dropped": 1,
+        "ls_sharpe": 0.22095275906214726,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "before": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": 0.05153141312231216,
+        "label_dropped": 1,
+        "ls_sharpe": 0.22095275906214726,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "change": "bounded freshness for market-derived signals",
+      "changed_fields": [
+        "raw.key_hash",
+        "raw.n_keys",
+        "raw.n_rows",
+        "raw.value_hash"
+      ],
+      "commit": "e66ab5c",
+      "factor_id": "rev_1m",
+      "freshness_effect_masked_by_universe": true,
+      "raw_effect_masked_by_universe": true,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.02742675680558596,
+        "label_dropped": 1,
+        "ls_sharpe": -0.16470536767858268,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "before": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.02742675680558596,
+        "label_dropped": 1,
+        "ls_sharpe": -0.16470536767858268,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "change": "bounded freshness for market-derived signals",
+      "changed_fields": [],
+      "commit": "e66ab5c",
+      "factor_id": "roe",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.029911457819031647,
+        "label_dropped": 1,
+        "ls_sharpe": 0.27513526349862494,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.029911457819031647,
+        "label_dropped": 1,
+        "ls_sharpe": 0.27513526349862494,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "bounded freshness for market-derived signals",
+      "changed_fields": [],
+      "commit": "e66ab5c",
+      "factor_id": "turnover",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.018321543748061785,
+        "label_dropped": 1,
+        "ls_sharpe": -0.14096522533028003,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.018321543748061785,
+        "label_dropped": 1,
+        "ls_sharpe": -0.14096522533028003,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "change": "label-attrition diagnostics",
+      "changed_fields": [
+        "label_attrition.native_outcomes.matched",
+        "label_attrition.native_outcomes.missing_exit_price"
+      ],
+      "commit": "9e06d2b",
+      "factor_id": "asset_growth",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.007270333432079259,
+        "label_dropped": 1,
+        "ls_sharpe": -0.05302021243063816,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.007270333432079259,
+        "label_dropped": 1,
+        "ls_sharpe": -0.05302021243063816,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "label-attrition diagnostics",
+      "changed_fields": [
+        "label_attrition.native_outcomes.matched",
+        "label_attrition.native_outcomes.missing_exit_price"
+      ],
+      "commit": "9e06d2b",
+      "factor_id": "bm_ratio",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.008149603484028697,
+        "label_dropped": 1,
+        "ls_sharpe": -0.13519887510982737,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "before": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.008149603484028697,
+        "label_dropped": 1,
+        "ls_sharpe": -0.13519887510982737,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "change": "label-attrition diagnostics",
+      "changed_fields": [
+        "label_attrition.native_outcomes.matched",
+        "label_attrition.native_outcomes.missing_exit_price"
+      ],
+      "commit": "9e06d2b",
+      "factor_id": "ep_ratio",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.021291432145090692,
+        "label_dropped": 1,
+        "ls_sharpe": 0.10935726627437199,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.021291432145090692,
+        "label_dropped": 1,
+        "ls_sharpe": 0.10935726627437199,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "label-attrition diagnostics",
+      "changed_fields": [
+        "label_attrition.native_outcomes.matched",
+        "label_attrition.native_outcomes.missing_exit_price"
+      ],
+      "commit": "9e06d2b",
+      "factor_id": "idio_vol",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.0018598795299693929,
+        "label_dropped": 1,
+        "ls_sharpe": -0.08793141689578217,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.0018598795299693929,
+        "label_dropped": 1,
+        "ls_sharpe": -0.08793141689578217,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "label-attrition diagnostics",
+      "changed_fields": [
+        "label_attrition.native_outcomes.matched",
+        "label_attrition.native_outcomes.missing_exit_price"
+      ],
+      "commit": "9e06d2b",
+      "factor_id": "log_mktcap",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 666,
+        "eligible_n": 666,
+        "ic_mean": -0.05521291364378279,
+        "label_dropped": 1,
+        "ls_sharpe": -0.07667748203699648,
+        "panel_n": 665,
+        "raw_n": 668
+      },
+      "before": {
+        "cleaned_n": 666,
+        "eligible_n": 666,
+        "ic_mean": -0.05521291364378279,
+        "label_dropped": 1,
+        "ls_sharpe": -0.07667748203699648,
+        "panel_n": 665,
+        "raw_n": 668
+      },
+      "change": "label-attrition diagnostics",
+      "changed_fields": [
+        "label_attrition.native_outcomes.matched",
+        "label_attrition.native_outcomes.missing_exit_price"
+      ],
+      "commit": "9e06d2b",
+      "factor_id": "mom_12_1",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 666
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 906,
+        "eligible_n": 906,
+        "ic_mean": -0.0019281215519425007,
+        "label_dropped": 1,
+        "ls_sharpe": 0.017216219425645815,
+        "panel_n": 905,
+        "raw_n": 908
+      },
+      "before": {
+        "cleaned_n": 906,
+        "eligible_n": 906,
+        "ic_mean": -0.0019281215519425007,
+        "label_dropped": 1,
+        "ls_sharpe": 0.017216219425645815,
+        "panel_n": 905,
+        "raw_n": 908
+      },
+      "change": "label-attrition diagnostics",
+      "changed_fields": [
+        "label_attrition.native_outcomes.matched",
+        "label_attrition.native_outcomes.missing_exit_price"
+      ],
+      "commit": "9e06d2b",
+      "factor_id": "mom_6_1",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 906
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": 0.05153141312231216,
+        "label_dropped": 1,
+        "ls_sharpe": 0.22095275906214726,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "before": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": 0.05153141312231216,
+        "label_dropped": 1,
+        "ls_sharpe": 0.22095275906214726,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "change": "label-attrition diagnostics",
+      "changed_fields": [
+        "label_attrition.native_outcomes.matched",
+        "label_attrition.native_outcomes.missing_exit_price"
+      ],
+      "commit": "9e06d2b",
+      "factor_id": "rev_1m",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.02742675680558596,
+        "label_dropped": 1,
+        "ls_sharpe": -0.16470536767858268,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "before": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.02742675680558596,
+        "label_dropped": 1,
+        "ls_sharpe": -0.16470536767858268,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "change": "label-attrition diagnostics",
+      "changed_fields": [
+        "label_attrition.native_outcomes.matched",
+        "label_attrition.native_outcomes.missing_exit_price"
+      ],
+      "commit": "9e06d2b",
+      "factor_id": "roe",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.029911457819031647,
+        "label_dropped": 1,
+        "ls_sharpe": 0.27513526349862494,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.029911457819031647,
+        "label_dropped": 1,
+        "ls_sharpe": 0.27513526349862494,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "label-attrition diagnostics",
+      "changed_fields": [
+        "label_attrition.native_outcomes.matched",
+        "label_attrition.native_outcomes.missing_exit_price"
+      ],
+      "commit": "9e06d2b",
+      "factor_id": "turnover",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.01597561530037569,
+        "label_dropped": 1,
+        "ls_sharpe": -0.12944158656903113,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.018321543748061785,
+        "label_dropped": 1,
+        "ls_sharpe": -0.14096522533028003,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "change": "market-session execution-date semantics",
+      "changed_fields": [
+        "panel.value_hash",
+        "performance.ic_mean",
+        "performance.ls_sharpe"
+      ],
+      "commit": "1d51a59",
+      "factor_id": "asset_growth",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.010905500148118889,
+        "label_dropped": 1,
+        "ls_sharpe": -0.0388813152882594,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.007270333432079259,
+        "label_dropped": 1,
+        "ls_sharpe": -0.05302021243063816,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "market-session execution-date semantics",
+      "changed_fields": [
+        "panel.value_hash",
+        "performance.ic_mean",
+        "performance.ls_sharpe"
+      ],
+      "commit": "1d51a59",
+      "factor_id": "bm_ratio",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.0005030934715322261,
+        "label_dropped": 1,
+        "ls_sharpe": -0.12092753436557423,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "before": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.008149603484028697,
+        "label_dropped": 1,
+        "ls_sharpe": -0.13519887510982737,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "change": "market-session execution-date semantics",
+      "changed_fields": [
+        "panel.value_hash",
+        "performance.ic_mean",
+        "performance.ls_sharpe"
+      ],
+      "commit": "1d51a59",
+      "factor_id": "ep_ratio",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.026959612915967216,
+        "label_dropped": 1,
+        "ls_sharpe": 0.12320095264415522,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.021291432145090692,
+        "label_dropped": 1,
+        "ls_sharpe": 0.10935726627437199,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "market-session execution-date semantics",
+      "changed_fields": [
+        "panel.value_hash",
+        "performance.ic_mean",
+        "performance.ls_sharpe"
+      ],
+      "commit": "1d51a59",
+      "factor_id": "idio_vol",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.0028932556532043183,
+        "label_dropped": 1,
+        "ls_sharpe": -0.0851562222180999,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.0018598795299693929,
+        "label_dropped": 1,
+        "ls_sharpe": -0.08793141689578217,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "market-session execution-date semantics",
+      "changed_fields": [
+        "panel.value_hash",
+        "performance.ic_mean",
+        "performance.ls_sharpe"
+      ],
+      "commit": "1d51a59",
+      "factor_id": "log_mktcap",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 666,
+        "eligible_n": 666,
+        "ic_mean": -0.0703341097473847,
+        "label_dropped": 1,
+        "ls_sharpe": -0.17313842714424155,
+        "panel_n": 665,
+        "raw_n": 668
+      },
+      "before": {
+        "cleaned_n": 666,
+        "eligible_n": 666,
+        "ic_mean": -0.05521291364378279,
+        "label_dropped": 1,
+        "ls_sharpe": -0.07667748203699648,
+        "panel_n": 665,
+        "raw_n": 668
+      },
+      "change": "market-session execution-date semantics",
+      "changed_fields": [
+        "panel.value_hash",
+        "performance.ic_mean",
+        "performance.ls_sharpe"
+      ],
+      "commit": "1d51a59",
+      "factor_id": "mom_12_1",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 666
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 906,
+        "eligible_n": 906,
+        "ic_mean": -0.01722107495674499,
+        "label_dropped": 1,
+        "ls_sharpe": -0.02216330215896544,
+        "panel_n": 905,
+        "raw_n": 908
+      },
+      "before": {
+        "cleaned_n": 906,
+        "eligible_n": 906,
+        "ic_mean": -0.0019281215519425007,
+        "label_dropped": 1,
+        "ls_sharpe": 0.017216219425645815,
+        "panel_n": 905,
+        "raw_n": 908
+      },
+      "change": "market-session execution-date semantics",
+      "changed_fields": [
+        "panel.value_hash",
+        "performance.ic_mean",
+        "performance.ls_sharpe"
+      ],
+      "commit": "1d51a59",
+      "factor_id": "mom_6_1",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 906
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": 0.03745501101527838,
+        "label_dropped": 1,
+        "ls_sharpe": 0.15671439885644864,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "before": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": 0.05153141312231216,
+        "label_dropped": 1,
+        "ls_sharpe": 0.22095275906214726,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "change": "market-session execution-date semantics",
+      "changed_fields": [
+        "panel.value_hash",
+        "performance.ic_mean",
+        "performance.ls_sharpe"
+      ],
+      "commit": "1d51a59",
+      "factor_id": "rev_1m",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.019736591523827642,
+        "label_dropped": 1,
+        "ls_sharpe": -0.17044424743444767,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "before": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.02742675680558596,
+        "label_dropped": 1,
+        "ls_sharpe": -0.16470536767858268,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "change": "market-session execution-date semantics",
+      "changed_fields": [
+        "panel.value_hash",
+        "performance.ic_mean",
+        "performance.ls_sharpe"
+      ],
+      "commit": "1d51a59",
+      "factor_id": "roe",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.03608752180639217,
+        "label_dropped": 1,
+        "ls_sharpe": 0.295851211316458,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.029911457819031647,
+        "label_dropped": 1,
+        "ls_sharpe": 0.27513526349862494,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "market-session execution-date semantics",
+      "changed_fields": [
+        "panel.value_hash",
+        "performance.ic_mean",
+        "performance.ls_sharpe"
+      ],
+      "commit": "1d51a59",
+      "factor_id": "turnover",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.01597561530037569,
+        "label_dropped": 1,
+        "ls_sharpe": -0.12944158656903113,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.01597561530037569,
+        "label_dropped": 1,
+        "ls_sharpe": -0.12944158656903113,
+        "panel_n": 1185,
+        "raw_n": 1200
+      },
+      "change": "definition audit documentation only",
+      "changed_fields": [],
+      "commit": "583d7e9",
+      "factor_id": "asset_growth",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.010905500148118889,
+        "label_dropped": 1,
+        "ls_sharpe": -0.0388813152882594,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.010905500148118889,
+        "label_dropped": 1,
+        "ls_sharpe": -0.0388813152882594,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "definition audit documentation only",
+      "changed_fields": [],
+      "commit": "583d7e9",
+      "factor_id": "bm_ratio",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.0005030934715322261,
+        "label_dropped": 1,
+        "ls_sharpe": -0.12092753436557423,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "before": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.0005030934715322261,
+        "label_dropped": 1,
+        "ls_sharpe": -0.12092753436557423,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "change": "definition audit documentation only",
+      "changed_fields": [],
+      "commit": "583d7e9",
+      "factor_id": "ep_ratio",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.026959612915967216,
+        "label_dropped": 1,
+        "ls_sharpe": 0.12320095264415522,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.026959612915967216,
+        "label_dropped": 1,
+        "ls_sharpe": 0.12320095264415522,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "definition audit documentation only",
+      "changed_fields": [],
+      "commit": "583d7e9",
+      "factor_id": "idio_vol",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.0028932556532043183,
+        "label_dropped": 1,
+        "ls_sharpe": -0.0851562222180999,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": -0.0028932556532043183,
+        "label_dropped": 1,
+        "ls_sharpe": -0.0851562222180999,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "definition audit documentation only",
+      "changed_fields": [],
+      "commit": "583d7e9",
+      "factor_id": "log_mktcap",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 666,
+        "eligible_n": 666,
+        "ic_mean": -0.0703341097473847,
+        "label_dropped": 1,
+        "ls_sharpe": -0.17313842714424155,
+        "panel_n": 665,
+        "raw_n": 668
+      },
+      "before": {
+        "cleaned_n": 666,
+        "eligible_n": 666,
+        "ic_mean": -0.0703341097473847,
+        "label_dropped": 1,
+        "ls_sharpe": -0.17313842714424155,
+        "panel_n": 665,
+        "raw_n": 668
+      },
+      "change": "definition audit documentation only",
+      "changed_fields": [],
+      "commit": "583d7e9",
+      "factor_id": "mom_12_1",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 666
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 906,
+        "eligible_n": 906,
+        "ic_mean": -0.01722107495674499,
+        "label_dropped": 1,
+        "ls_sharpe": -0.02216330215896544,
+        "panel_n": 905,
+        "raw_n": 908
+      },
+      "before": {
+        "cleaned_n": 906,
+        "eligible_n": 906,
+        "ic_mean": -0.01722107495674499,
+        "label_dropped": 1,
+        "ls_sharpe": -0.02216330215896544,
+        "panel_n": 905,
+        "raw_n": 908
+      },
+      "change": "definition audit documentation only",
+      "changed_fields": [],
+      "commit": "583d7e9",
+      "factor_id": "mom_6_1",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 906
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": 0.03745501101527838,
+        "label_dropped": 1,
+        "ls_sharpe": 0.15671439885644864,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "before": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": 0.03745501101527838,
+        "label_dropped": 1,
+        "ls_sharpe": 0.15671439885644864,
+        "panel_n": 1145,
+        "raw_n": 1147
+      },
+      "change": "definition audit documentation only",
+      "changed_fields": [],
+      "commit": "583d7e9",
+      "factor_id": "rev_1m",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.019736591523827642,
+        "label_dropped": 1,
+        "ls_sharpe": -0.17044424743444767,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "before": {
+        "cleaned_n": 1146,
+        "eligible_n": 1146,
+        "ic_mean": -0.019736591523827642,
+        "label_dropped": 1,
+        "ls_sharpe": -0.17044424743444767,
+        "panel_n": 1145,
+        "raw_n": 1160
+      },
+      "change": "definition audit documentation only",
+      "changed_fields": [],
+      "commit": "583d7e9",
+      "factor_id": "roe",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1146
+      }
+    },
+    {
+      "after": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.03608752180639217,
+        "label_dropped": 1,
+        "ls_sharpe": 0.295851211316458,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "before": {
+        "cleaned_n": 1186,
+        "eligible_n": 1186,
+        "ic_mean": 0.03608752180639217,
+        "label_dropped": 1,
+        "ls_sharpe": 0.295851211316458,
+        "panel_n": 1185,
+        "raw_n": 1187
+      },
+      "change": "definition audit documentation only",
+      "changed_fields": [],
+      "commit": "583d7e9",
+      "factor_id": "turnover",
+      "freshness_effect_masked_by_universe": false,
+      "raw_effect_masked_by_universe": false,
+      "unexpected_changed_fields": [],
+      "zscore_delta": {
+        "max_abs_delta": 0.0,
+        "n_added": 0,
+        "n_changed": 0,
+        "n_removed": 0,
+        "n_shared": 1186
+      }
+    }
+  ],
+  "status": "DIAGNOSTIC_ONLY",
+  "unexpected_change_count": 0
+}
