@@ -32,7 +32,12 @@ import pandas as pd
 
 from ..factors.registry import Factor
 from ..store import Store
-from .prepare import CleaningReport, build_panel, prepare_cross_sections
+from .prepare import (
+    CleaningReport,
+    LabelJoinReport,
+    build_panel_with_report,
+    prepare_cross_sections,
+)
 from .protocol import ProtocolResult, run_protocol
 
 # Below this the two vintages agree to within estimation noise on a panel of the
@@ -99,6 +104,8 @@ class FactorRun:
     # What the historical-membership gate removed before any value was allowed
     # to influence a magnitude check or a cross-sectional statistic.
     universe_filter: UniverseFilterReport
+    # What was lost when cleaned signals were aligned to realised returns.
+    label_join: LabelJoinReport
     vintage: str
 
 
@@ -403,7 +410,7 @@ def compute_factor(
         raise
 
     cleaned, report = prepare_cross_sections(raw, groups=groups)
-    panel = build_panel(
+    panel, label_report = build_panel_with_report(
         cleaned, store.prices(), horizon_days=horizon_days, execution_lag=execution_lag
     )
 
@@ -460,6 +467,7 @@ def compute_factor(
         naive_trap=trap,
         magnitude_check=magnitude,
         universe_filter=universe_report,
+        label_join=label_report,
         vintage=vintage,
     )
 

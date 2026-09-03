@@ -356,6 +356,33 @@ def main(argv: list[str] | None = None) -> int:
     emit("  label attrition: outside the historical universe is an eligibility")
     emit("  decision, not a missing observation.")
 
+    emit(_header("FORWARD-LABEL ATTRITION"))
+    emit()
+    emit("  Every cleaned signal is left-joined to its realised return before")
+    emit("  invalid rows are removed, so an absent label cannot disappear without")
+    emit("  a counted reason.")
+    emit()
+    emit(
+        f"  {'factor':<14}{'signals':>12}{'labelled':>12}"
+        f"{'dropped':>12}{'retained':>11}"
+    )
+    for factor_id, run in runs.items():
+        label = run.label_join
+        emit(
+            f"  {factor_id:<14}{label.n_input:>12,}{label.n_output:>12,}"
+            f"{label.n_dropped_without_label:>12,}{label.retention:>10.1%}"
+        )
+        reasons = {
+            reason: count
+            for reason, count in label.outcome_counts.items()
+            if reason != "matched" and count
+        }
+        if reasons:
+            rendered = ", ".join(
+                f"{reason}={count:,}" for reason, count in sorted(reasons.items())
+            )
+            emit(f"    {rendered}")
+
     emit(_header("CROSS-SECTION BREADTH"))
     emit()
     emit("  Names per quantile are reported as a distribution. The average alone")

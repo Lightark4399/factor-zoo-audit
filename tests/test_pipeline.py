@@ -16,6 +16,7 @@ import pytest
 from fza.factors.registry import load_all
 from fza.fixtures import load_fixture_into
 from fza.pipeline.prepare import (
+    build_panel_with_report,
     forward_returns,
     neutralise,
     prepare_cross_sections,
@@ -258,6 +259,79 @@ def test_empty_forward_returns_keep_their_dtypes(store):
     rets = forward_returns(px, far_future)
     assert rets.empty
     assert str(rets["signal_date"].dtype).startswith("datetime64")
+
+
+def test_label_join_counts_each_missing_return_outcome():
+    """No signal row may disappear from an inner join without a reason."""
+    dates = pd.to_datetime(["2024-01-02", "2024-01-03", "2024-01-04"])
+    observations = {
+        "A": {dates[0]: 10.0, dates[1]: 11.0},
+        "B": {dates[0]: 10.0},
+        "D": {dates[0]: 0.0, dates[1]: 1.0},
+        "E": {dates[1]: 10.0},
+        "F": {dates[2]: 10.0},
+    }
+    price_rows = []
+    for ticker, series in observations.items():
+        for date, close in series.items():
+            price_rows.append(
+                {"ticker": ticker, "trade_date": date, "close_adj": close}
+            )
+    factors = pd.DataFrame(
+        {
+            "ticker": ["A", "B", "C", "D", "E", "F"],
+            "signal_date": dates[0],
+            "value": np.arange(6, dtype=float),
+        }
+    )
+
+    panel, report = build_panel_with_report(
+        factors,
+        pd.DataFrame(price_rows),
+        horizon_days=1,
+        execution_lag=0,
+    )
+
+    assert panel["ticker"].tolist() == ["A"]
+    assert report.n_input == 6
+    assert report.n_output == 1
+    assert report.n_dropped_without_label == 5
+    assert report.outcome_counts == {
+        "matched": 1,
+        "missing_exit_price": 1,
+        "no_price_history": 1,
+        "nonfinite_return": 1,
+        "missing_entry_price": 1,
+        "missing_entry_and_exit_price": 1,
+    }
+
+
+def test_label_join_counts_dates_without_a_full_horizon():
+    prices = pd.DataFrame(
+        {
+            "ticker": ["A", "A"],
+            "trade_date": pd.to_datetime(["2024-01-02", "2024-01-03"]),
+            "close_adj": [10.0, 11.0],
+        }
+    )
+    factors = pd.DataFrame(
+        {"ticker": ["A"], "signal_date": [pd.Timestamp("2024-01-03")], "value": [1.0]}
+    )
+
+    panel, report = build_panel_with_report(
+        factors, prices, horizon_days=1, execution_lag=0
+    )
+
+    assert panel.empty
+    assert report.outcome_counts == {"no_full_horizon": 1}
+
+
+def test_factor_run_exposes_label_attrition_separately(store, factors):
+    run = compute_factor(factors["asset_growth"], store, SIGNAL_DATES)
+
+    assert run.label_join.n_input == run.cleaning.n_output
+    assert run.label_join.n_output == len(run.panel)
+    assert sum(run.label_join.outcome_counts.values()) == run.label_join.n_input
 
 
 # ----------------------------------------------------------------------
