@@ -138,6 +138,7 @@ built and tested; the audit pipeline is in progress.
 ✓ Column coverage reported at load — an entirely null column names itself
 ✓ Magnitude assertions on raw factor values, before any cleaning can hide them
 ✓ Share counts bounded at 400 days; failed factors keep a labelled row in the report
+✓ Market observations bounded at 10 days; rolling statistics require fresh inputs
 ✓ Duration facts retain start/end context; E/P and ROE use point-in-time TTM income
 ✓ Wheel contains its SQL schema and ten hypothesis cards; clean-install smoke tested
 ✓ 151 tests at the pre-M4.1 baseline; CI stays green as incident tests are added

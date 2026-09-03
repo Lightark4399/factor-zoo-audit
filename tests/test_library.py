@@ -260,14 +260,13 @@ def _panel_going_null(last_good: str) -> pd.DataFrame:
     return s.to_frame("AAA")
 
 
-def test_a_value_is_not_carried_past_the_staleness_bound():
-    """The bug the ingest fix did not reach.
+def test_market_closure_carries_but_a_long_suspension_does_not():
+    """A calendar gap and a stale security-level quote are different states.
 
-    ``attach_shares_outstanding`` nulls a share count older than 400 days, and
-    the factor layer then forward-filled the resulting null away: Berkshire's
-    count stops in 2012 and its market cap was still being reported in 2026. A
-    null that means "no observation" must survive the fill that exists to bridge
-    a missing quote. See AI_NOTES incident 13.
+    Four days covers a long weekend or exchange closure and is carried. Four
+    months cannot be explained by the trading calendar and is rejected. The
+    historical-universe gate separately decides whether the security has exited;
+    this test is only about freshness while it remains eligible.
     """
     from fza.factors.library import _at_signal_dates
 
@@ -280,6 +279,36 @@ def test_a_value_is_not_carried_past_the_staleness_bound():
     bounded = _at_signal_dates(panel, dates, max_staleness_days=10)
     assert bounded["AAA"].iloc[0] == 100.0  # four days old, a real observation
     assert pd.isna(bounded["AAA"].iloc[1])  # four months old, an invention
+
+
+def test_brief_suspension_is_carried_within_the_declared_bound():
+    """A short halt keeps the last observable quote without opening a new rule."""
+    from fza.factors.library import _at_signal_dates
+
+    panel = _panel_going_null("2020-03-01")
+    out = _at_signal_dates(
+        panel, pd.DatetimeIndex(["2020-03-09"]), max_staleness_days=10
+    )
+
+    assert out.loc[pd.Timestamp("2020-03-09"), "AAA"] == 100.0
+
+
+def test_rolling_quantity_uses_source_freshness_not_calculation_date():
+    """Rolling windows can look current while containing only old observations."""
+    from fza.factors.library import _at_signal_dates, _derived_at_signal_dates
+
+    observations = _panel_going_null("2020-03-01")
+    derived = observations.rolling(60, min_periods=30).std()
+    signal_dates = pd.DatetimeIndex(["2020-03-20"])
+
+    # pandas recomputes this row on March 20 from old observations, so checking
+    # the derived frame alone mistakes a current calculation for current data.
+    assert _at_signal_dates(
+        derived, signal_dates, max_staleness_days=10
+    )["AAA"].notna().all()
+    assert _derived_at_signal_dates(
+        derived, observations, signal_dates, max_staleness_days=10
+    )["AAA"].isna().all()
 
 
 def test_the_staleness_bound_is_measured_per_column():
@@ -319,6 +348,24 @@ def test_a_share_count_that_stopped_yields_no_market_cap():
     others = [t for t in tickers if t != dead]
     assert caps.loc[pd.Timestamp("2021-06-30"), others].notna().any()
     s.close()
+
+
+def test_market_factors_stop_after_the_fixture_quote_is_stale(store, factors):
+    """Every production price/volume call site declares freshness explicitly."""
+    exit_date = pd.Timestamp(
+        store.con.execute(
+            "SELECT last_filing FROM securities WHERE ticker = 'TST07'"
+        ).fetchone()[0]
+    )
+    stale_after = exit_date + pd.Timedelta(days=40)
+
+    for factor_id in ("mom_12_1", "mom_6_1", "rev_1m", "idio_vol", "turnover"):
+        raw = factors[factor_id].compute(store, SIGNAL_DATES)
+        stale = raw.loc[
+            (raw["ticker"] == "TST07")
+            & (pd.to_datetime(raw["signal_date"]) > stale_after)
+        ]
+        assert stale.empty, factor_id
 
 
 def test_idio_vol_does_not_fabricate_zero_returns_across_a_price_gap():

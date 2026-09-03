@@ -67,11 +67,13 @@ def _wide(prices: pd.DataFrame, column: str) -> pd.DataFrame:
     ).sort_index()
 
 
-# How old an observation may be before a share-count-derived quantity stops
-# being carried forward. A month end that lands on a weekend or a holiday is at
-# most four days from the last trade; ten leaves room for a longer closure.
-# Past that there is no observation to carry, and the forward fill would be
-# inventing one -- see AI_NOTES incident 13.
+# How old a market observation may be before a price-, volume- or
+# share-count-derived quantity stops being carried forward. A month end that
+# lands on a weekend or a holiday is at most four days from the last trade; ten
+# leaves room for a longer market closure and a brief security-level halt.
+# Beyond that the last quote is not a current observation. Permanent exits are
+# handled separately by the historical-universe gate; this bound handles stale
+# values for names that the universe still considers eligible.
 MAX_CARRY_DAYS = 10
 
 
@@ -112,6 +114,29 @@ def _at_signal_dates(
     ).ffill()
     age_days = (full.to_numpy()[:, None] - stamps.to_numpy()) / np.timedelta64(1, "D")
     return filled.mask(age_days > max_staleness_days).reindex(idx)
+
+
+def _derived_at_signal_dates(
+    derived: pd.DataFrame,
+    observations: pd.DataFrame,
+    signal_dates: pd.DatetimeIndex,
+    max_staleness_days: int = MAX_CARRY_DAYS,
+) -> pd.DataFrame:
+    """Sample a rolling quantity only where its underlying input is fresh.
+
+    A rolling statistic can remain non-null after its source column goes null:
+    pandas keeps recomputing the window from older observations until
+    ``min_periods`` is breached. Bounding the derived frame alone therefore
+    measures the age of the calculation date, not the age of the last volume or
+    price inside it. Both clocks must be bounded.
+    """
+    sampled = _at_signal_dates(
+        derived, signal_dates, max_staleness_days=max_staleness_days
+    )
+    fresh_observation = _at_signal_dates(
+        observations, signal_dates, max_staleness_days=max_staleness_days
+    )
+    return sampled.where(fresh_observation.notna())
 
 
 def _long(frame: pd.DataFrame, name: str = "value") -> pd.DataFrame:
@@ -327,7 +352,11 @@ def _momentum(
     if prices.empty:
         return pd.DataFrame(columns=["ticker", "signal_date", "value"])
 
-    closes = _at_signal_dates(_wide(prices, "close_adj"), signal_dates)
+    closes = _at_signal_dates(
+        _wide(prices, "close_adj"),
+        signal_dates,
+        max_staleness_days=MAX_CARRY_DAYS,
+    )
     # One row is one signal period. Windows are in rows, not trading days -- an
     # earlier version shifted by 21 rows to mean a month on a month-end frame and
     # silently produced nothing.
@@ -359,7 +388,11 @@ def reversal_1m(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
     prices = store.prices()
     if prices.empty:
         return pd.DataFrame(columns=["ticker", "signal_date", "value"])
-    closes = _at_signal_dates(_wide(prices, "close_adj"), signal_dates)
+    closes = _at_signal_dates(
+        _wide(prices, "close_adj"),
+        signal_dates,
+        max_staleness_days=MAX_CARRY_DAYS,
+    )
     with np.errstate(divide="ignore", invalid="ignore"):
         ret = (closes / closes.shift(1)) - 1.0
     return _long(-ret.replace([np.inf, -np.inf], np.nan))
@@ -400,7 +433,7 @@ def idiosyncratic_volatility(
     # signals across supported environments.
     returns = daily.pct_change(fill_method=None)
     vol = returns.rolling(window, min_periods=window // 2).std()
-    return _long(-_at_signal_dates(vol, signal_dates))
+    return _long(-_derived_at_signal_dates(vol, daily, signal_dates))
 
 
 @register("turnover", tags=("CommonStockSharesOutstanding",), filing_lag_days=2)
@@ -412,10 +445,11 @@ def share_turnover(
     if prices.empty:
         return pd.DataFrame(columns=["ticker", "signal_date", "value"])
 
-    volume = _wide(prices, "volume").rolling(window, min_periods=window // 2).mean()
+    raw_volume = _wide(prices, "volume")
+    volume = raw_volume.rolling(window, min_periods=window // 2).mean()
     shares = _wide(prices, "shares_out")
 
-    avg_volume = _at_signal_dates(volume, signal_dates)
+    avg_volume = _derived_at_signal_dates(volume, raw_volume, signal_dates)
     # Same bound, same reason: a share count that is no longer filed must not be
     # carried into a present-day volume. turnover has no plausible range yet, so
     # nothing downstream would have caught it here.
