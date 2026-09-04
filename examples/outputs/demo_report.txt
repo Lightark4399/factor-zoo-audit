@@ -2,24 +2,41 @@
                                   FACTOR ZOO AUDIT                                  
 ====================================================================================
 
-  DATA: data\fza.duckdb
+  DATA: synthetic fixtures (no ingested store found)
 
-  securities             30
-  fundamentals       34,262
-  prices            113,216
-  restatements        8,837   (25.8% of fundamental rows)
-  price history  2010-01-04 .. 2026-08-28
+  The numbers below are NOT findings. Fixture prices are a random
+  walk, so no factor can predict them and none is meant to. What
+  this run demonstrates is that the machinery behaves: the
+  point-in-time view returns the pre-restatement value, the
+  look-ahead check fires when it should, and the vintage comparison
+  isolates the filing constraint.
+
+  For real numbers, ingest first:
+    python -m fza.ingest.run --user-agent 'Name you@example.com'
+
+  securities             40
+  with us-gaap           40   (fundamental factors see only these)
+  fundamentals        2,413
+  prices             41,383
+  restatements           13   (0.5% of fundamental rows)
+  price history  2018-01-01 .. 2021-12-31
 
 ====================================================================================
-DATA QUALITY
+RESEARCH ENVIRONMENT
 ====================================================================================
 
-  Price columns that are not fully populated. A column at 0.0%
-  empties every factor that reads it, and the failure surfaces as
-  'factor produced no values' -- naming the factor, not the column.
+  Python        3.12.13
+  pandas        3.0.5
+  numpy         2.5.2
+  scipy         1.18.1
+  statsmodels   0.15.0
+  lock          research-requirements.lock
+  lock SHA-256  3014091ea5f7c2b51f3a1d867a674a65be84bf2d8e27348ad6b7b7e512df99f3
+  lock status   MATCHED
 
-  column              non-null    coverage
-  shares_out            85,575      75.6%
+  These are the versions that produced this report. MATCHED means the
+  four numerical libraries equal the exact shipped research lock;
+  MISMATCH keeps the report diagnostic and prints every difference.
 
 ====================================================================================
 REGISTERED FACTORS
@@ -32,9 +49,9 @@ REGISTERED FACTORS
   mom_6_1       momentum      no                         3           undefined
   roe           profitability yes                        3           -10 .. 10
   rev_1m        reversal      no                         3           undefined
-  idio_vol      risk          no                         3           undefined
+  total_vol_60d risk          no                         3           undefined
   log_mktcap    size          yes                        3           undefined
-  bm_ratio      value         yes                        4         0.01 .. 100
+  bm_ratio      value         yes                        4       0.0001 .. 100
   ep_ratio      value         yes                        3         1e-05 .. 10
 
   Every factor carries a hypothesis card stating an economic mechanism,
@@ -48,22 +65,40 @@ REGISTERED FACTORS
   the same reason an unknown share count is null and not zero.
 
 ====================================================================================
+PUBLISHED-ANOMALY DENOMINATOR
+====================================================================================
+
+  claim             published_anomaly_survival_v1
+  current base      8 included (baseline 10, delta -2)
+  included          asset_growth, bm_ratio, ep_ratio, mom_12_1, mom_6_1, rev_1m, roe, turnover
+  excluded          total_vol_60d
+  pending           log_mktcap
+  removed vs base   idio_vol, log_mktcap
+    total_vol_60d: No cited source defines this total-volatility measure as the published idiosyncratic-volatility anomaly.
+    log_mktcap: The Banz definition relationship has not yet been verified against a primary-source locator.
+
+  INCLUDED requires a verified definition-origin citation. PENDING means
+  the proposed origin has not been checked at a primary-source locator;
+  EXCLUDED means the implemented quantity is not the published anomaly.
+  These states, not the number of registered factors, define the headline base.
+
+====================================================================================
 STANDARD PROTOCOL
 ====================================================================================
 
-  184 monthly signal dates, 2011-04-30 .. 2026-07-31
+  33 monthly signal dates, 2019-04-30 .. 2021-12-31
 
   factor                IC  LS Sharpe  monotone  dates as-of held  status
-  mom_12_1         +0.0145    +0.0529     +0.10    170        yes  OK
-  mom_6_1          +0.0329    +0.1206     +0.40    176        yes  OK
-  rev_1m           +0.0112    -0.0484     +0.00    182        yes  OK
-  log_mktcap       +0.0485    +0.2347     +0.60    183        yes  OK
-  idio_vol         -0.0704    -0.2580     -1.00    183        yes  OK
-  turnover         -0.0542    -0.2077     -1.00    183        yes  OK
-  bm_ratio         -0.0241    -0.1254     -0.90    183        yes  OK
-  ep_ratio         -0.0313    -0.1659     -0.50    183        yes  OK
-  roe              -0.0061    -0.1371     -0.50    183        yes  OK
-  asset_growth     -0.0065    -0.1059     -1.00    183        yes  OK
+  mom_12_1         -0.0326    +0.1346     +0.30     19        yes  OK
+  mom_6_1          -0.0197    -0.0157     -0.30     25        yes  OK
+  rev_1m           +0.0286    +0.1216     +0.80     31        yes  OK
+  log_mktcap       -0.0236    -0.1747     -0.70     32        yes  OK
+  total_vol_60d    +0.0424    +0.2547     +0.40     32        yes  OK
+  turnover         +0.0489    +0.3455     +0.60     32        yes  OK
+  bm_ratio         -0.0079    -0.1328     -0.70     32        yes  OK
+  ep_ratio         -0.0225    -0.2003     -0.60     32        yes  OK
+  roe              -0.0261    -0.1435     -0.60     32        yes  OK
+  asset_growth     -0.0254    -0.0099     -0.30     22        yes  OK
 
   'as-of held' is a check on this code: did every read return only
   filings that were already public on the day being forecast, including
@@ -76,6 +111,93 @@ STANDARD PROTOCOL
   named in the status, and that row is excluded from every table below.
 
 ====================================================================================
+HISTORICAL UNIVERSE GATE
+====================================================================================
+
+  Membership is applied to raw factor rows before magnitude checks,
+  winsorisation and standardisation. An excluded row therefore cannot
+  alter the score of a security that was eligible on the same date.
+
+  factor            raw rows    eligible    excluded   retained
+  mom_12_1               782         780           2     99.7%
+  mom_6_1              1,022       1,020           2     99.8%
+  rev_1m               1,261       1,260           1     99.9%
+  log_mktcap           1,301       1,300           1     99.9%
+  total_vol_60d        1,301       1,300           1     99.9%
+  turnover             1,301       1,300           1     99.9%
+  bm_ratio             1,301       1,300           1     99.9%
+  ep_ratio             1,301       1,300           1     99.9%
+  roe                  1,320       1,300          20     98.5%
+  asset_growth           920         900          20     97.8%
+
+  'excluded' is reported independently from missing-value cleaning and
+  label attrition: outside the historical universe is an eligibility
+  decision, not a missing observation.
+
+====================================================================================
+FACTOR-CONSTRUCTION SAMPLE FILTERS
+====================================================================================
+
+  These are definition-level eligibility rules applied inside a factor,
+  before the common universe gate and missing-value cleaning.
+
+  factor        filter                                    input   excluded
+  roe           latest_equity_must_be_positive            1,320          0
+
+====================================================================================
+FORWARD-LABEL ATTRITION
+====================================================================================
+
+  Every cleaned signal is left-joined to its realised return before
+  invalid rows are removed, so an absent label cannot disappear without
+  a counted reason.
+
+  factor             signals    labelled     dropped   retained
+  mom_12_1               780         741          39     95.0%
+    no_full_horizon=39
+  mom_6_1              1,020         980          40     96.1%
+    missing_exit_price=1, no_full_horizon=39
+  rev_1m               1,260       1,220          40     96.8%
+    missing_exit_price=1, no_full_horizon=39
+  log_mktcap           1,300       1,260          40     96.9%
+    missing_exit_price=1, no_full_horizon=39
+  total_vol_60d        1,300       1,260          40     96.9%
+    missing_exit_price=1, no_full_horizon=39
+  turnover             1,300       1,260          40     96.9%
+    missing_exit_price=1, no_full_horizon=39
+  bm_ratio             1,300       1,260          40     96.9%
+    missing_exit_price=1, no_full_horizon=39
+  ep_ratio             1,300       1,260          40     96.9%
+    missing_exit_price=1, no_full_horizon=39
+  roe                  1,300       1,260          40     96.9%
+    missing_exit_price=1, no_full_horizon=39
+  asset_growth           900         860          40     95.6%
+    missing_exit_price=1, no_full_horizon=39
+
+====================================================================================
+CROSS-SECTION BREADTH
+====================================================================================
+
+  Names per quantile are reported as a distribution. The average alone
+  can hide a month whose portfolios nearly disappeared.
+
+  factor            avg    min    p10   median    p90    max   dropped
+  mom_12_1          7.8      7    7.0      8.0    8.0      8         0
+  mom_6_1           7.8      7    7.0      8.0    8.0      8         0
+  rev_1m            7.9      7    7.0      8.0    8.0      8         0
+  log_mktcap        7.9      7    7.0      8.0    8.0      8         0
+  total_vol_60d     7.9      7    7.0      8.0    8.0      8         0
+  turnover          7.9      7    7.0      8.0    8.0      8         0
+  bm_ratio          7.9      7    7.0      8.0    8.0      8         0
+  ep_ratio          7.9      7    7.0      8.0    8.0      8         0
+  roe               7.9      7    7.0      8.0    8.0      8         0
+  asset_growth      7.8      6    6.0      7.0   12.0     12         0
+
+  'dropped' counts signal dates present in the aligned panel but absent
+  from quantile portfolios because the cross-section was too small or
+  ties prevented all five groups from being formed.
+
+====================================================================================
 THE TRAP, MEASURED
 ====================================================================================
 
@@ -86,13 +208,13 @@ THE TRAP, MEASURED
   mom_12_1                       n/a -- reads no fundamentals
   mom_6_1                        n/a -- reads no fundamentals
   rev_1m                         n/a -- reads no fundamentals
-  log_mktcap               184       184       4,835   100.0%
-  idio_vol                       n/a -- reads no fundamentals
-  turnover                 184       184       4,835   100.0%
-  bm_ratio                 184       184      13,436   100.0%
-  ep_ratio                 184       184      19,507   100.0%
-  roe                      184       184      39,174   100.0%
-  asset_growth             184       184       9,544   100.0%
+  log_mktcap                33        21         828    63.6%
+  total_vol_60d                  n/a -- reads no fundamentals
+  turnover                  33        21         828    63.6%
+  bm_ratio                  33        31         887    93.9%
+  ep_ratio                  33        21         828    63.6%
+  roe                       33        31       1,715    93.9%
+  asset_growth              23        14         548    60.9%
 
 ====================================================================================
 POINT-IN-TIME VS RESTATED
@@ -116,49 +238,46 @@ POINT-IN-TIME VS RESTATED
     evidence it is free of look-ahead.
 
   log_mktcap
-    point-in-time IC      +0.0485
-    restated IC           +0.0485
+    point-in-time IC      -0.0236
+    restated IC           -0.0236
     unearned advantage    +0.0000
     verdict                  PASS
 
-  idio_vol
+  total_vol_60d
     not applicable -- this factor reads no fundamentals, so the
     two vintages are identical by construction. That is not
     evidence it is free of look-ahead.
 
   turnover
-    point-in-time IC      -0.0542
-    restated IC           -0.0542
+    point-in-time IC      +0.0489
+    restated IC           +0.0489
     unearned advantage    +0.0000
     verdict                  PASS
 
   bm_ratio
-    point-in-time IC      -0.0241
-    restated IC           -0.0250
-    unearned advantage    -0.0009
+    point-in-time IC      -0.0079
+    restated IC           -0.0080
+    unearned advantage    -0.0001
     verdict                  PASS
 
   ep_ratio
-    point-in-time IC      -0.0313
-    restated IC           -0.0238
-    unearned advantage    +0.0075
-    verdict                  FAIL
+    point-in-time IC      -0.0225
+    restated IC           -0.0225
+    unearned advantage    +0.0000
+    verdict                  PASS
 
   roe
-    point-in-time IC      -0.0061
-    restated IC           +0.0084
-    unearned advantage    +0.0145
-    verdict                  FAIL
+    point-in-time IC      -0.0261
+    restated IC           -0.0294
+    unearned advantage    -0.0033
+    verdict                  PASS
 
   asset_growth
-    point-in-time IC      -0.0065
-    restated IC           -0.0065
+    point-in-time IC      -0.0254
+    restated IC           -0.0254
     unearned advantage    +0.0000
     verdict                  PASS
 
 ====================================================================================
-  The gap above is the value of reading a filing before it existed.
-  It is measurable here only because revisions are stored as rows
-  rather than updates -- a database that overwrote them could not
-  produce this number at all.
+  Run the ingest for numbers that mean something.
 ====================================================================================

@@ -156,6 +156,7 @@ built and tested; the audit pipeline is in progress.
 ✓ Asset growth uses consecutive annual FY contexts; ROE reports its positive-equity filter
 ✓ Wheel contains its SQL schema and ten hypothesis cards; clean-install smoke tested
 ✓ 151 tests at the pre-M4.1 baseline; CI stays green as incident tests are added
+○ Evidence-eligible real baseline refresh (the available 200-company store is diagnostic)
 ○ Audit layer wired to backtest-audit
 ○ Style orthogonalisation, factor structure (PCA), costs
 ```

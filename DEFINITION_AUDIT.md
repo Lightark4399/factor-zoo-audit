@@ -1,6 +1,6 @@
 # Factor definition and citation audit
 
-**Status: IMPLEMENTED / definition changes require a fresh numerical baseline.**
+**Status: IMPLEMENTED / evidence-eligible real baseline pending.**
 
 This audit checks two independent edges of each research contract:
 
@@ -54,6 +54,12 @@ protocol rather than reproducing the cited paper's complete portfolio design.
 5. The headline denominator is machine-readable and versioned. It currently has
    8 included factors, one excluded factor (`total_vol_60d`), and one pending
    factor (`log_mktcap`), versus the pre-audit baseline of 10.
+
+The current `examples/outputs/demo_report.txt` is a fixture-path verification and
+is labelled `NOT findings`. The former 30-company report is preserved under a
+pre-definition filename because its source database is no longer available.
+The remaining local 200-company store declares itself diagnostic and
+`research_evidence: false`, so it is not promoted into a replacement baseline.
 
 ## Primary sources checked
 
