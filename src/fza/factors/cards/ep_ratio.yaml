@@ -1,6 +1,10 @@
 factor_id: ep_ratio
 name: Earnings-to-price ratio
 category: value
+published_anomaly_eligibility:
+  claim_id: published_anomaly_survival_v1
+  status: INCLUDED
+  reason: Verified earnings-price origin with TTM refresh and loss exclusion disclosed.
 economic_rationale: >
   A second value measure, using earnings rather than book value. Its role here is
   partly as a factor and partly as a control on the first: book-to-market and
@@ -24,11 +28,26 @@ timing:
   earliest_execution: next_trading_day_close
   execution_price: adjusted_close
   data_lag_days: 2
+documented_variants:
+  - dimension: accounting_period
+    published_definition: Annual earnings available before annual portfolio formation.
+    implementation: Point-in-time trailing-twelve-month earnings refreshed monthly.
+    consequence: The numerator can change between annual formation dates.
+  - dimension: sample_filter
+    published_definition: Paper-specific treatment of loss firms.
+    implementation: Negative earnings are excluded.
+    consequence: Results describe profitable firms rather than the full published universe.
 falsification:
   - Decile returns show no monotonic pattern
   - Results diverge sharply from book-to-market without an accounting explanation
   - The point-in-time and restated versions differ materially, indicating the
     result depends on figures unavailable at the time
 references:
-  - "Basu (1977), Investment Performance of Common Stocks in Relation to Their P/E Ratios, JF"
-  - "Fama and French (1992), The Cross-Section of Expected Stock Returns, JF"
+  - citation: "Basu (1977), Investment Performance of Common Stocks in Relation to Their P/E Ratios, JF"
+    role: definition_origin
+    locator: "Method and data construction for earnings-price portfolio sorts."
+    verification: VERIFIED
+  - citation: "Fama and French (1992), The Cross-Section of Expected Stock Returns, JF"
+    role: comparator
+    locator: "pp. 429-432, annual accounting-data construction."
+    verification: VERIFIED

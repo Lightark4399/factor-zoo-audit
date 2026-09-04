@@ -10,6 +10,7 @@ from fza.store import Store
 
 def test_runtime_resources_are_packaged_and_readable():
     assert files("fza").joinpath("sql", "001_schema.sql").is_file()
+    assert files("fza.factors").joinpath("denominators.yaml").is_file()
     cards = files("fza.factors").joinpath("cards")
     assert len(list(cards.iterdir())) == 10
     assert len(load_all()) == 10

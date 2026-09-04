@@ -1,6 +1,10 @@
 factor_id: log_mktcap
 name: Log market capitalisation (size)
 category: size
+published_anomaly_eligibility:
+  claim_id: published_anomaly_survival_v1
+  status: PENDING
+  reason: The Banz definition relationship has not yet been verified against a primary-source locator.
 economic_rationale: >
   Small firms have historically earned higher average returns than large ones,
   attributed either to compensation for illiquidity and distress risk or to the
@@ -21,11 +25,22 @@ timing:
   earliest_execution: next_trading_day_close
   execution_price: adjusted_close
   data_lag_days: 2
+documented_variants:
+  - dimension: portfolio_formation
+    published_definition: Paper-specific market-equity portfolios and holding period.
+    implementation: Monthly PIT single-stock z-score under the common protocol.
+    consequence: The size characteristic is related but the portfolio design is not replicated.
 falsification:
   - Decile returns show no monotonic pattern
   - The effect disappears entirely under value weighting
   - The effect exists only in the smallest decile, making it a statement about
     a corner of the universe rather than about size
 references:
-  - "Banz (1981), The Relationship Between Return and Market Value of Common Stocks, JFE"
-  - "Fama and French (1993), Common Risk Factors, JFE"
+  - citation: "Banz (1981), The Relationship Between Return and Market Value of Common Stocks, JFE"
+    role: definition_origin
+    locator: null
+    verification: UNVERIFIED
+  - citation: "Fama and French (1993), Common Risk Factors, JFE"
+    role: comparator
+    locator: null
+    verification: UNVERIFIED

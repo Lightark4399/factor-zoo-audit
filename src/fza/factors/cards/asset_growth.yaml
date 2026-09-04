@@ -1,6 +1,10 @@
 factor_id: asset_growth
 name: Asset growth
 category: investment
+published_anomaly_eligibility:
+  claim_id: published_anomaly_survival_v1
+  status: INCLUDED
+  reason: Verified annual asset-growth origin; monthly PIT formation is disclosed as a variant.
 economic_rationale: >
   Firms that expand their asset base rapidly earn lower subsequent returns. Two
   readings: managers over-invest when their stock is overpriced and capital is
@@ -35,5 +39,11 @@ falsification:
   - The effect disappears after controlling for size and book-to-market
   - The effect is concentrated in the year of publication and absent afterwards
 references:
-  - "Cooper, Gulen and Schill (2008), Asset Growth and the Cross-Section of Stock Returns, JF"
-  - "Titman, Wei and Xie (2004), Capital Investments and Stock Returns, JFQA"
+  - citation: "Cooper, Gulen and Schill (2008), Asset Growth and the Cross-Section of Stock Returns, JF"
+    role: definition_origin
+    locator: "Portfolio construction: prior-fiscal-year total assets and June formation."
+    verification: VERIFIED
+  - citation: "Titman, Wei and Xie (2004), Capital Investments and Stock Returns, JFQA"
+    role: comparator
+    locator: null
+    verification: UNVERIFIED

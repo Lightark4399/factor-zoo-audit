@@ -1,0 +1,48 @@
+factor_id: total_vol_60d
+name: Total volatility (60 trading days)
+category: risk
+published_anomaly_eligibility:
+  claim_id: published_anomaly_survival_v1
+  status: EXCLUDED
+  reason: No cited source defines this total-volatility measure as the published idiosyncratic-volatility anomaly.
+economic_rationale: >
+  High total volatility may proxy for lottery-like payoffs, limits to arbitrage,
+  or omitted systematic exposures. This project keeps the diagnostic because it
+  is economically interpretable, but it does not call the measure idiosyncratic
+  volatility or treat it as a replication of the Ang-Hodrick-Xing-Zhang anomaly.
+  The factor is signed so that low volatility is the long side.
+persistence_conditions: >
+  Expected to be strongest among stocks with retail ownership and low
+  institutional participation if lottery preference is the mechanism. A result
+  that disappears after size control would instead identify total volatility as
+  a size proxy rather than an independent effect.
+definition: >
+  Negative of the standard deviation of daily total returns over the trailing 60
+  trading days ending at the signal date. This is total volatility, not residual
+  volatility from a market or Fama-French factor model.
+timing:
+  signal_computed: month_end_close
+  earliest_execution: next_trading_day_close
+  execution_price: adjusted_close
+  data_lag_days: 0
+falsification:
+  - Decile returns show no monotonic pattern
+  - The effect disappears once size is controlled for, indicating it was a size
+    proxy rather than a volatility effect
+  - The sign flips across sub-periods without an identifiable regime explanation
+references:
+  - citation: "Ang, Hodrick, Xing and Zhang (2006), The Cross-Section of Volatility and Expected Returns, JF"
+    role: comparator
+    locator: "Variable construction: residual volatility from a Fama-French three-factor regression."
+    verification: VERIFIED
+  - citation: "Bali, Cakici and Whitelaw (2011), Maxing Out, JFE"
+    role: competing_explanation
+    locator: "Abstract and Section 2: maximum daily return in the prior month."
+    verification: VERIFIED
+documented_variants:
+  - dimension: measured_quantity
+    published_definition: Residual volatility from a Fama-French three-factor regression.
+    implementation: Standard deviation of total daily returns over 60 trading days.
+    consequence: >
+      The result is diagnostic evidence about this total-volatility variant and
+      is not evidence about the published idiosyncratic-volatility anomaly.

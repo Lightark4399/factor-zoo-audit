@@ -29,7 +29,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from .factors.registry import load_all, summary_table
+from .factors.registry import (
+    load_all,
+    published_anomaly_denominator,
+    summary_table,
+)
 from .fixtures import load_fixture_into
 from .pipeline.prepare import EmptyFactorError
 from .pipeline.run import (
@@ -279,6 +283,29 @@ def main(argv: list[str] | None = None) -> int:
     emit("  unchecked magnitude, and the two states are printed differently for")
     emit("  the same reason an unknown share count is null and not zero.")
 
+    denominator = published_anomaly_denominator()
+    emit(_header("PUBLISHED-ANOMALY DENOMINATOR"))
+    emit()
+    emit(f"  claim             {denominator['claim_id']}")
+    emit(
+        f"  current base      {denominator['current_n']} included "
+        f"(baseline {denominator['baseline_n']}, delta {denominator['delta_n']:+d})"
+    )
+    emit(f"  included          {', '.join(denominator['current_included'])}")
+    emit(f"  excluded          {', '.join(denominator['excluded']) or 'none'}")
+    emit(f"  pending           {', '.join(denominator['pending']) or 'none'}")
+    emit(
+        "  removed vs base   "
+        f"{', '.join(denominator['removed_since_baseline']) or 'none'}"
+    )
+    for factor_id in denominator["excluded"] + denominator["pending"]:
+        emit(f"    {factor_id}: {denominator['reasons'][factor_id]}")
+    emit()
+    emit("  INCLUDED requires a verified definition-origin citation. PENDING means")
+    emit("  the proposed origin has not been checked at a primary-source locator;")
+    emit("  EXCLUDED means the implemented quantity is not the published anomaly.")
+    emit("  These states, not the number of registered factors, define the headline base.")
+
     dates = signal_dates_for(store)
     if args.max_dates and len(dates) > args.max_dates:
         idx = pd.Index(range(len(dates)))
@@ -355,6 +382,31 @@ def main(argv: list[str] | None = None) -> int:
     emit("  'excluded' is reported independently from missing-value cleaning and")
     emit("  label attrition: outside the historical universe is an eligibility")
     emit("  decision, not a missing observation.")
+
+    emit(_header("FACTOR-CONSTRUCTION SAMPLE FILTERS"))
+    emit()
+    emit("  These are definition-level eligibility rules applied inside a factor,")
+    emit("  before the common universe gate and missing-value cleaning.")
+    emit()
+    emit(f"  {'factor':<14}{'filter':<38}{'input':>9}{'excluded':>11}")
+    any_filter = False
+    for factor_id, run in runs.items():
+        for construction_filter in run.construction_filters:
+            any_filter = True
+            emit(
+                f"  {factor_id:<14}{construction_filter['filter_id']:<38}"
+                f"{construction_filter['n_input']:>9,}"
+                f"{construction_filter['n_excluded']:>11,}"
+            )
+            sample = construction_filter.get("excluded_keys", [])[:5]
+            if sample:
+                shown = ", ".join(
+                    f"{row['signal_date']} {row['ticker']} ({row['equity']:g})"
+                    for row in sample
+                )
+                emit(f"      excluded keys: {shown}")
+    if not any_filter:
+        emit("  none")
 
     emit(_header("FORWARD-LABEL ATTRITION"))
     emit()

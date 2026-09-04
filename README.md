@@ -90,6 +90,10 @@ in view are not criteria.
 ```yaml
 factor_id: mom_12_1
 category: momentum
+published_anomaly_eligibility:
+  claim_id: published_anomaly_survival_v1
+  status: INCLUDED
+  reason: Verified definition origin; common holding protocol is disclosed.
 
 economic_rationale: >
   Investors underreact to news, and information diffuses gradually, so past
@@ -108,6 +112,12 @@ falsification:
   - The effect is concentrated in a single sub-period
   - The effect disappears after industry neutralisation
   - Performance at execution lag 1 is indistinguishable from zero
+
+references:
+  - citation: Asness, Moskowitz and Pedersen (2013), Value and Momentum Everywhere
+    role: definition_origin
+    locator: "Data section: MOM2-12"
+    verification: VERIFIED
 ```
 
 The two prose fields answer the question a BlackRock job description puts
@@ -135,12 +145,15 @@ built and tested; the audit pipeline is in progress.
 ✓ Demo entry point: real store when present, fixtures otherwise
 ✓ Read-path verification distinct from hazard measurement
 ✓ Factor library: ten factors across eight categories, each with a hypothesis card
+✓ Citation role/locator/verification is structured; unchecked relationships are UNVERIFIED
+✓ Published-anomaly denominator is versioned: 8 included, 1 pending, 1 excluded
 ✓ Column coverage reported at load — an entirely null column names itself
 ✓ Magnitude assertions on raw factor values, before any cleaning can hide them
 ✓ Share counts bounded at 400 days; failed factors keep a labelled row in the report
 ✓ Market observations bounded at 10 days; rolling statistics require fresh inputs
 ✓ Formation, entry and exit are explicit; lag and horizon count market sessions
 ✓ Duration facts retain start/end context; E/P and ROE use point-in-time TTM income
+✓ Asset growth uses consecutive annual FY contexts; ROE reports its positive-equity filter
 ✓ Wheel contains its SQL schema and ten hypothesis cards; clean-install smoke tested
 ✓ 151 tests at the pre-M4.1 baseline; CI stays green as incident tests are added
 ○ Audit layer wired to backtest-audit

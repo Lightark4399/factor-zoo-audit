@@ -23,9 +23,16 @@ from fza.factors.library import (
     _annual_asset_growth_value,
     _long,
     _ttm_value,
-    idiosyncratic_volatility,
+    return_on_equity,
+    total_volatility_60d,
 )
-from fza.factors.registry import VALID_CATEGORIES, all_factors, load_all, summary_table
+from fza.factors.registry import (
+    VALID_CATEGORIES,
+    all_factors,
+    load_all,
+    published_anomaly_denominator,
+    summary_table,
+)
 from fza.fixtures import load_fixture_into
 from fza.pipeline.run import compute_factor
 from fza.store import Store
@@ -84,6 +91,8 @@ def test_factor_produces_values(factor_id, store, factors):
     assert len(run.values) > 0
     assert len(run.panel) > 0
     assert run.protocol.n_dates > 0
+    if factor_id == "roe":
+        assert run.construction_filters[0]["filter_id"] == "latest_equity_must_be_positive"
 
 
 @pytest.mark.parametrize("factor_id", _factor_ids())
@@ -120,6 +129,22 @@ def test_every_factor_has_a_reference(factors):
         assert factor.card.references, f"{factor_id} cites nothing"
 
 
+def test_every_reference_has_role_locator_and_verification(factors):
+    for factor_id, factor in factors.items():
+        for reference in factor.card.references:
+            assert reference["citation"], factor_id
+            assert reference["role"] in {
+                "definition_origin",
+                "mechanism",
+                "robustness",
+                "competing_explanation",
+                "comparator",
+            }
+            assert reference["verification"] in {"VERIFIED", "UNVERIFIED"}
+            if reference["verification"] == "VERIFIED":
+                assert reference["locator"], factor_id
+
+
 def test_categories_are_valid_and_broad(factors):
     """The SPEC promises coverage across categories, not depth in one."""
     categories = {f.category for f in factors.values()}
@@ -141,11 +166,24 @@ def test_summary_table_covers_every_registered_factor(factors):
     assert set(table["factor_id"]) == set(factors)
 
 
+def test_published_anomaly_denominator_is_visible_and_versioned(factors):
+    report = published_anomaly_denominator()
+
+    assert report["baseline_n"] == 10
+    assert report["current_n"] == 8
+    assert report["delta_n"] == -2
+    assert report["excluded"] == ["total_vol_60d"]
+    assert report["pending"] == ["log_mktcap"]
+    assert report["removed_since_baseline"] == ["idio_vol", "log_mktcap"]
+    assert "total_vol_60d" not in report["current_included"]
+    assert "log_mktcap" not in report["current_included"]
+
+
 def test_sign_convention_is_documented_for_inverted_factors(factors):
     """Size, volatility, turnover and asset growth are negated so that a
     positive IC means the factor predicts returns. The card has to say so, or a
     reader will interpret the sign as a finding."""
-    for factor_id in ("log_mktcap", "idio_vol", "turnover", "asset_growth"):
+    for factor_id in ("log_mktcap", "total_vol_60d", "turnover", "asset_growth"):
         card = factors[factor_id].card
         text = (card.definition + card.economic_rationale).lower()
         assert "negat" in text or "invert" in text or "long side" in text
@@ -209,6 +247,38 @@ def test_asset_growth_rejects_a_missing_fiscal_year():
     )
 
     assert _annual_asset_growth_value(facts) is None
+
+
+def test_roe_reports_non_positive_equity_keys_as_a_sample_filter(monkeypatch):
+    signal_date = pd.Timestamp("2024-06-30")
+    income = pd.DataFrame(
+        {
+            "ticker": ["AAA", "BBB", "CCC"],
+            "signal_date": [signal_date] * 3,
+            "value": [10.0, 20.0, 30.0],
+        }
+    )
+    equity = pd.DataFrame(
+        {
+            "ticker": ["AAA", "BBB", "CCC"],
+            "signal_date": [signal_date] * 3,
+            "value": [100.0, 0.0, -50.0],
+        }
+    )
+    monkeypatch.setattr("fza.factors.library._ttm_fundamental_panel", lambda *a, **k: income)
+    monkeypatch.setattr("fza.factors.library._fundamental_panel", lambda *a, **k: equity)
+
+    result = return_on_equity(None, pd.DatetimeIndex([signal_date]))
+    report = result.attrs["construction_filters"][0]
+
+    assert result["ticker"].tolist() == ["AAA"]
+    assert report["n_input"] == 3
+    assert report["n_output"] == 1
+    assert report["n_excluded"] == 2
+    assert [(row["signal_date"], row["ticker"]) for row in report["excluded_keys"]] == [
+        ("2024-06-30", "BBB"),
+        ("2024-06-30", "CCC"),
+    ]
 
 
 # ----------------------------------------------------------------------
@@ -409,7 +479,13 @@ def test_market_factors_stop_after_the_fixture_quote_is_stale(store, factors):
     )
     stale_after = exit_date + pd.Timedelta(days=40)
 
-    for factor_id in ("mom_12_1", "mom_6_1", "rev_1m", "idio_vol", "turnover"):
+    for factor_id in (
+        "mom_12_1",
+        "mom_6_1",
+        "rev_1m",
+        "total_vol_60d",
+        "turnover",
+    ):
         raw = factors[factor_id].compute(store, SIGNAL_DATES)
         stale = raw.loc[
             (raw["ticker"] == "TST07")
@@ -418,7 +494,7 @@ def test_market_factors_stop_after_the_fixture_quote_is_stale(store, factors):
         assert stale.empty, factor_id
 
 
-def test_idio_vol_does_not_fabricate_zero_returns_across_a_price_gap():
+def test_total_vol_does_not_fabricate_zero_returns_across_a_price_gap():
     """A missing quote is not a zero return under any supported pandas version.
 
     pandas 2.x padded ``pct_change`` inputs by default. With that default, AAA's
@@ -449,7 +525,7 @@ def test_idio_vol_does_not_fabricate_zero_returns_across_a_price_gap():
 
     with Store() as sparse:
         sparse.load_prices(pd.DataFrame(rows))
-        result = idiosyncratic_volatility(
+        result = total_volatility_60d(
             sparse, pd.DatetimeIndex([dates[-1]]), window=2
         )
 

@@ -40,6 +40,7 @@ import pandas as pd
 import yaml
 
 CARDS_DIR = files("fza.factors").joinpath("cards")
+DENOMINATORS_FILE = files("fza.factors").joinpath("denominators.yaml")
 
 REQUIRED_CARD_FIELDS = (
     "factor_id",
@@ -51,7 +52,18 @@ REQUIRED_CARD_FIELDS = (
     "timing",
     "falsification",
     "references",
+    "published_anomaly_eligibility",
 )
+
+VALID_REFERENCE_ROLES = {
+    "definition_origin",
+    "mechanism",
+    "robustness",
+    "competing_explanation",
+    "comparator",
+}
+VALID_REFERENCE_VERIFICATION = {"VERIFIED", "UNVERIFIED"}
+VALID_DENOMINATOR_STATUSES = {"INCLUDED", "EXCLUDED", "PENDING"}
 
 VALID_CATEGORIES = {
     "value",
@@ -82,8 +94,24 @@ class HypothesisCard:
     definition: str
     timing: dict
     falsification: list[str]
-    references: list[str]
+    references: list[dict]
+    published_anomaly_eligibility: dict
     raw: dict = field(default_factory=dict)
+
+    @property
+    def lineage_status(self) -> str:
+        origins = [
+            reference
+            for reference in self.references
+            if reference["role"] == "definition_origin"
+        ]
+        if not origins:
+            return "UNSUPPORTED_LINEAGE"
+        if not any(reference["verification"] == "VERIFIED" for reference in origins):
+            return "UNVERIFIED"
+        if self.raw.get("documented_variants"):
+            return "DOCUMENTED_VARIANT"
+        return "EXACT_REPLICATION"
 
     @classmethod
     def from_yaml(cls, path) -> HypothesisCard:
@@ -109,6 +137,49 @@ class HypothesisCard:
                 "with no stated way to fail cannot be tested."
             )
 
+        references = data["references"]
+        if not isinstance(references, list) or not references:
+            raise CardError(f"{path.name}: references must be a non-empty list")
+        for index, reference in enumerate(references):
+            if not isinstance(reference, dict):
+                raise CardError(
+                    f"{path.name}: references[{index}] must be structured, not a string"
+                )
+            missing_reference = [
+                key
+                for key in ("citation", "role", "locator", "verification")
+                if key not in reference
+            ]
+            if missing_reference:
+                raise CardError(
+                    f"{path.name}: references[{index}] missing {missing_reference}"
+                )
+            if reference["role"] not in VALID_REFERENCE_ROLES:
+                raise CardError(
+                    f"{path.name}: references[{index}].role must be one of "
+                    f"{sorted(VALID_REFERENCE_ROLES)}"
+                )
+            if reference["verification"] not in VALID_REFERENCE_VERIFICATION:
+                raise CardError(
+                    f"{path.name}: references[{index}].verification must be "
+                    f"VERIFIED or UNVERIFIED"
+                )
+
+        eligibility = data["published_anomaly_eligibility"]
+        missing_eligibility = [
+            key for key in ("claim_id", "status", "reason") if not eligibility.get(key)
+        ]
+        if missing_eligibility:
+            raise CardError(
+                f"{path.name}: published_anomaly_eligibility missing "
+                f"{missing_eligibility}"
+            )
+        if eligibility["status"] not in VALID_DENOMINATOR_STATUSES:
+            raise CardError(
+                f"{path.name}: eligibility status must be one of "
+                f"{sorted(VALID_DENOMINATOR_STATUSES)}"
+            )
+
         # A rationale of a few words is a label, not a mechanism. The threshold is
         # crude but it catches the failure mode it is aimed at: filling the field
         # to satisfy the check.
@@ -118,7 +189,7 @@ class HypothesisCard:
                 "mechanism. Describe why this should predict returns."
             )
 
-        return cls(
+        card = cls(
             factor_id=data["factor_id"],
             name=data["name"],
             category=data["category"],
@@ -127,9 +198,22 @@ class HypothesisCard:
             definition=str(data["definition"]).strip(),
             timing=timing,
             falsification=list(falsification),
-            references=list(data["references"]),
+            references=list(references),
+            published_anomaly_eligibility=dict(eligibility),
             raw=data,
         )
+        expected_status = {
+            "EXACT_REPLICATION": "INCLUDED",
+            "DOCUMENTED_VARIANT": "INCLUDED",
+            "UNVERIFIED": "PENDING",
+            "UNSUPPORTED_LINEAGE": "EXCLUDED",
+        }[card.lineage_status]
+        if eligibility["status"] != expected_status:
+            raise CardError(
+                f"{path.name}: eligibility {eligibility['status']} conflicts with "
+                f"derived lineage {card.lineage_status}; expected {expected_status}"
+            )
+        return card
 
 
 @dataclass(frozen=True)
@@ -277,6 +361,8 @@ def summary_table() -> pd.DataFrame:
                 "tags": ", ".join(f.tags),
                 "filing_lag_days": f.filing_lag_days,
                 "n_falsification_criteria": len(f.card.falsification),
+                "lineage_status": f.card.lineage_status,
+                "denominator_status": f.card.published_anomaly_eligibility["status"],
                 # Rendered as text so "undefined" cannot be mistaken for a
                 # bound, and so the column reads the same in the report as the
                 # state it describes.
@@ -285,7 +371,56 @@ def summary_table() -> pd.DataFrame:
                     if f.plausible_range is None
                     else f"{f.plausible_range[0]:g} .. {f.plausible_range[1]:g}"
                 ),
-                "reference": f.card.references[0] if f.card.references else "",
+                "reference": (
+                    f.card.references[0]["citation"] if f.card.references else ""
+                ),
             }
         )
     return pd.DataFrame(rows)
+
+
+def published_anomaly_denominator(
+    claim_id: str = "published_anomaly_survival_v1",
+) -> dict:
+    """Return the visible, versioned composition of a headline denominator."""
+    definitions = yaml.safe_load(DENOMINATORS_FILE.read_text(encoding="utf-8"))
+    claim = definitions["claims"].get(claim_id)
+    if claim is None:
+        raise CardError(f"unknown denominator claim_id {claim_id!r}")
+
+    cards = [factor.card for factor in _REGISTRY.values()]
+    relevant = [
+        card
+        for card in cards
+        if card.published_anomaly_eligibility["claim_id"] == claim_id
+    ]
+    by_status = {
+        status: sorted(
+            card.factor_id
+            for card in relevant
+            if card.published_anomaly_eligibility["status"] == status
+        )
+        for status in sorted(VALID_DENOMINATOR_STATUSES)
+    }
+    reasons = {
+        card.factor_id: card.published_anomaly_eligibility["reason"]
+        for card in relevant
+        if card.published_anomaly_eligibility["status"] != "INCLUDED"
+    }
+    baseline = sorted(claim["baseline_included_factor_ids"])
+    current = by_status["INCLUDED"]
+    return {
+        "claim_id": claim_id,
+        "label": claim["label"],
+        "baseline_version": claim["baseline_version"],
+        "baseline_included": baseline,
+        "baseline_n": len(baseline),
+        "current_included": current,
+        "current_n": len(current),
+        "delta_n": len(current) - len(baseline),
+        "removed_since_baseline": sorted(set(baseline) - set(current)),
+        "added_since_baseline": sorted(set(current) - set(baseline)),
+        "excluded": by_status["EXCLUDED"],
+        "pending": by_status["PENDING"],
+        "reasons": reasons,
+    }

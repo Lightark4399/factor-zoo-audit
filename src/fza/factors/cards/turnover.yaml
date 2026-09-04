@@ -1,6 +1,10 @@
 factor_id: turnover
 name: Share turnover
 category: liquidity
+published_anomaly_eligibility:
+  claim_id: published_anomaly_survival_v1
+  status: INCLUDED
+  reason: Verified turnover definition origin with averaging and common protocol disclosed.
 economic_rationale: >
   Turnover proxies for disagreement among investors and for the ease of taking a
   position. High turnover stocks have historically underperformed, consistent
@@ -19,6 +23,11 @@ timing:
   earliest_execution: next_trading_day_close
   execution_price: adjusted_close
   data_lag_days: 2
+documented_variants:
+  - dimension: measurement_window
+    published_definition: Shares traded divided by shares outstanding under the paper's portfolio design.
+    implementation: Mean daily turnover over 21 sessions, refreshed monthly.
+    consequence: The liquidity quantity is matched but its aggregation and holding protocol differ.
 falsification:
   - Decile returns show no monotonic pattern
   - The effect vanishes after orthogonalising against size and volatility,
@@ -26,5 +35,11 @@ falsification:
   - The effect is entirely explained by transaction costs, which are highest
     exactly where turnover is highest
 references:
-  - "Datar, Naik and Radcliffe (1998), Liquidity and Stock Returns, JFM"
-  - "Miller (1977), Risk, Uncertainty, and Divergence of Opinion, JF"
+  - citation: "Datar, Naik and Radcliffe (1998), Liquidity and Stock Returns, JFM"
+    role: definition_origin
+    locator: "Abstract: share turnover defined as shares traded divided by shares outstanding."
+    verification: VERIFIED
+  - citation: "Miller (1977), Risk, Uncertainty, and Divergence of Opinion, JF"
+    role: mechanism
+    locator: null
+    verification: UNVERIFIED

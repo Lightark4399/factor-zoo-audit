@@ -31,7 +31,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 fza = ["sql/*.sql", "research-requirements.lock"]
-"fza.factors" = ["cards/*.yaml"]
+"fza.factors" = ["cards/*.yaml", "denominators.yaml"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

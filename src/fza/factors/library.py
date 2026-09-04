@@ -412,8 +412,8 @@ def log_market_cap(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame
     return _long(-np.log(positive))
 
 
-@register("idio_vol")
-def idiosyncratic_volatility(
+@register("total_vol_60d")
+def total_volatility_60d(
     store: Store, signal_dates: pd.DatetimeIndex, window: int = 60
 ) -> pd.DataFrame:
     """Negative trailing volatility of daily returns, so that low vol is long.
@@ -548,7 +548,7 @@ def earnings_to_price(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFr
     plausible_range=(-10.0, 10.0),
 )
 def return_on_equity(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
-    """Point-in-time TTM net income over latest positive filed equity.
+    """Point-in-time TTM net income over latest filed equity, if positive.
 
     Both quantities come from the same read, so they are the same vintage. Taking
     income from one date's filing and equity from another's would produce a ratio
@@ -562,10 +562,31 @@ def return_on_equity(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFra
     usable = income.rename(columns={"value": "income"}).merge(
         equity, on=["ticker", "signal_date"], how="inner"
     )
+    excluded = usable.loc[usable["equity"] <= 0, ["ticker", "signal_date", "equity"]]
     usable = usable.loc[usable["equity"] > 0].copy()
     usable["value"] = usable["income"] / usable["equity"]
     out = usable[["ticker", "signal_date", "value"]]
-    return out.replace([np.inf, -np.inf], np.nan).dropna(subset=["value"])
+    out = out.replace([np.inf, -np.inf], np.nan).dropna(subset=["value"])
+    out.attrs["construction_filters"] = [
+        {
+            "filter_id": "latest_equity_must_be_positive",
+            "scope": "pre_universe_factor_construction",
+            "n_input": int(len(usable) + len(excluded)),
+            "n_output": int(len(usable)),
+            "n_excluded": int(len(excluded)),
+            "excluded_keys": [
+                {
+                    "signal_date": str(pd.Timestamp(row.signal_date).date()),
+                    "ticker": str(row.ticker),
+                    "equity": float(row.equity),
+                }
+                for row in excluded.sort_values(["signal_date", "ticker"]).itertuples(
+                    index=False
+                )
+            ],
+        }
+    ]
+    return out
 
 
 def _annual_asset_growth_value(facts: pd.DataFrame) -> float | None:
@@ -637,7 +658,7 @@ def asset_growth(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
 # ----------------------------------------------------------------------
 # Factors with no declared plausible range
 # ----------------------------------------------------------------------
-# mom_12_1, mom_6_1, rev_1m, log_mktcap, idio_vol and turnover register with
+# mom_12_1, mom_6_1, rev_1m, log_mktcap, total_vol_60d and turnover register with
 # plausible_range left at None, which the registry reports as "undefined" and
 # NOT as passing. Each needs a bound stated in its own units before it can have
 # one, and guessing would be worse than the gap: a range set too wide never
@@ -645,8 +666,8 @@ def asset_growth(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
 #
 #   log_mktcap  stores -log(mktcap), so the bound belongs on the log, not on
 #               1e6..1e13 as one would first write it
-#   idio_vol    is a residual standard deviation whose scale depends on the
-#               regression window and on whether it is annualised
+#   total_vol_60d is a total-return standard deviation whose scale depends on
+#               the window and on whether it is annualised
 #   turnover    changed scale when volume was put back into point-in-time share
 #               terms, so any bound written before that is stale
 #   momentum    and reversal are returns over different horizons and cannot

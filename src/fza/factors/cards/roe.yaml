@@ -1,6 +1,10 @@
 factor_id: roe
 name: Return on equity
 category: profitability
+published_anomaly_eligibility:
+  claim_id: published_anomaly_survival_v1
+  status: INCLUDED
+  reason: Verified Hou-Xue-Zhang ROE origin with measurement and sample-filter departures disclosed.
 economic_rationale: >
   Profitable firms earn higher subsequent returns than unprofitable ones with the
   same valuation. Under a discounted-cash-flow identity this is close to
@@ -24,11 +28,34 @@ timing:
   earliest_execution: next_trading_day_close
   execution_price: adjusted_close
   data_lag_days: 2
+documented_variants:
+  - dimension: accounting_period
+    published_definition: Latest quarterly income before extraordinary items.
+    implementation: Point-in-time trailing-twelve-month net income.
+    consequence: The numerator is smoother and answers a different horizon than HXZ ROE.
+  - dimension: equity_denominator
+    published_definition: Book equity lagged by one quarter.
+    implementation: Most recently filed stockholders' equity at the signal date.
+    consequence: Numerator and denominator timing differs from HXZ.
+  - dimension: sample_filter
+    published_definition: Paper-specific sample eligibility.
+    implementation: Latest available equity must be strictly positive.
+    consequence: Non-positive-equity ticker-date keys are excluded and reported separately.
 falsification:
   - Decile returns show no monotonic pattern
   - The effect disappears once book-to-market is controlled for, contradicting
     the identity that motivates it
   - The point-in-time and restated versions differ materially
 references:
-  - "Novy-Marx (2013), The Other Side of Value, JFE"
-  - "Fama and French (2015), A Five-Factor Asset Pricing Model, JFE"
+  - citation: "Hou, Xue and Zhang (2015), Digesting Anomalies, RFS"
+    role: definition_origin
+    locator: "Factor construction: quarterly income before extraordinary items over one-quarter-lagged book equity."
+    verification: VERIFIED
+  - citation: "Novy-Marx (2013), The Other Side of Value, JFE"
+    role: comparator
+    locator: "Gross profits divided by assets."
+    verification: VERIFIED
+  - citation: "Fama and French (2015), A Five-Factor Asset Pricing Model, JFE"
+    role: comparator
+    locator: "Table A4 note: annual operating profitability over book equity."
+    verification: VERIFIED

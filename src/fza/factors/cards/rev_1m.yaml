@@ -1,6 +1,10 @@
 factor_id: rev_1m
 name: One-month reversal
 category: reversal
+published_anomaly_eligibility:
+  claim_id: published_anomaly_survival_v1
+  status: INCLUDED
+  reason: Verified one-month reversal origin; common execution and holding protocol is disclosed.
 economic_rationale: >
   Short-horizon price moves are substantially driven by liquidity provision
   rather than information: a large buy order pushes the price up, and the
@@ -21,10 +25,21 @@ timing:
   earliest_execution: next_trading_day_close
   execution_price: adjusted_close
   data_lag_days: 0
+documented_variants:
+  - dimension: holding_protocol
+    published_definition: Paper-specific monthly serial-correlation tests and portfolios.
+    implementation: Negative prior-month return scored against a 21-session forward label.
+    consequence: The reversal characteristic is retained without claiming a full paper replication.
 falsification:
   - Decile returns show no monotonic pattern
   - The effect survives a realistic transaction cost assumption in large caps only
   - The effect has the same sign as momentum, indicating the two are measuring one thing
 references:
-  - "Jegadeesh (1990), Evidence of Predictable Behavior of Security Returns, JF"
-  - "Nagel (2012), Evaporating Liquidity, RFS"
+  - citation: "Jegadeesh (1990), Evidence of Predictable Behavior of Security Returns, JF"
+    role: definition_origin
+    locator: "Abstract and tests of negative first-order serial correlation in monthly returns."
+    verification: VERIFIED
+  - citation: "Nagel (2012), Evaporating Liquidity, RFS"
+    role: mechanism
+    locator: null
+    verification: UNVERIFIED

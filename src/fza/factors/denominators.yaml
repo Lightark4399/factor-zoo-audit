@@ -1,0 +1,15 @@
+claims:
+  published_anomaly_survival_v1:
+    label: Published anomaly definitions eligible for the survival-rate headline
+    baseline_version: pre_definition_lineage_audit_2026-09-04
+    baseline_included_factor_ids:
+      - asset_growth
+      - bm_ratio
+      - ep_ratio
+      - idio_vol
+      - log_mktcap
+      - mom_12_1
+      - mom_6_1
+      - rev_1m
+      - roe
+      - turnover

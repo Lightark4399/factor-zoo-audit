@@ -1,6 +1,10 @@
 factor_id: bm_ratio
 name: Book-to-market ratio
 category: value
+published_anomaly_eligibility:
+  claim_id: published_anomaly_survival_v1
+  status: INCLUDED
+  reason: Verified book-to-market origin with numerator and formation-timing variants disclosed.
 
 economic_rationale: >
   Firms trading at a low price relative to book value are either compensating
@@ -37,6 +41,16 @@ timing:
   # formed at a month-end close cannot rely on same-day availability.
   data_lag_days: 2
 
+documented_variants:
+  - dimension: accounting_numerator
+    published_definition: Book equity adjusted for deferred taxes and preferred stock.
+    implementation: Most recently filed StockholdersEquity.
+    consequence: The simplified XBRL numerator need not match the paper's book-equity series.
+  - dimension: portfolio_formation
+    published_definition: Fiscal-year book equity and December market equity matched to July-June returns.
+    implementation: Monthly PIT equity divided by contemporaneous market capitalisation.
+    consequence: The characteristic is refreshed monthly rather than reproducing the paper's annual sorts.
+
 falsification:
   - Decile portfolio returns show no monotonic pattern
   - The point-in-time and restated versions produce materially different results,
@@ -46,5 +60,11 @@ falsification:
     indicating an implementation error rather than a factor failing
 
 references:
-  - "Fama and French (1992), The Cross-Section of Expected Stock Returns, JF"
-  - "Rosenberg, Reid and Lanstein (1985), Persuasive Evidence of Market Inefficiency, JPM"
+  - citation: "Fama and French (1992), The Cross-Section of Expected Stock Returns, JF"
+    role: definition_origin
+    locator: "pp. 429-432, data construction and July-June return matching."
+    verification: VERIFIED
+  - citation: "Rosenberg, Reid and Lanstein (1985), Persuasive Evidence of Market Inefficiency, JPM"
+    role: comparator
+    locator: null
+    verification: UNVERIFIED

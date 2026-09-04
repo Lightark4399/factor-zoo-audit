@@ -48,6 +48,10 @@ def test_demo_runs_end_to_end_on_fixtures(capsys):
     assert "lock SHA-256" in out
     assert "lock status   MATCHED" in out
     assert "STANDARD PROTOCOL" in out
+    assert "PUBLISHED-ANOMALY DENOMINATOR" in out
+    assert "current base      8 included (baseline 10, delta -2)" in out
+    assert "FACTOR-CONSTRUCTION SAMPLE FILTERS" in out
+    assert "latest_equity_must_be_positive" in out
     assert "HISTORICAL UNIVERSE GATE" in out
     assert "FORWARD-LABEL ATTRITION" in out
     assert "POINT-IN-TIME VS RESTATED" in out

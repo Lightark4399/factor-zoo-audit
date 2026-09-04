@@ -101,6 +101,9 @@ class FactorRun:
     # Whether the raw values were within the magnitude the factor declared, or
     # -- distinctly -- whether it declared one at all.
     magnitude_check: dict
+    # Definition-level eligibility rules applied inside the factor before the
+    # common universe and cleaning pipeline.
+    construction_filters: list[dict]
     # What the historical-membership gate removed before any value was allowed
     # to influence a magnitude check or a cross-sectional statistic.
     universe_filter: UniverseFilterReport
@@ -387,6 +390,7 @@ def compute_factor(
     store.access.reads.clear()
 
     raw = factor.compute(store, signal_dates)
+    construction_filters = list(raw.attrs.get("construction_filters", []))
 
     # Eligibility is the first gate.  A value for a name that had already left
     # the declared universe must not reach the magnitude check, winsor bounds,
@@ -469,6 +473,7 @@ def compute_factor(
         read_path_check=read_check,
         naive_trap=trap,
         magnitude_check=magnitude,
+        construction_filters=construction_filters,
         universe_filter=universe_report,
         label_join=label_report,
         vintage=vintage,

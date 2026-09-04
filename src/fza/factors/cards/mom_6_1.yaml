@@ -1,6 +1,10 @@
 factor_id: mom_6_1
 name: 6-month momentum, skipping the most recent month
 category: momentum
+published_anomaly_eligibility:
+  claim_id: published_anomaly_survival_v1
+  status: INCLUDED
+  reason: Verified six-month momentum origin with the one-month skip disclosed as a variant.
 economic_rationale: >
   The same underreaction mechanism as twelve-month momentum, measured over a
   shorter formation window. Its purpose here is not to be a separate discovery
@@ -19,9 +23,17 @@ timing:
   earliest_execution: next_trading_day_close
   execution_price: adjusted_close
   data_lag_days: 0
+documented_variants:
+  - dimension: skip_convention
+    published_definition: Six-month formation strategies with paper-specific lag choices.
+    implementation: Six-month formation ending one full month before the signal date.
+    consequence: This exact skip convention is a documented implementation choice.
 falsification:
   - Decile returns show no monotonic pattern
   - Results diverge sharply from the 12-month version, indicating window sensitivity
   - The effect is concentrated in a single sub-period
 references:
-  - "Jegadeesh and Titman (1993), Returns to Buying Winners and Selling Losers, JF"
+  - citation: "Jegadeesh and Titman (1993), Returns to Buying Winners and Selling Losers, JF"
+    role: definition_origin
+    locator: "Formation and holding-period strategy grid, including six-month formation."
+    verification: VERIFIED

@@ -1,6 +1,6 @@
 # Factor definition and citation audit
 
-**Status: DECISION REQUIRED / no factor values changed by this audit.**
+**Status: IMPLEMENTED / definition changes require a fresh numerical baseline.**
 
 This audit checks two independent edges of each research contract:
 
@@ -23,39 +23,37 @@ The status vocabulary proposed for the registry is:
 
 | factor | executable formula | card ↔ code | cited object and locator | proposed lineage |
 |---|---|---|---|---|
-| `asset_growth` | `-(AT_latest / AT_closest-to-(latest-1y) - 1)` over every visible XBRL interval | **DIVERGES.** The card says two annual filings; the code permits quarterly contexts and refreshes monthly. | Cooper–Gulen–Schill use annual percentage growth in total assets and form portfolios each June. Fama–French define investment from fiscal year *t−2* to *t−1* (2015, Table A4 note). Titman–Wei–Xie study capital investment, not total-asset growth. | `UNSUPPORTED_LINEAGE` until code is annual-only; Titman belongs as `RELATED_MECHANISM_ONLY`. |
+| `asset_growth` | Negative growth between the latest two consecutive visible `FY` asset contexts | **AGREES.** Quarterly contexts and missing fiscal-year gaps are rejected. | Cooper–Gulen–Schill use annual percentage growth in total assets and form portfolios each June. The repository refreshes the annual characteristic monthly after filing, so June-only formation remains a separate departure. Titman–Wei–Xie study capital investment, not total-asset growth. | `DOCUMENTED_VARIANT`; included in the headline denominator. Titman is an unverified comparator, not a definition origin. |
 | `bm_ratio` | latest PIT positive `StockholdersEquity / (close × shares)` at each month end | **AGREES.** | Fama–French use fiscal-year book equity with December market equity, matched to July–June returns (1992, data construction); their book-equity numerator also adjusts deferred taxes and preferred stock. | `DOCUMENTED_VARIANT`; monthly PIT timing and simplified numerator must be explicit structured departures. |
 | `ep_ratio` | positive PIT TTM net income / contemporaneous market cap | **AGREES.** | Basu sorts on P/E built from annual earnings available before portfolio formation and year-end market value (1977, method); Fama–French likewise test an annual E/P characteristic. | `DOCUMENTED_VARIANT`; TTM PIT refresh and loss exclusion are material departures, not an exact Basu replication. |
-| `idio_vol` | negative 60-session standard deviation of total daily returns | **AGREES, with the simplification disclosed.** | Ang–Hodrick–Xing–Zhang estimate volatility of residuals from a Fama–French three-factor regression (2006, variable construction). Bali–Cakici–Whitelaw measure the maximum daily return in the prior month (2011, abstract/Section 2). Neither defines total volatility. | `UNSUPPORTED_LINEAGE`. Rename to `total_vol_60d`; both current citations become mechanism/comparator roles, not definition origins. |
+| `total_vol_60d` | negative 60-session standard deviation of total daily returns | **AGREES.** The old `idio_vol` name has been removed. | Ang–Hodrick–Xing–Zhang estimate volatility of residuals from a Fama–French three-factor regression (2006, variable construction). Bali–Cakici–Whitelaw measure the maximum daily return in the prior month (2011, abstract/Section 2). Neither defines total volatility. | `UNSUPPORTED_LINEAGE`; visible as a diagnostic factor but excluded from the published-anomaly denominator. |
 | `log_mktcap` | `-log(close × shares)` at the signal date | **AGREES.** | Banz tests market value of common equity; Fama–French's SMB is a portfolio factor formed on June market equity rather than a monthly single-stock z-score. | `DOCUMENTED_VARIANT`; Banz is the definition origin, Fama–French is a comparator/portfolio-construction source. |
 | `mom_12_1` | adjusted-close cumulative return from *t−12* to *t−1*, negating neither side | **AGREES.** | Asness–Moskowitz–Pedersen explicitly use cumulative months 2–12 return (`MOM2–12`, data section). Jegadeesh–Titman test 3/6/9/12-month formation and holding grids, with either no lag or a one-week lag. | `DOCUMENTED_VARIANT`; signal matches AMP, while this repository's holding and portfolio protocol is its own. |
 | `mom_6_1` | adjusted-close cumulative return from *t−6* to *t−1* | **AGREES.** | Jegadeesh–Titman include six-month formation strategies but not this exact one-month skip convention. | `DOCUMENTED_VARIANT`. |
 | `rev_1m` | negative prior-month adjusted-close return | **AGREES.** | Jegadeesh documents negative first-order serial correlation in monthly returns (1990, abstract and tests). Nagel supports the liquidity-provision interpretation, not the variable's origin. | `DOCUMENTED_VARIANT`; Jegadeesh is definition origin, Nagel is mechanism. |
-| `roe` | PIT TTM net income / latest positive stockholders' equity | **AGREES.** | Novy-Marx defines gross profits/assets (2013, abstract/data); Fama–French define annual operating profitability/book equity (2015, Table A4 note). Neither is this ROE. Hou–Xue–Zhang do define ROE, but as latest quarterly income before extraordinary items divided by one-quarter-lagged book equity (2015, factor construction). | Current citations: `UNSUPPORTED_LINEAGE`. Replace definition origin with Hou–Xue–Zhang, then classify the TTM/latest-equity implementation as `DOCUMENTED_VARIANT`. |
+| `roe` | PIT TTM net income / latest available stockholders' equity, followed by an explicit `equity > 0` sample filter | **AGREES.** The filter reports its excluded `(date, ticker, equity)` keys separately from missing-data attrition. | Hou–Xue–Zhang define ROE as latest quarterly income before extraordinary items divided by one-quarter-lagged book equity. Novy-Marx and Fama–French measure competing profitability definitions. | `DOCUMENTED_VARIANT`; HXZ is the verified definition origin, with TTM, equity timing, and positive-equity sample selection recorded as three departures. |
 | `turnover` | negative 21-session mean daily share volume / PIT shares outstanding | **AGREES.** | Datar–Naik–Radcliffe define turnover as shares traded divided by shares outstanding (1998, abstract). Miller is a disagreement/short-sale mechanism source. | `DOCUMENTED_VARIANT`; Datar is definition origin, Miller is mechanism. |
 
 No row is labelled `EXACT_REPLICATION`: even where the characteristic formula
 matches, the repository uses a common monthly PIT signal, cleaning and holding
 protocol rather than reproducing the cited paper's complete portfolio design.
 
-## Decisions proposed before implementation
+## Implemented decisions
 
-1. Fix `asset_growth` code to select the latest two annual fiscal-year contexts
-   roughly one year apart. Do not relabel the current quarterly-capable path as
-   the published Cooper characteristic.
-2. Rename `idio_vol` to `total_vol_60d`. Keep it outside the denominator of
-   “published anomalies tested” until a valid total-volatility definition source
-   is added. Add residual `idio_vol_ff3_1m` only after an external market/FF3
-   series exists.
-3. Keep `roe`, but replace its definition citations with Hou–Xue–Zhang and state
-   the TTM/latest-equity departures. Novy-Marx and Fama–French may remain only as
-   competing profitability definitions, not lineage.
-4. Add structured citation entries with `role`, `locator`, and `verification`;
-   default new entries to `UNVERIFIED`. A factor-level `lineage_status` is then
-   derived from those entries rather than hand-set.
-5. Do not present an `UNSUPPORTED_LINEAGE` factor's IC as evidence about the
-   named published anomaly. The row remains visible with numbers withheld or
-   explicitly marked `NOT_EVIDENCE`.
+1. `asset_growth` now selects consecutive annual `FY` contexts only. Its monthly
+   PIT refresh remains a documented departure from June formation.
+2. `idio_vol` is renamed `total_vol_60d` and excluded from the published-anomaly
+   denominator. A residual-volatility implementation remains out of scope until
+   an external market/FF3 series exists.
+3. `roe` cites Hou–Xue–Zhang as definition origin. TTM income, latest equity, and
+   positive-equity sample selection are separate documented departures; the
+   sample filter emits explicit excluded keys.
+4. Every citation now has `role`, `locator`, and `verification`. Relationships
+   not checked at a primary-source locator are `UNVERIFIED`, which makes the
+   associated denominator status `PENDING` rather than silently passing.
+5. The headline denominator is machine-readable and versioned. It currently has
+   8 included factors, one excluded factor (`total_vol_60d`), and one pending
+   factor (`log_mktcap`), versus the pre-audit baseline of 10.
 
 ## Primary sources checked
 

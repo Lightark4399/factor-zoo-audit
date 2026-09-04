@@ -1,6 +1,10 @@
 factor_id: mom_12_1
 name: 12-month momentum, skipping the most recent month
 category: momentum
+published_anomaly_eligibility:
+  claim_id: published_anomaly_survival_v1
+  status: INCLUDED
+  reason: Verified MOM2-12 definition origin; common holding protocol is disclosed as a variant.
 
 economic_rationale: >
   Investors underreact to news, and information diffuses through the market
@@ -25,6 +29,11 @@ timing:
   earliest_execution: next_trading_day_close
   execution_price: adjusted_close
   data_lag_days: 0
+documented_variants:
+  - dimension: holding_protocol
+    published_definition: Paper-specific portfolio formation, weighting, and holding rules.
+    implementation: Common monthly PIT cross-sectional protocol and 21-session forward label.
+    consequence: The signal definition is matched but the full paper portfolio is not replicated.
 
 falsification:
   - Decile portfolio returns show no monotonic pattern
@@ -33,5 +42,11 @@ falsification:
   - Performance at execution lag 1 is indistinguishable from zero
 
 references:
-  - "Jegadeesh and Titman (1993), Returns to Buying Winners and Selling Losers, JF"
-  - "Asness, Moskowitz and Pedersen (2013), Value and Momentum Everywhere, JF"
+  - citation: "Asness, Moskowitz and Pedersen (2013), Value and Momentum Everywhere, JF"
+    role: definition_origin
+    locator: "Data section: cumulative return over months 2 through 12 (MOM2-12)."
+    verification: VERIFIED
+  - citation: "Jegadeesh and Titman (1993), Returns to Buying Winners and Selling Losers, JF"
+    role: robustness
+    locator: "Formation and holding-period strategy grid."
+    verification: VERIFIED
