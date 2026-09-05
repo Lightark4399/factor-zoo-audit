@@ -14,6 +14,14 @@ raw Sharpe  →  out-of-sample  →  after baseline  →  after multiple testing
 
 Each column is a subtraction from the one before.
 
+Current evidence status: the available 200-company store is **diagnostic only**.
+Historical security membership and terminal outcomes are not yet sufficient for
+a published-anomaly survival headline. The real-store demo does not yet enforce
+the ingest sidecar's diagnostic label; do not interpret an unqualified report
+as research evidence. See the [assertion audit](ASSERTION_SCOPE_AUDIT.md),
+[validation record](VALIDATION_20260905.md), and
+[data/exit policy awaiting review](DATA_EXIT_POLICY_DRAFT.md).
+
 ---
 
 ## Why this framing
@@ -24,10 +32,10 @@ result accordingly.** Reporting the maximum of forty noisy estimates as though i
 were a single test is the mechanism that makes factor zoos look productive, and
 the correction for it is the point of the exercise.
 
-Every result carries an audit report from
+The planned research deliverable will carry an audit report from
 [backtest-audit](https://github.com/Lightark4399/backtest-audit), built for this
-purpose. The deliverable is not "trust me" but "here is what happened when I
-attacked my own numbers".
+purpose; this bridge is not implemented yet. The deliverable is not "trust me"
+but "here is what happened when I attacked my own numbers".
 
 ---
 
@@ -135,7 +143,7 @@ built and tested; the audit pipeline is in progress.
 ✓ SPEC.md — research question, six acceptance criteria, falsification standard
 ✓ Point-in-time schema with restatement history
 ✓ Store with enforced as-of access, access logging, look-ahead assertion
-✓ Universe reconstruction from filing activity, gated before factor diagnostics
+✓ Filing-activity universe proxy gated before diagnostics (not verified listing/exit dates)
 ✓ Factor registry requiring a hypothesis card to register
 ✓ Synthetic fixtures with a known restatement and a delisting
 ✓ Cross-sectional pipeline: winsorise, neutralise, standardise, forward returns
@@ -155,7 +163,9 @@ built and tested; the audit pipeline is in progress.
 ✓ Duration facts retain start/end context; E/P and ROE use point-in-time TTM income
 ✓ Asset growth uses consecutive annual FY contexts; ROE reports its positive-equity filter
 ✓ Wheel contains its SQL schema and ten hypothesis cards; clean-install smoke tested
-✓ 151 tests at the pre-M4.1 baseline; CI stays green as incident tests are added
+✓ 201 tests pass locally in both pandas 2.0 and locked environments, including all 14 demo cases
+○ Real-store diagnostic provenance enforced in every report path (AS-03)
+○ Historical membership / terminal-outcome policy awaiting user review
 ○ Evidence-eligible real baseline refresh (the available 200-company store is diagnostic)
 ○ Audit layer wired to backtest-audit
 ○ Style orthogonalisation, factor structure (PCA), costs
@@ -270,7 +280,7 @@ the `ifrs-full` taxonomy, whose tag names have no overlap with the ones read
 here. A mapping table would let them in, and is deliberately not built: IFRS and
 US GAAP do not define shareholders' equity identically, and a mapping would bury
 that difference in one line of code. They stay in `securities` and in `prices`,
-so the price-only factors (momentum, reversal, idiosyncratic volatility) still
+so the price-only factors (momentum, reversal, total volatility) still
 use them; the fundamental factors do not.
 
 **Foreign private issuers that file 20-F are included.** `ACCEPTED_FORMS` covers
