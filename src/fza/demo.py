@@ -45,6 +45,7 @@ from .provenance import research_environment
 from .store import Store
 
 DEFAULT_DB = Path("data/fza.duckdb")
+MONTH_END = pd.offsets.MonthEnd()
 
 # Wide enough for the protocol table to carry a status column without
 # truncating 'FAILED: magnitude' into something a reader has to guess at.
@@ -138,7 +139,9 @@ def describe_data(store: Store, mode: str) -> dict:
 
 
 def signal_dates_for(
-    store: Store, freq: str = "ME", min_history_months: int = 15
+    store: Store,
+    freq: str | pd.DateOffset = MONTH_END,
+    min_history_months: int = 15,
 ) -> pd.DatetimeIndex:
     """Month-end signal dates covered by the available price history.
 
