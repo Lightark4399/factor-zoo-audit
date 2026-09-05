@@ -91,6 +91,25 @@ def test_factor_produces_values(factor_id, store, factors):
     assert len(run.values) > 0
     assert len(run.panel) > 0
     assert run.protocol.n_dates > 0
+    # The gate/count contract belongs to every registered factor, not just the
+    # asset_growth/TST07 incident. Preserve the dedicated counterfactual tests.
+    eligible = {
+        (str(ticker), pd.Timestamp(date))
+        for date in SIGNAL_DATES
+        for ticker in store.universe_asof(date)["ticker"]
+    }
+    for frame in (run.values, run.panel):
+        assert set(zip(frame["ticker"], frame["signal_date"], strict=True)) <= eligible
+    assert run.universe_filter.n_output == run.cleaning.n_input
+    assert run.universe_filter.n_input == (
+        run.universe_filter.n_output + run.universe_filter.n_excluded_outside_universe
+    )
+    assert run.label_join.n_input == run.cleaning.n_output
+    assert run.label_join.n_output == len(run.panel)
+    assert run.label_join.n_input == (
+        run.label_join.n_output + run.label_join.n_dropped_without_label
+    )
+    assert sum(run.label_join.outcome_counts.values()) == run.label_join.n_input
     if factor_id == "roe":
         assert run.construction_filters[0]["filter_id"] == "latest_equity_must_be_positive"
 
@@ -177,6 +196,20 @@ def test_published_anomaly_denominator_is_visible_and_versioned(factors):
     assert report["removed_since_baseline"] == ["idio_vol", "log_mktcap"]
     assert "total_vol_60d" not in report["current_included"]
     assert "log_mktcap" not in report["current_included"]
+    # Retain the named reclassification regression above and also check the
+    # partition over the live registry, so future factors inherit the property.
+    included, excluded, pending = (
+        set(report[key]) for key in ("current_included", "excluded", "pending")
+    )
+    relevant = {
+        key for key, factor in factors.items()
+        if factor.card.published_anomaly_eligibility["claim_id"] == report["claim_id"]
+    }
+    assert included | excluded | pending == relevant
+    assert not (included & excluded or included & pending or excluded & pending)
+    assert report["current_n"] == len(included)
+    assert report["delta_n"] == len(included) - report["baseline_n"]
+    assert set(report["reasons"]) == excluded | pending
 
 
 def test_sign_convention_is_documented_for_inverted_factors(factors):

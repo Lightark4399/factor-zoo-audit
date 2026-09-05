@@ -41,12 +41,20 @@ jobs:
         run: |
           python -m build --wheel
           python -m venv /tmp/fza-wheel-smoke
-          /tmp/fza-wheel-smoke/bin/pip install dist/*.whl
-          /tmp/fza-wheel-smoke/bin/python - <<'PY'
-          from fza.factors.registry import load_all
+          /tmp/fza-wheel-smoke/bin/pip install -c "${{ matrix.constraints }}" dist/*.whl
+          /tmp/fza-wheel-smoke/bin/python -I - <<'PY'
+          from fza.factors.registry import load_all, published_anomaly_denominator
+          from fza.provenance import research_environment
           from fza.store import Store
 
           with Store(":memory:") as store:
               assert store.fundamentals_asof("2020-01-01").empty
           assert len(load_all()) == 10
+          denominator = published_anomaly_denominator()
+          assert denominator["current_n"] == len(denominator["current_included"])
+          environment = research_environment()
+          assert len(environment["lock_sha256"]) == 64
+          assert environment["lock_status"] == (
+              "MISMATCH" if environment["lock_mismatches"] else "MATCHED"
+          )
           PY

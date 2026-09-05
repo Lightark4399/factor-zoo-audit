@@ -164,6 +164,14 @@ class HypothesisCard:
                     f"{path.name}: references[{index}].verification must be "
                     f"VERIFIED or UNVERIFIED"
                 )
+            locator = reference["locator"]
+            if reference["verification"] == "VERIFIED" and (
+                not isinstance(locator, str) or not locator.strip()
+            ):
+                raise CardError(
+                    f"{path.name}: references[{index}].locator must be a nonblank "
+                    "string for a VERIFIED reference"
+                )
 
         eligibility = data["published_anomaly_eligibility"]
         missing_eligibility = [
