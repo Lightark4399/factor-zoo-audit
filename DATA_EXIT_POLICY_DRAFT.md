@@ -202,9 +202,11 @@ cannot silently omit a factor with blocked outcomes. Keep definition eligibility
 and outcome qualification separately visible, with pending/blocked counts.
 
 All report entry points (stdout, saved report, real-store mode, fixture mode,
-future exports) must preserve these qualifications. Currently the demo does not
-read the real-store sidecar's `research_evidence` flag; this is a known gap, not
-an implemented guarantee. See `ASSERTION_SCOPE_AUDIT.md`.
+future exports) must preserve these qualifications. AS-03 was fixed on
+2026-09-06: the demo reads source declarations and propagates diagnostic status
+to all current outputs, without a research-promotion path. Outcome-dependent
+qualification and future exporters still require implementation and tests.
+See `ASSERTION_SCOPE_AUDIT.md`.
 
 ## 6. Implementation acceptance after approval
 

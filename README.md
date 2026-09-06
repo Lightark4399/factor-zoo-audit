@@ -16,9 +16,9 @@ Each column is a subtraction from the one before.
 
 Current evidence status: the available 200-company store is **diagnostic only**.
 Historical security membership and terminal outcomes are not yet sufficient for
-a published-anomaly survival headline. The real-store demo does not yet enforce
-the ingest sidecar's diagnostic label; do not interpret an unqualified report
-as research evidence. See the [assertion audit](ASSERTION_SCOPE_AUDIT.md),
+a published-anomaly survival headline. The demo propagates diagnostic status
+to stdout, saved text and structured evidence, even if a sidecar claims otherwise.
+See the [assertion audit](ASSERTION_SCOPE_AUDIT.md),
 [validation record](VALIDATION_20260905.md), and
 [data/exit policy awaiting review](DATA_EXIT_POLICY_DRAFT.md).
 
@@ -164,7 +164,7 @@ built and tested; the audit pipeline is in progress.
 ✓ Asset growth uses consecutive annual FY contexts; ROE reports its positive-equity filter
 ✓ Wheel contains its SQL schema and ten hypothesis cards; clean-install smoke tested
 ✓ 201 tests pass locally in both pandas 2.0 and locked environments, including all 14 demo cases
-○ Real-store diagnostic provenance enforced in every report path (AS-03)
+✓ Real-store diagnostic qualification reaches all current demo outputs (AS-03)
 ○ Historical membership / terminal-outcome policy awaiting user review
 ○ Evidence-eligible real baseline refresh (the available 200-company store is diagnostic)
 ○ Audit layer wired to backtest-audit

@@ -2,8 +2,8 @@
 
 Two modes, chosen automatically:
 
-* **Real data**, when a store built by ``fza.ingest.run`` is present. This is the
-  interesting mode, and the numbers it prints are findings.
+* **Real data**, when a store built by ``fza.ingest.run`` is present. Its
+  statistics are diagnostic; opening a database does not certify evidence.
 * **Fixtures**, otherwise. This is the mode CI runs in, and the numbers are not
   findings — the fixture is a random walk, so a factor cannot predict it and is
   not supposed to. What the fixture demonstrates is that the machinery behaves,
@@ -25,6 +25,7 @@ published when the signal was formed?*
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -41,7 +42,7 @@ from .pipeline.run import (
     compare_vintages,
     compute_factor,
 )
-from .provenance import research_environment
+from .provenance import dataset_evidence, research_environment
 from .store import Store
 
 DEFAULT_DB = Path("data/fza.duckdb")
@@ -179,6 +180,7 @@ def main(argv: list[str] | None = None) -> int:
 
     store, mode = open_store(args.db)
     info = describe_data(store, mode)
+    evidence = dataset_evidence(args.db, mode)
     factors = load_all()
 
     lines: list[str] = []
@@ -206,6 +208,20 @@ def main(argv: list[str] | None = None) -> int:
         emit("    python -m fza.ingest.run --user-agent 'Name you@example.com'")
     else:
         emit(f"  DATA: {args.db}")
+    emit()
+    emit("  EVIDENCE: DIAGNOSTIC_ONLY -- the statistics below are NOT findings.")
+    emit("  Market-wide anomaly survival: NOT_EVIDENCE; no survival rate claimed.")
+    emit(f"  reasons: {', '.join(evidence['reasons'])}")
+    if mode == "real":
+        emit(f"  sidecar binding: {evidence['sidecar_binding']}")
+        emit("  declared research_evidence: " + json.dumps(evidence['declared_research_evidence']))
+        emit("  declared run purpose: " + json.dumps(evidence['declared_run_purpose']))
+        emit(f"  database SHA-256: {evidence['database_sha256']}")
+        emit(f"  sidecar SHA-256: {evidence['sidecar_sha256']}")
+        emit("  declared survivorship-prone source share: " +
+             json.dumps(evidence['declared_survivorship_prone_share']))
+        emit("  Source share is NOT the magnitude or direction of survivorship bias.")
+        emit("  Sidecar declarations, even true or hash-matched, do not certify research.")
     emit()
     emit(f"  securities     {info['securities']:>10,}")
     emit(
@@ -307,7 +323,8 @@ def main(argv: list[str] | None = None) -> int:
     emit("  INCLUDED requires a verified definition-origin citation. PENDING means")
     emit("  the proposed origin has not been checked at a primary-source locator;")
     emit("  EXCLUDED means the implemented quantity is not the published anomaly.")
-    emit("  These states, not the number of registered factors, define the headline base.")
+    emit("  Definition eligibility is separate from outcome evidence; no survival rate")
+    emit("  follows from this denominator or from a completed computation.")
 
     dates = signal_dates_for(store)
     if args.max_dates and len(dates) > args.max_dates:
@@ -317,6 +334,7 @@ def main(argv: list[str] | None = None) -> int:
 
     emit(_header("STANDARD PROTOCOL"))
     emit()
+    emit("  DIAGNOSTIC_ONLY -- selected-sample statistics, not evidence of survival.")
     emit(f"  {len(dates)} monthly signal dates, "
          f"{dates[0].date() if len(dates) else 'n/a'} .. "
          f"{dates[-1].date() if len(dates) else 'n/a'}")
@@ -385,6 +403,8 @@ def main(argv: list[str] | None = None) -> int:
     emit("  'excluded' is reported independently from missing-value cleaning and")
     emit("  label attrition: outside the historical universe is an eligibility")
     emit("  decision, not a missing observation.")
+    emit("  For ingested data this is a filing-activity proxy, not verified exchange")
+    emit("  membership. It cannot recover securities missing from the initial selection.")
 
     emit(_header("FACTOR-CONSTRUCTION SAMPLE FILTERS"))
     emit()
@@ -464,7 +484,7 @@ def main(argv: list[str] | None = None) -> int:
     emit(_header("THE TRAP, MEASURED"))
     emit()
     emit("  How much would a naive query have read early? This is the hazard the")
-    emit("  bitemporal store exists to avoid -- a finding, not a failure.")
+    emit("  bitemporal store exists to avoid -- a diagnostic count, not an alpha finding.")
     emit()
     emit(f"  {'factor':<14}{'signal dates':>14}{'exposed':>10}{'trap rows':>12}{'rate':>9}")
     for factor_id, run in runs.items():
@@ -479,6 +499,7 @@ def main(argv: list[str] | None = None) -> int:
 
     emit(_header("POINT-IN-TIME VS RESTATED"))
     emit()
+    emit("  DIAGNOSTIC_ONLY -- within-sample comparison; shared defects need not cancel.")
     emit("  Could this result have been obtained when the signal was formed?")
     emit()
 
@@ -506,25 +527,25 @@ def main(argv: list[str] | None = None) -> int:
         else:
             emit(f"    point-in-time IC   {comp.pit.summary['ic_mean']:>+10.4f}")
             emit(f"    restated IC        {comp.restated.summary['ic_mean']:>+10.4f}")
-            emit(f"    unearned advantage {comp.ic_gap:>+10.4f}")
+            emit(f"    restated minus PIT {comp.ic_gap:>+10.4f}")
             verdict = comp.verdict.split(":")[0]
             emit(f"    verdict            {verdict:>10}")
         emit()
 
     emit(_rule("="))
-    if mode == "real":
-        emit("  The gap above is the value of reading a filing before it existed.")
-        emit("  It is measurable here only because revisions are stored as rows")
-        emit("  rather than updates -- a database that overwrote them could not")
-        emit("  produce this number at all.")
-    else:
-        emit("  Run the ingest for numbers that mean something.")
+    emit("  DIAGNOSTIC_ONLY / NOT findings. These statistics describe this run.")
+    emit("  The vintage gap is conditional on the selected data and label samples;")
+    emit("  it does not establish a market-wide effect or cancel shared data defects.")
+    emit("  Market-wide anomaly survival: NOT_EVIDENCE. Ingest alone does not qualify it.")
     emit(_rule("="))
     emit()
 
     if args.outdir:
         args.outdir.mkdir(parents=True, exist_ok=True)
         (args.outdir / "demo_report.txt").write_text("\n".join(lines), encoding="utf-8")
+        (args.outdir / "demo_evidence.json").write_text(
+            json.dumps(evidence, indent=2, allow_nan=False), encoding="utf-8"
+        )
         print(f"report written to {args.outdir / 'demo_report.txt'}")
 
     store.close()

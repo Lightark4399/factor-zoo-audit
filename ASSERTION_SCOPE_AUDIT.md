@@ -16,7 +16,7 @@ verified here. This document records this repository's own checks and results.
 |---|---|---|---|
 | AS-01 | Provenance must accurately distinguish a matched lock and any mismatch: runtime, packaging test, both CI environments, demo | Packaging and demo tests hard-coded `MATCHED`; the minimum environment is intentionally different. | **DEFECT_FOUND, test correction implemented.** Minimum packaging run reproduced `MISMATCH != MATCHED`. Tests now compare installed versions with the lock; synthetic cases vary every numerical dependency independently. |
 | AS-02 | `VERIFIED` needs a nonblank locator at the card-loading boundary, for every reference role | `test_every_reference_has_role_locator_and_verification` loops over current cards, but `HypothesisCard.from_yaml` only requires that the key exists. | **DEFECT_FOUND, runtime correction implemented.** Fifteen null/empty/whitespace cases across all five reference roles failed before the correction. Loader now rejects them; the honestly unverified origin remains PENDING. Current cards did not change status. |
-| AS-03 | A diagnostic dataset must remain diagnostic in every report path | Fixture disclaimer checked on stdout; real-store mode only prints the DB path and never reads `research_evidence` from the ingest sidecar. | **DEFECT_FOUND / BLOCKS_RESEARCH_RELEASE.** Source-inspection finding. Archiving an example report does not enforce the invariant for `demo --db data/fza_200.duckdb`. Policy-dependent reporting implementation remains pending review. |
+| AS-03 | A diagnostic dataset must remain diagnostic in every report path | Fixture disclaimer checked on stdout; real-store mode only printed the DB path and never read `research_evidence` from the ingest sidecar. | **FIXED 2026-09-06.** Dataset declarations now reach stdout, saved text and `demo_evidence.json`. Missing/malformed/unreadable/unbound metadata cannot promote evidence; even hash-matched `true` is not certification. Six real-store transport cases plus a populated, unmocked pipeline case and nine provenance boundary cases passed in both environments. Research eligibility itself remains unimplemented. |
 | AS-04 | Eligibility must precede magnitude/cleaning for all registered factors and PIT/restated entry points | Strong `asset_growth` ghost/magnitude incident tests; all-factor smoke tests did not assert the membership subset or count conservation. | **COVERAGE_EXTENDED.** Incident tests preserved; all ten factor path tests now assert membership and stage-count conservation. Source inspection confirms both vintage arms route through `compute_factor`; existing shared-membership integration tests retained. This is not exhaustive adversarial coverage of every possible future entry point. |
 | AS-05 | Release resources must work without the checkout | CI's installed-wheel smoke instantiates Store and loads ten cards; source tests also check the denominator file and lock. | **COVERAGE_EXTENDED.** CI wheel smoke now calls denominator/provenance consumers, uses the job's constraints and isolated Python imports. Local wheel verification and hosted-CI status are distinguished in the validation record. |
 | AS-06 | Diagnostic classifications survive output transport | Several tests regenerate identical reports and inspect stdout only; file test checks only existence/title. | **COVERAGE_GAP, narrowed.** A freshly computed full-window report is now shared within this pytest invocation and its saved contents checked against stdout, including `NOT findings`. This covers fixture transport, not the missing real-store policy in AS-03. |
@@ -64,17 +64,23 @@ is a structural prerequisite, not proof that a human actually verified a paper.
 
 ### AS-03: report provenance is not enforced by an example README
 
-`open_store` returns `real` for any existing database. `main` prints the
+At the inspected baseline, `open_store` returned `real` for any existing database. `main` printed the
 fixture warning only for `mode == 'fixture'`; the real branch prints the path.
 Neither path loads the ingest report's research flag. The real-mode footer
 interprets the vintage gap. Tests all pass a nonexistent DB path.
 
 This is the same scope failure in a different transport: the example-output
-README labels `fza_200` diagnostic, but opening that DB directly does not
-propagate the label. The draft policy requires explicit claim qualification at
-every report/export entry point; implementing it before policy review would
-violate the user's requested sequencing. A successful test run does not close
-AS-03 or authorize a research headline.
+README labelled `fza_200` diagnostic, but opening that DB directly did not
+propagate the label. Following user approval, the real-store report now prints
+DIAGNOSTIC_ONLY / NOT findings at the beginning, beside the statistics and in
+the conclusion. The machine-readable evidence artifact carries claim-relative
+statuses. AS-03 is closed for the current demo outputs, not for hypothetical
+future exporters. A successful run still cannot authorize a research headline.
+
+Focused verification on 2026-09-06: Python 3.12/pandas 3.0.5 and Python
+3.10/pandas 2.0 each passed all 16 new cases (no failures or skips). The first
+attempt used a denied system temp directory and never reached an assertion;
+successful runs used separate workspace-local basetemp directories.
 
 ## Tests are properties plus incident regressions
 
