@@ -481,6 +481,7 @@ class Store:
             JOIN latest l ON l.cik = s.cik
             WHERE l.period_end <= n.signal_date
               AND l.filed > n.signal_date + INTERVAL ({grace_days}) DAY
+            ORDER BY n.signal_date, n.ticker, l.tag, l.period_end, l.filed
             """
         ).df()
         self.con.unregister("_needed")
