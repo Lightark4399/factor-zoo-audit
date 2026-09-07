@@ -2,9 +2,11 @@
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 from fza.demo import main
 from fza.qualification import qualification_lines, qualification_policy, readme_qualification
+from fza.reporting import factor_record
 from fza.store import Store
 
 
@@ -49,3 +51,17 @@ def test_policy_changes_propagate_through_all_report_exits(tmp_path, capsys, mon
     for key, value in policy.items():
         assert evidence[key] == value
     assert bundle["artifact_role"].startswith(policy["statistics_status"])
+
+    # Factor records must project the supplied policy too. The populated CLI
+    # case separately checks this serializer is actually used by the pipeline.
+    payload = SimpleNamespace(to_dict=lambda: {"test_payload": 17})
+    run = SimpleNamespace(
+        protocol=payload, universe_filter=payload, cleaning=payload, label_join=payload,
+        construction_filters=[], read_path_check={}, magnitude_check={}, naive_trap={},
+    )
+    record = factor_record(run, policy)
+    assert record["statistics_status"] == policy["statistics_status"]
+    assert record["claims"] == policy["claims"]
+    assert record["protocol"] == {"test_payload": 17}
+    record["claims"]["market_wide_anomaly_survival"]["status"] = "TEST_MUTATED"
+    assert policy["claims"]["market_wide_anomaly_survival"]["status"] == "TEST_NO_EVIDENCE"
