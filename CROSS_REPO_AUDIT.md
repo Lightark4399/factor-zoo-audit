@@ -47,3 +47,13 @@ reports success for that commit. The complete tagged `MIGRATION.md` was read.
 This verifies release identity and upstream CI status, not local integration.
 The single-trial selection exception does not justify declaring one trial when
 the search history is unknown. No bridge or dependency change is included yet.
+
+Local follow-up found two concrete output defects: retained-percentage headings
+and data differed by one column (`4968b1d`), and unordered SQL made naive-trap
+examples change across matching-environment runs (`e341991`). The latter altered
+example selection, not IC, LS Sharpe or counts. Both have synthetic/actual-CLI
+regressions and passed the 12-case focused suite in both environments. See
+`VALIDATION_20260907.md` for the failed reproductions, scope and pending full run.
+The upstream default-branch tree was rechecked: still `bdb6250`; the generic
+docs-quote implementation/ref has not yet been received. That audit item stays
+pending, not checked-clean. No duplicate scanner or sibling edit was made.

@@ -10,7 +10,7 @@ terminal-return imputation or backtest-audit bridge is included.
 |---|---|---|
 | Reproducible run package | Runtime lock/hash, shipped code/rule hashes, selected roster/hash, explicit signal dates and protocol settings in `demo_run.json` | Provider downloads are not immutable; hashes identify bytes, not truth or a license to redistribute them |
 | Synthetic controls | Existing filing/read-path, ghost-membership, missing-price/label tests; real-store report transport regressions backed by synthetic fixtures | A test pass is not proof of an anomaly or complete historical membership |
-| Selected 200-company diagnostic | Full-grid archive acceptance pending; interrupted attempts are not delivered runs | The roster was selected from an ingest-time ticker map, not a contemporaneous historical roster |
+| Selected 200-company diagnostic | Full-grid archive from `0bd03bf` under `examples/outputs/b_selected_200_20260907/`; see validation for disclosed presentation defects and follow-up | The roster was selected from an ingest-time ticker map, not a contemporaneous historical roster |
 | Evidence qualification | `demo_evidence.json`, per-factor diagnostic records, research gate ledger, visible failures and unavailable counts | No actual/estimated terminal-return adapter or automatic research-promotion path exists |
 | Reading entry point | README headline, this guide, validation record and policy document | No survival numerator, market-wide inference or claim of completed backtest-audit integration |
 
@@ -101,3 +101,20 @@ separate. The accepted conceptual policy separates terminal measurement from
 named horizon-extension conventions; neither scenario has been implemented.
 See `DATA_EXIT_POLICY_DRAFT.md`. A future research extension reuses these
 controls rather than relaxing them to manufacture a headline.
+
+## Read-only bridge preflight (not an implemented integration)
+
+The tagged upstream `MIGRATION.md`, `pyproject.toml`, `panel.py` and `run.py`
+were inspected. The release/tag/CI identity is recorded in `CROSS_REPO_AUDIT.md`.
+No dependency was installed or bridge code added as part of this preflight.
+
+The four column names do not establish semantic compatibility: upstream
+`event_date` is target realisation time, whereas this pipeline retains
+`signal_date`, `formation_date`, `entry_date` and `exit_date`. The eventual adapter
+must use verified label timing, preserve those dates, and reject unaccounted
+sample loss; a rename of signal_date is not sufficient. The baseline runner
+requires a train/test boundary. Real-data cutoffs must be explicit, with boundary
+overlap and information availability at signal formation checked. Do not infer
+that a previous row's holding-period return was already known at the next signal.
+No new real-data split, annualisation factor, trial count or exit assumption is
+approved merely by the dependency release.

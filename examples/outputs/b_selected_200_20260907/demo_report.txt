@@ -1,0 +1,319 @@
+====================================================================================
+                                  FACTOR ZOO AUDIT                                  
+====================================================================================
+
+  DATA: data\fza_200.duckdb
+
+  EVIDENCE: DIAGNOSTIC_ONLY -- the statistics below are NOT findings.
+  Market-wide anomaly survival: NOT_EVIDENCE; no survival rate claimed.
+  reasons: research_qualification_not_implemented, sidecar_database_binding_unverified, declared_diagnostic
+  sidecar binding: UNVERIFIED
+  declared research_evidence: false
+  declared run purpose: "diagnostic_scale"
+  database SHA-256: 66c60785d1c085d4883f49796a33f20ad2bdf418072086fbfd938100666312d9
+  sidecar SHA-256: 718a03dd30f80a20366623ebdaeea237a2141230f9eef1123aa52545914790b4
+  declared survivorship-prone source share: 1.0
+  Source share is NOT the magnitude or direction of survivorship bias.
+  Sidecar declarations, even true or hash-matched, do not certify research.
+
+  securities            200
+  with us-gaap          161   (fundamental factors see only these)
+  excluded       31 ifrs, 8 unknown   (prices only -- no readable fundamentals)
+  fundamentals      201,112
+  prices            768,082
+  restatements       55,240   (27.5% of fundamental rows)
+  price history  2010-01-04 .. 2026-08-31
+
+====================================================================================
+RESEARCH ENVIRONMENT
+====================================================================================
+
+  Python        3.12.14
+  pandas        3.0.5
+  numpy         2.5.2
+  scipy         1.18.1
+  statsmodels   0.15.0
+  lock          research-requirements.lock
+  lock SHA-256  3014091ea5f7c2b51f3a1d867a674a65be84bf2d8e27348ad6b7b7e512df99f3
+  lock status   MATCHED
+
+  These are the versions that produced this report. MATCHED means the
+  four numerical libraries equal the exact shipped research lock;
+  MISMATCH keeps the report diagnostic and prints every difference.
+
+====================================================================================
+DATA QUALITY
+====================================================================================
+
+  Price columns that are not fully populated. A column at 0.0%
+  empties every factor that reads it, and the failure surfaces as
+  'factor produced no values' -- naming the factor, not the column.
+
+  column              non-null    coverage
+  shares_out           581,033      75.6%
+
+====================================================================================
+REGISTERED FACTORS
+====================================================================================
+
+  factor        category      fundamentals   falsification     plausible range
+  asset_growth  investment    yes                        3           -10 .. 10
+  turnover      liquidity     yes                        3           undefined
+  mom_12_1      momentum      no                         4           undefined
+  mom_6_1       momentum      no                         3           undefined
+  roe           profitability yes                        3           -10 .. 10
+  rev_1m        reversal      no                         3           undefined
+  total_vol_60d risk          no                         3           undefined
+  log_mktcap    size          yes                        3           undefined
+  bm_ratio      value         yes                        4       0.0001 .. 100
+  ep_ratio      value         yes                        3         1e-05 .. 10
+
+  Every factor carries a hypothesis card stating an economic mechanism,
+  the conditions under which it should persist, and what would falsify
+  it. Registration fails without one.
+
+  'plausible range' is the interval the factor's raw values are checked
+  against before any cleaning. 'undefined' means no range has been
+  declared -- NOT that the factor passed. An undeclared range is an
+  unchecked magnitude, and the two states are printed differently for
+  the same reason an unknown share count is null and not zero.
+
+====================================================================================
+PUBLISHED-ANOMALY DENOMINATOR
+====================================================================================
+
+  claim             published_anomaly_survival_v1
+  current base      8 included (baseline 10, delta -2)
+  included          asset_growth, bm_ratio, ep_ratio, mom_12_1, mom_6_1, rev_1m, roe, turnover
+  excluded          total_vol_60d
+  pending           log_mktcap
+  removed vs base   idio_vol, log_mktcap
+    total_vol_60d: No cited source defines this total-volatility measure as the published idiosyncratic-volatility anomaly.
+    log_mktcap: The Banz definition relationship has not yet been verified against a primary-source locator.
+
+  INCLUDED requires a verified definition-origin citation. PENDING means
+  the proposed origin has not been checked at a primary-source locator;
+  EXCLUDED means the implemented quantity is not the published anomaly.
+  Definition eligibility is separate from outcome evidence; no survival rate
+  follows from this denominator or from a completed computation.
+
+====================================================================================
+STANDARD PROTOCOL
+====================================================================================
+
+  EVIDENCE: DIAGNOSTIC_ONLY -- the statistics below are NOT findings.
+  185 signal dates from the monthly grid, 2011-04-30 .. 2026-08-31
+
+  factor                IC  LS Sharpe  monotone  dates as-of held  status
+  mom_12_1         +0.0038    +0.0334     +0.00    170        yes  OK
+  mom_6_1          +0.0098    +0.0717     +0.10    176        yes  OK
+  rev_1m           +0.0084    -0.0527     +0.00    182        yes  OK
+  log_mktcap       +0.0633    +0.4469     +1.00    183        yes  OK
+  total_vol_60d    -0.0292    -0.2061     -1.00    183        yes  OK
+  turnover         -0.0421    -0.2750     -1.00    183        yes  OK
+  bm_ratio         -0.0140    -0.0520     -0.30    183        yes  OK
+  ep_ratio         -0.0106    -0.0721     -0.70    183        yes  OK
+  roe              -0.0047    -0.1604     -0.90    183        yes  OK
+  asset_growth     -0.0117    -0.0910     -0.50    183        yes  OK
+
+  'as-of held' is a check on this code: did every read return only
+  filings that were already public on the day being forecast, including
+  any reporting lag the factor declared? A VIOLATION here would void
+  every number in the row.
+
+  'status' is whether the factor produced a result at all. OK means the
+  run completed; it does not mean the factor works. A FAILED row has no
+  numbers because none were computed -- the run stopped at the check
+  named in the status, and that row is excluded from every table below.
+
+====================================================================================
+HISTORICAL UNIVERSE GATE
+====================================================================================
+
+  Membership is applied to raw factor rows before magnitude checks,
+  winsorisation and standardisation. An excluded row therefore cannot
+  alter the score of a security that was eligible on the same date.
+
+  factor            raw rows    eligible    excluded   retained
+  mom_12_1            31,580      28,242       3,338     89.4%
+  mom_6_1             32,772      29,232       3,540     89.2%
+  rev_1m              33,970      30,179       3,791     88.8%
+  log_mktcap          26,106      25,612         494     98.1%
+  total_vol_60d       34,129      30,308       3,821     88.8%
+  turnover            26,106      25,612         494     98.1%
+  bm_ratio            20,519      20,247         272     98.7%
+  ep_ratio            20,248      19,974         274     98.6%
+  roe                 21,379      21,100         279     98.7%
+  asset_growth        13,725      13,512         213     98.4%
+
+  'excluded' is reported independently from missing-value cleaning and
+  label attrition: outside the historical universe is an eligibility
+  decision, not a missing observation.
+  For ingested data this is a filing-activity proxy, not verified exchange
+  membership. It cannot recover securities missing from the initial selection.
+
+====================================================================================
+FACTOR-CONSTRUCTION SAMPLE FILTERS
+====================================================================================
+
+  These are definition-level eligibility rules applied inside a factor,
+  before the common universe gate and missing-value cleaning.
+
+  factor        filter                                    input   excluded
+  roe           latest_equity_must_be_positive           22,698      1,319
+      excluded keys: 2012-04-30 MAR (-8.48e+08), 2012-05-31 HCA (-8.613e+09), 2012-05-31 MAR (-8.48e+08), 2012-06-30 HCA (-8.613e+09), 2012-06-30 MAR (-8.48e+08)
+
+====================================================================================
+FORWARD-LABEL ATTRITION
+====================================================================================
+
+  Every cleaned signal is left-joined to its realised return before
+  invalid rows are removed, so an absent label cannot disappear without
+  a counted reason.
+
+  factor             signals    labelled     dropped   retained
+  mom_12_1            28,242      28,133         109     99.6%
+    no_full_horizon=109
+  mom_6_1             29,232      29,121         111     99.6%
+    no_full_horizon=111
+  rev_1m              30,179      30,066         113     99.6%
+    no_full_horizon=113
+  log_mktcap          25,612      25,541          71     99.7%
+    no_full_horizon=71
+  total_vol_60d       30,308      30,195         113     99.6%
+    no_full_horizon=113
+  turnover            25,612      25,541          71     99.7%
+    no_full_horizon=71
+  bm_ratio            20,247      20,186          61     99.7%
+    no_full_horizon=61
+  ep_ratio            19,974      19,908          66     99.7%
+    no_full_horizon=66
+  roe                 21,100      20,970         130     99.4%
+    missing_entry_and_exit_price=65, missing_entry_price=1, no_full_horizon=64
+  asset_growth        13,512      13,404         108     99.2%
+    missing_entry_and_exit_price=54, missing_entry_price=1, no_full_horizon=53
+
+====================================================================================
+CROSS-SECTION BREADTH
+====================================================================================
+
+  Names per quantile are reported as a distribution. The average alone
+  can hide a month whose portfolios nearly disappeared.
+
+  factor            avg    min    p10   median    p90    max   dropped
+  mom_12_1         33.1     27   28.0     34.0   38.0     39         0
+  mom_6_1          33.1     27   28.0     34.0   38.0     39         0
+  rev_1m           33.0     26   28.0     34.0   38.0     39         0
+  log_mktcap       27.9     21   24.0     29.0   32.0     33         0
+  total_vol_60d    33.0     26   28.0     34.0   38.0     39         0
+  turnover         27.9     21   24.0     29.0   32.0     33         0
+  bm_ratio         22.1     18   20.0     22.0   24.0     25         0
+  ep_ratio         21.8     17   19.0     22.0   24.0     26         0
+  roe              22.9     17   19.0     23.0   26.0     27         0
+  asset_growth     14.7      3    6.0     16.0   21.0     22         1
+
+  'dropped' counts signal dates present in the aligned panel but absent
+  from quantile portfolios because the cross-section was too small or
+  ties prevented all five groups from being formed.
+
+====================================================================================
+THE TRAP, MEASURED
+====================================================================================
+
+  How much would a naive query have read early? This is the hazard the
+  bitemporal store exists to avoid -- a diagnostic count, not an alpha finding.
+
+  factor          signal dates   exposed   trap rows     rate
+  mom_12_1                       n/a -- reads no fundamentals
+  mom_6_1                        n/a -- reads no fundamentals
+  rev_1m                         n/a -- reads no fundamentals
+  log_mktcap               184       184      30,936   100.0%
+  total_vol_60d                  n/a -- reads no fundamentals
+  turnover                 184       184      30,936   100.0%
+  bm_ratio                 184       184      60,741   100.0%
+  ep_ratio                 184       184     110,054   100.0%
+  roe                      184       184     178,660   100.0%
+  asset_growth             184       184      21,720   100.0%
+
+====================================================================================
+POINT-IN-TIME VS RESTATED
+====================================================================================
+
+  EVIDENCE: DIAGNOSTIC_ONLY -- the statistics below are NOT findings.
+  Within-sample comparison; shared defects need not cancel.
+  Could this result have been obtained when the signal was formed?
+
+  mom_12_1
+    not applicable -- this factor reads no fundamentals, so the
+    two vintages are identical by construction. That is not
+    evidence it is free of look-ahead.
+
+  mom_6_1
+    not applicable -- this factor reads no fundamentals, so the
+    two vintages are identical by construction. That is not
+    evidence it is free of look-ahead.
+
+  rev_1m
+    not applicable -- this factor reads no fundamentals, so the
+    two vintages are identical by construction. That is not
+    evidence it is free of look-ahead.
+
+  log_mktcap
+    point-in-time IC      +0.0633
+    restated IC           +0.0633
+    restated minus PIT    +0.0000
+    verdict                  PASS
+
+  total_vol_60d
+    not applicable -- this factor reads no fundamentals, so the
+    two vintages are identical by construction. That is not
+    evidence it is free of look-ahead.
+
+  turnover
+    point-in-time IC      -0.0421
+    restated IC           -0.0421
+    restated minus PIT    +0.0000
+    verdict                  PASS
+
+  bm_ratio
+    point-in-time IC      -0.0140
+    restated IC           -0.0149
+    restated minus PIT    -0.0009
+    verdict                  PASS
+
+  ep_ratio
+    point-in-time IC      -0.0106
+    restated IC           -0.0082
+    restated minus PIT    +0.0023
+    verdict                  PASS
+
+  roe
+    point-in-time IC      -0.0047
+    restated IC           -0.0011
+    restated minus PIT    +0.0036
+    verdict                  PASS
+
+  asset_growth
+    point-in-time IC      -0.0117
+    restated IC           -0.0035
+    restated minus PIT    +0.0082
+    verdict                  FAIL
+
+
+====================================================================================
+RESEARCH CLAIM GATES
+====================================================================================
+  historical_membership_completeness: UNRESOLVED -- filing_proxy_does_not_validate_initial_roster
+  terminal_outcomes: UNRESOLVED -- label_loss_counting_is_not_exit_settlement
+  post_publication_out_of_sample: NOT_IMPLEMENTED -- no_publication_date_gate_in_demo
+  multiple_testing: NOT_IMPLEMENTED -- no_dsr_fdr_gate_in_demo
+  free_baseline: NOT_IMPLEMENTED -- backtest_audit_bridge_not_connected
+  trading_costs: NOT_IMPLEMENTED -- no_cost_gate_in_demo
+  UNRESOLVED is not a measured bias size; NOT_IMPLEMENTED is not passed.
+====================================================================================
+  EVIDENCE: DIAGNOSTIC_ONLY -- the statistics below are NOT findings.
+  Market-wide anomaly survival: NOT_EVIDENCE; no survival rate claimed.
+  The vintage gap is conditional on the selected data and label samples;
+  it does not establish a market-wide effect or cancel shared data defects.
+  Ingest alone does not qualify research evidence.
+====================================================================================

@@ -11,6 +11,11 @@ Synthetic controls test the audit mechanics. A selected 200-company dataset
 demonstrates the workflow. Historical-universe completeness and delisting
 outcomes remain unresolved; **no market-wide anomaly survival rate is claimed**.
 
+Read the [full-grid diagnostic report](examples/outputs/b_selected_200_20260907/demo_report.txt)
+and its [run manifest](examples/outputs/b_selected_200_20260907/demo_run.json).
+They preserve the `0bd03bf` computation snapshot, not a live claim about every
+later code revision; known presentation follow-ups are in the validation record.
+
 The current deliverable is a diagnostic report plus machine-readable evidence,
 sample/implementation manifests, and counted processing losses. It measures
 observable gaps, not the unknown size or direction of survivorship bias.
