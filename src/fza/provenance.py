@@ -9,6 +9,8 @@ from importlib.metadata import PackageNotFoundError, version
 from importlib.resources import files
 from pathlib import Path
 
+from .qualification import qualification_policy
+
 RESEARCH_LOCK = "research-requirements.lock"
 CORE_PACKAGES = ("pandas", "numpy", "scipy", "statsmodels")
 
@@ -20,6 +22,23 @@ def file_sha256(path: Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def implementation_manifest() -> dict:
+    """Fingerprint shipped code and rules in editable and installed packages."""
+    hashes = {}
+
+    def visit(directory, prefix=""):
+        for resource in directory.iterdir():
+            name = prefix + resource.name
+            if resource.is_dir() and resource.name != "__pycache__":
+                visit(resource, name + "/")
+            elif resource.is_file() and name.endswith((".py", ".yaml", ".sql", ".lock")):
+                hashes[name] = hashlib.sha256(resource.read_bytes()).hexdigest()
+
+    visit(files("fza"))
+    encoded = json.dumps(hashes, sort_keys=True).encode()
+    return {"files": hashes, "sha256": hashlib.sha256(encoded).hexdigest()}
 
 
 def dataset_evidence(db_path: Path, mode: str) -> dict:
@@ -34,7 +53,7 @@ def dataset_evidence(db_path: Path, mode: str) -> dict:
     report = {
         "schema_version": 1,
         "mode": mode,
-        "statistics_status": "DIAGNOSTIC_ONLY",
+        **qualification_policy(),
         "database_path": str(db_path.resolve()) if mode == "real" else None,
         "database_sha256": None,
         "sidecar_path": None,
@@ -44,16 +63,6 @@ def dataset_evidence(db_path: Path, mode: str) -> dict:
         "declared_run_purpose": None,
         "declared_survivorship_prone_share": None,
         "reasons": reasons,
-        "claims": {
-            "selected_sample_statistics": {
-                "status": "DIAGNOSTIC_ONLY",
-                "reason": "describes_this_run_not_market_wide_evidence",
-            },
-            "market_wide_anomaly_survival": {
-                "status": "NOT_EVIDENCE",
-                "reason": "historical_membership_outcomes_and_research_gates_not_validated",
-            },
-        },
     }
     if mode == "fixture":
         return report

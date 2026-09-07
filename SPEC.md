@@ -1,5 +1,37 @@
 # SPEC
 
+## Active delivery contract — B (2026-09-06)
+
+The shipped goal is **a point-in-time factor audit with explicit evidence
+limits**, demonstrated on synthetic controls and a selected real-data sample.
+It does not estimate market-wide anomaly survival. The five deliverables and
+reproduction instructions are in [B_DELIVERY.md](B_DELIVERY.md).
+
+Acceptance requires:
+
+1. Synthetic controls with explicit generation assumptions verify read timing,
+   membership-before-cleaning and visible label loss. Assertions target
+   properties and concrete incident paths, not stored previous-run outputs.
+2. All current report exits preserve diagnostic qualification. Missing metadata
+   cannot imply approval; a completed computation cannot imply research success.
+3. A structured bundle preserves selection, date/configuration choices, source
+   and implementation hashes, runtime, failures, and observed stage counts.
+4. The selected real-data report never claims historical roster completeness,
+   resolved terminal settlements, or a measured magnitude of survivorship bias.
+5. Unimplemented research gates are named, not silently skipped or marked passed.
+
+Failure includes treating an unknown quantity as observed, dropping an audit
+qualification on output, changing a sample without recording it, or presenting
+fixture statistics as findings. Provider acquisition, terminal-return rules and
+backtest-audit integration remain outside this delivery.
+
+## Historical research-extension design (not current delivery guarantees)
+
+The original proposal below is retained for context, not as a claim of shipped
+functionality. Its blanket free-data assertions and filing-history-as-exit
+assumption are superseded by `DATA_EXIT_POLICY_DRAFT.md`; its four-gate survival
+headline remains unimplemented. The active acceptance criteria are above.
+
 What this project asks, what counts as done, and what would count as failure.
 
 ---

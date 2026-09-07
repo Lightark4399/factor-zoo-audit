@@ -67,3 +67,21 @@ def test_populated_real_store_retains_diagnostic_label_with_actual_results(tmp_p
     assert evidence["declared_research_evidence"] is False
     assert evidence["declared_survivorship_prone_share"] == 1.0
     assert evidence["sidecar_binding"] == "UNVERIFIED"
+    bundle = json.loads((outdir / "demo_run.json").read_text(encoding="utf-8"))
+    assert bundle["evidence"] == evidence
+    assert len(bundle["selected_roster"]) == 12
+    assert bundle["database_bytes_unchanged"] is True
+    assert len(bundle["configuration"]["signal_dates"]) == 3
+    assert len(bundle["factors"]) == 10
+    for record in bundle["factors"].values():
+        if record["computation_status"] != "COMPLETED":
+            assert record["protocol"] is None
+            continue
+        assert record["claims"] == evidence["claims"]
+        assert record["statistics_status"] == evidence["statistics_status"]
+        assert record["universe_filter"]["n_output"] == record["cleaning"]["n_input"]
+        assert record["cleaning"]["n_output"] == record["label_join"]["n_input"]
+        assert record["label_join"]["n_output"] == record["protocol"]["n_observations"]
+    for gate, record in bundle["research_gates"].items():
+        assert record["status"] in {"UNRESOLVED", "NOT_IMPLEMENTED"}, gate
+        assert record["status"] in output

@@ -1,6 +1,9 @@
 # Historical membership and exit policy — review draft
 
 Status: `DRAFT / AWAITING_USER_REVIEW / NOT_IMPLEMENTED`
+Review update 2026-09-06: agreed conceptual corrections incorporated below.
+AS-03 and the B diagnostic delivery are authorised; historical source selection,
+any numerical exit-estimation rule and exit-policy implementation remain pending.
 Policy ID: `historical_membership_exit_v1_draft`
 Prepared: 2026-09-05. Source verification means the specific material described
 below was checked, not that a vendor subscription or dataset was obtained.
@@ -101,7 +104,8 @@ limited to a separately defined, disclosed cohort.
 | `estimated` | Null | One or more rows keyed by `(event_id, rule_id, scenario_id)` with `terminal_return_estimated` | Approved rule/version, applicable population, literature locator, inputs, assumptions and sensitivity results. |
 | `undetermined` | Null | No selected approved estimate | Explicit reason, missing fields, affected positions/claims and follow-up state. |
 
-`actual` denotes documented measurement rather than infallible truth. A vendor
+This table qualifies the **terminal component**, not the whole holding-period
+return. `actual` denotes documented measurement rather than infallible truth. A vendor
 may itself estimate a delisting payment; the adapter must preserve such flags.
 An undocumented vendor convention is not sufficient to label a value actual.
 
@@ -147,12 +151,36 @@ incorporates it. CRSP's SIZ-to-CIZ guide documents changed return conventions
 and event placement; CIZ return/event flags must be inspected for the chosen
 release. "CRSP" without a format and release is not a return specification. [S6]
 
-Preserve the predeclared holding horizon. If verified cash is received before
-the horizon, the initial proposal holds it at zero interest for the remainder
-and labels that as a portfolio convention. No early reinvestment at an assumed
-payment time. If proceeds arrive after the horizon and no valid horizon
-valuation exists, that horizon's outcome is undetermined even when eventual
-cash is known. Censoring does not grant a free exit at the last quote.
+Preserve the predeclared holding horizon and separate `terminal_component`
+(actual/estimated/undetermined) from `horizon_extension_convention` (named rule).
+For nonoverlapping intervals, the full wealth ratio is
+`(1 + price_path_return) * (1 + terminal_return) * (1 + extension_return)`.
+An actual payment alone does not establish an actual full-horizon return.
+
+Two proposed scenarios, neither implemented or selected as the primary result:
+
+- `CASH_ZERO`: retain verified available proceeds as non-interest-bearing cash.
+- `PIT_EW_REINVESTMENT`: reinvest in a precisely defined equal-weight basket
+  eligible and executable at the reinvestment time, not names later known to
+  survive the sample. Basket scope, weighting, rebalancing, execution costs,
+  subsequent exits and empty-basket treatment require an explicit contract.
+
+Choose the primary convention with a reason before inspecting its comparative
+performance; show the other as sensitivity analysis once both are executable.
+Neither is inherently conservative or unbiased. The claim that the latter is
+the usual Beaver–McNichols–Price convention remains UNVERIFIED; no checked
+reference relationship is added on the basis of recollection.
+
+Convention-extended full-horizon returns must retain a `CONVENTION_EXTENDED`
+basis and scenario ID, not inherit `actual` from the terminal event. This alone
+does not invalidate a claim about a strategy that explicitly defines that
+convention; the proposition being tested must match it. Do not manufacture an
+estimated event value simply because a portfolio strategy has a convention.
+
+No early reinvestment at an assumed payment time. If proceeds arrive after the
+horizon and no valid horizon valuation exists, that horizon's outcome is
+undetermined even when eventual cash is known. Censoring does not grant a free
+exit at the last quote.
 
 ## 4. Literature and estimates
 
@@ -188,12 +216,23 @@ and an `inconclusive_reason` such as `terminal_outcome_missing`,
 `membership_unresolved`, `security_mapping_ambiguous` or `horizon_value_missing`.
 Compatible words across repositories do not imply an implemented shared API.
 
-For a full-cohort IC claim, an unknown included label blocks that claim; a
+For a predeclared cohort and period, while a necessary outcome affecting the
+full-cohort IC claim is unknown, do not publish that point estimate as an
+evidentiary conclusion. A
 complete-case IC may still be printed as `DIAGNOSTIC_ONLY` with its selection
 loss visible. For a portfolio claim, track formation weights before the label
 join. Loss of an invested security cannot renormalise the remaining weights and
 make the unresolved investment disappear. Unknown membership can affect
 cross-sectional ranking even without a known portfolio weight.
+
+This is a deliberate strict gate, not a missingness-percentage exemption. It
+does not assert that every real dataset is incomplete forever. A bounded cohort
+may be fully reconciled; unknown records may later be resolved. Paid data does
+not automatically pass, and lack of CRSP does not logically preclude a valid
+bounded study. The current 200-company selection does not meet the market-wide
+claim's requirements. B is the diagnostic delivery, not a relabelled survival
+headline. Signed bias assertions remain UNDETERMINED unless justified for the
+particular estimand and assumptions; this does not override proven arithmetic.
 
 Report dependency-specific qualification: an unaffected statistic may retain
 its own status; an unresolved exit is not proof that every other metric failed.

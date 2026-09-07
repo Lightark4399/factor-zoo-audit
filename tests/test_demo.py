@@ -9,6 +9,7 @@ front page.
 
 from __future__ import annotations
 
+import json
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
@@ -93,6 +94,10 @@ def test_report_is_written_when_requested(full_fixture_report):
     assert "FACTOR ZOO AUDIT" in saved
     assert "NOT findings" in saved
     assert out.startswith(saved)
+    bundle = json.loads(report.with_name("demo_run.json").read_text(encoding="utf-8"))
+    assert bundle["evidence"]["mode"] == "fixture"
+    assert bundle["fixture_spec"]["seed"] == 11
+    assert len(bundle["factors"]) == 10
 
 
 # ----------------------------------------------------------------------

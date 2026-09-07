@@ -1,0 +1,103 @@
+# B: point-in-time audit with explicit evidence limits
+
+This is an independently useful diagnostic deliverable, not a claim that the
+original market-wide research question has been answered. No provider change,
+terminal-return imputation or backtest-audit bridge is included.
+
+## Five parts and their acceptance evidence
+
+| Part | Delivered surface | What it does not establish |
+|---|---|---|
+| Reproducible run package | Runtime lock/hash, shipped code/rule hashes, selected roster/hash, explicit signal dates and protocol settings in `demo_run.json` | Provider downloads are not immutable; hashes identify bytes, not truth or a license to redistribute them |
+| Synthetic controls | Existing filing/read-path, ghost-membership, missing-price/label tests; real-store report transport regressions backed by synthetic fixtures | A test pass is not proof of an anomaly or complete historical membership |
+| Selected 200-company diagnostic | Full-grid archive acceptance pending; interrupted attempts are not delivered runs | The roster was selected from an ingest-time ticker map, not a contemporaneous historical roster |
+| Evidence qualification | `demo_evidence.json`, per-factor diagnostic records, research gate ledger, visible failures and unavailable counts | No actual/estimated terminal-return adapter or automatic research-promotion path exists |
+| Reading entry point | README headline, this guide, validation record and policy document | No survival numerator, market-wide inference or claim of completed backtest-audit integration |
+
+## Run from a clone
+
+```bash
+python -m venv .venv
+# Activate using the command appropriate for your shell.
+python -m pip install -c src/fza/research-requirements.lock -e ".[dev]"
+python -m pytest tests
+python -m fza.demo --db does-not-exist.duckdb --outdir local-fixture-report
+```
+
+The intentionally absent DB selects the built-in `FixtureSpec`, whose seed and
+parameters are written to the bundle. Fixture generation and tests need no
+network once dependencies are installed. The full report retains the monthly
+grid. `--max-dates` is only a faster, subsampled diagnostic: formation shifts
+count selected dates, so its numbers are not definition-equivalent to a full run.
+
+For a user who already holds the local selected database:
+
+```bash
+python -m fza.demo --db data/fza_200.duckdb --outdir local-selected-200-report
+```
+
+The local DB is not committed. A new download does not reproduce its historical
+bytes. Exact reproduction of the archived diagnostic needs the database hash
+recorded in that bundle, the corresponding code/rules, and its recorded runtime.
+No new subscription or data redistribution permission is assumed.
+
+## Three outputs from one computation
+
+- `demo_report.txt`: readable report, with qualifications at the opening,
+  protocol/vintage sections and conclusion. Stdout contains the same report.
+- `demo_evidence.json`: dataset declarations, their binding status, byte hashes,
+  explicit reasons, and claim-relative qualification.
+- `demo_run.json`: the same evidence plus roster, signal dates, fixture spec
+  when applicable, implementation/runtime manifests, definition denominator,
+  each completed factor's existing protocol and stage reports, failures,
+  vintage comparisons and unimplemented research gates.
+
+`COMPLETED` means a computation ran, not that an anomaly passed. Non-finite
+statistics become JSON null, never zero. A failed factor retains its entry and
+null protocol; unavailable stage counts are not invented. Raw counts start
+after factor-specific construction filters, which are reported separately.
+LS Sharpe is the existing per-observation statistic, not an annualised claim.
+
+## What the selected roster means
+
+The bundle freezes the stored selection for reproducibility. It does not turn
+that selection into a historical fixed cohort. Filing bounds remain proxies,
+not official listing/exit dates. Missing issuers cannot be recovered by a gate
+that sees only already-ingested rows. `survivorship_prone_share: 1.0` describes
+source risk coverage, not 100% bias or any estimated IC distortion.
+
+Loss counts describe observed processing. Unknown terminal outcomes and never
+observed members remain unresolved; no automatic threshold treats them as
+negligible. PIT/restated differences remain sample-conditional, not proof that
+common defects cancel. Publication splits, multiple-testing correction,
+free-baseline integration and cost gates are explicitly NOT_IMPLEMENTED here.
+
+## Source qualification contract
+
+`fza.qualification.qualification_policy()` is the single reviewed source for
+qualification. Dataset evidence, text, both JSON exits and the README managed
+block project it. Generate that block with `python -m fza.qualification`; a
+test rejects a stale checked-in projection. Transport tests deliberately change
+the source labels to catch hard-coded copies. These tests establish consistency,
+not that the policy decisions are true. Generic docs-quote checking remains an
+upstream reuse item in `CROSS_REPO_AUDIT.md`, not a second local implementation.
+
+The legacy `.report.json` has no database hash: its fields are displayed as
+unbound declarations, not authenticated facts about the open DB. New sidecars
+may supply `database_sha256`; a byte match is binding evidence only, never
+research approval. Active WAL files prevent main-file-only binding. Missing,
+malformed or unreadable metadata is visibly unknown. Even `research_evidence:
+true` cannot promote this diagnostic entry point.
+
+The bundle records main-file hashes before/after the run. Equality is not a
+transactional snapshot guarantee or proof of historical accuracy. The local
+200-company report should show unchanged bytes; any discrepancy requires review.
+
+## Next decision, not a hidden dependency
+
+Institutional access must cover the needed CRSP stock history and event/return
+fields, not merely a WRDS login. Provider access and dataset acceptance remain
+separate. The accepted conceptual policy separates terminal measurement from
+named horizon-extension conventions; neither scenario has been implemented.
+See `DATA_EXIT_POLICY_DRAFT.md`. A future research extension reuses these
+controls rather than relaxing them to manufacture a headline.

@@ -25,7 +25,10 @@ published when the signal was formed?*
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+from dataclasses import asdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -35,14 +38,21 @@ from .factors.registry import (
     published_anomaly_denominator,
     summary_table,
 )
-from .fixtures import load_fixture_into
+from .fixtures import FixtureSpec, load_fixture_into
 from .pipeline.prepare import EmptyFactorError
 from .pipeline.run import (
     ImplausibleMagnitudeError,
     compare_vintages,
     compute_factor,
 )
-from .provenance import dataset_evidence, research_environment
+from .provenance import (
+    dataset_evidence,
+    file_sha256,
+    implementation_manifest,
+    research_environment,
+)
+from .qualification import qualification_lines
+from .reporting import factor_record, json_safe, research_gate_ledger
 from .store import Store
 
 DEFAULT_DB = Path("data/fza.duckdb")
@@ -209,8 +219,8 @@ def main(argv: list[str] | None = None) -> int:
     else:
         emit(f"  DATA: {args.db}")
     emit()
-    emit("  EVIDENCE: DIAGNOSTIC_ONLY -- the statistics below are NOT findings.")
-    emit("  Market-wide anomaly survival: NOT_EVIDENCE; no survival rate claimed.")
+    for line in qualification_lines(evidence):
+        emit("  " + line)
     emit(f"  reasons: {', '.join(evidence['reasons'])}")
     if mode == "real":
         emit(f"  sidecar binding: {evidence['sidecar_binding']}")
@@ -326,7 +336,9 @@ def main(argv: list[str] | None = None) -> int:
     emit("  Definition eligibility is separate from outcome evidence; no survival rate")
     emit("  follows from this denominator or from a completed computation.")
 
-    dates = signal_dates_for(store)
+    dates = signal_dates_for(store, min_history_months=15)
+    available_signal_dates = len(dates)
+    protocol_settings = {"horizon_sessions": 21, "execution_lag_sessions": 1, "n_quantiles": 5}
     if args.max_dates and len(dates) > args.max_dates:
         idx = pd.Index(range(len(dates)))
         keep = idx[:: max(1, len(dates) // args.max_dates)][: args.max_dates]
@@ -334,10 +346,13 @@ def main(argv: list[str] | None = None) -> int:
 
     emit(_header("STANDARD PROTOCOL"))
     emit()
-    emit("  DIAGNOSTIC_ONLY -- selected-sample statistics, not evidence of survival.")
-    emit(f"  {len(dates)} monthly signal dates, "
+    emit("  " + qualification_lines(evidence)[0])
+    emit(f"  {len(dates)} signal dates from the monthly grid, "
          f"{dates[0].date() if len(dates) else 'n/a'} .. "
          f"{dates[-1].date() if len(dates) else 'n/a'}")
+    if len(dates) < available_signal_dates:
+        emit("  SUBSAMPLED diagnostic grid: formation shifts count selected dates.")
+        emit("  This is not definition-equivalent to the full monthly run.")
     emit()
     emit(
         f"  {'factor':<14}{'IC':>10}{'LS Sharpe':>11}"
@@ -348,7 +363,7 @@ def main(argv: list[str] | None = None) -> int:
     failures: dict[str, str] = {}
     for factor_id, factor in factors.items():
         try:
-            run = compute_factor(factor, store, dates)
+            run = compute_factor(factor, store, dates, **protocol_settings)
         except Exception as exc:
             # A factor that fails a check must stay in the table. Catching the
             # error keeps the other nine computable; dropping the row would make
@@ -499,10 +514,12 @@ def main(argv: list[str] | None = None) -> int:
 
     emit(_header("POINT-IN-TIME VS RESTATED"))
     emit()
-    emit("  DIAGNOSTIC_ONLY -- within-sample comparison; shared defects need not cancel.")
+    emit("  " + qualification_lines(evidence)[0])
+    emit("  Within-sample comparison; shared defects need not cancel.")
     emit("  Could this result have been obtained when the signal was formed?")
     emit()
 
+    comparisons = {}
     for factor_id, factor in factors.items():
         if factor_id not in runs:
             # Named rather than skipped. A factor absent from this section
@@ -512,12 +529,23 @@ def main(argv: list[str] | None = None) -> int:
             emit(f"    not compared -- {failures.get(factor_id, 'run failed')};")
             emit("    see the status column above")
             emit()
+            comparisons[factor_id] = {"status": "NOT_COMPUTED", "reason": failures[factor_id]}
             continue
         try:
-            comp = compare_vintages(factor, store, dates)
+            comp = compare_vintages(factor, store, dates, **protocol_settings)
         except Exception as exc:
             emit(f"  {factor_id}: comparison failed: {type(exc).__name__}: {exc}")
+            comparisons[factor_id] = {"status": "FAILED", "reason": type(exc).__name__}
             continue
+
+        comparisons[factor_id] = {
+            "status": evidence["statistics_status"] if comp.applicable else "NOT_APPLICABLE",
+            "pit": comp.pit.to_dict(),
+            "restated": comp.restated.to_dict() if comp.restated is not None else None,
+            "ic_gap": comp.ic_gap if comp.applicable else None,
+            "diagnostic_verdict": comp.verdict,
+            "detail": comp.detail,
+        }
 
         emit(f"  {factor_id}")
         if not comp.applicable:
@@ -532,19 +560,77 @@ def main(argv: list[str] | None = None) -> int:
             emit(f"    verdict            {verdict:>10}")
         emit()
 
+    gates = research_gate_ledger()
+    emit(_header("RESEARCH CLAIM GATES"))
+    for gate, state in gates.items():
+        emit(f"  {gate}: {state['status']} -- {state['reason']}")
+    emit("  UNRESOLVED is not a measured bias size; NOT_IMPLEMENTED is not passed.")
+
     emit(_rule("="))
-    emit("  DIAGNOSTIC_ONLY / NOT findings. These statistics describe this run.")
+    for line in qualification_lines(evidence):
+        emit("  " + line)
     emit("  The vintage gap is conditional on the selected data and label samples;")
     emit("  it does not establish a market-wide effect or cancel shared data defects.")
-    emit("  Market-wide anomaly survival: NOT_EVIDENCE. Ingest alone does not qualify it.")
+    emit("  Ingest alone does not qualify research evidence.")
     emit(_rule("="))
     emit()
 
     if args.outdir:
+        roster = store.con.execute(
+            "SELECT cik, ticker, first_filing, last_filing, accounting_standard "
+            "FROM securities ORDER BY ticker, cik"
+        ).df().to_dict("records")
+        roster_json = json.dumps(json_safe(roster), sort_keys=True, allow_nan=False)
+        records = {}
+        for factor_id in factors:
+            completed = factor_id in runs
+            records[factor_id] = factor_record(runs[factor_id], evidence) if completed else {
+                "computation_status": failures[factor_id],
+                "statistics_status": "NOT_COMPUTED",
+                "protocol": None,
+                "reason": "see_text_failure_details; no_zero_imputed_for_missing_result",
+            }
+        try:
+            end_hash = file_sha256(args.db) if mode == "real" else None
+        except OSError:
+            end_hash = None
+        bundle = {
+            "schema_version": 1,
+            "artifact_role": evidence["statistics_status"] + " / NOT_AN_ASSERTION",
+            "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+            "evidence": evidence,
+            "environment": environment,
+            "implementation": implementation_manifest(),
+            "data_summary": info,
+            "fixture_spec": asdict(FixtureSpec()) if mode == "fixture" else None,
+            "selected_roster": roster,
+            "selected_roster_sha256": hashlib.sha256(roster_json.encode()).hexdigest(),
+            "roster_scope": "stored_selection_not_verified_historical_membership",
+            "database_sha256_after_run": end_hash,
+            "database_bytes_unchanged": (
+                end_hash == evidence["database_sha256"] if end_hash is not None else None
+            ),
+            "configuration": {
+                "signal_dates": [str(value.date()) for value in dates],
+                "max_dates": args.max_dates,
+                "available_signal_dates": available_signal_dates,
+                "subsampled_signal_grid": len(dates) < available_signal_dates,
+                "min_history_months": 15,
+                **protocol_settings,
+                "ls_sharpe_units": "per_observation_not_annualised",
+            },
+            "denominator": denominator,
+            "factors": records,
+            "vintage_comparisons": comparisons,
+            "research_gates": gates,
+        }
         args.outdir.mkdir(parents=True, exist_ok=True)
         (args.outdir / "demo_report.txt").write_text("\n".join(lines), encoding="utf-8")
         (args.outdir / "demo_evidence.json").write_text(
             json.dumps(evidence, indent=2, allow_nan=False), encoding="utf-8"
+        )
+        (args.outdir / "demo_run.json").write_text(
+            json.dumps(json_safe(bundle), indent=2, allow_nan=False), encoding="utf-8"
         )
         print(f"report written to {args.outdir / 'demo_report.txt'}")
 
