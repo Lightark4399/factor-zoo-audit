@@ -85,3 +85,18 @@ def test_populated_real_store_retains_diagnostic_label_with_actual_results(tmp_p
     for gate, record in bundle["research_gates"].items():
         assert record["status"] in {"UNRESOLVED", "NOT_IMPLEMENTED"}, gate
         assert record["status"] in output
+
+    # Every retained-count table must align with its headings, regardless of
+    # which table first exposed this problem. A total-width cap cannot do this.
+    lines = output.splitlines()
+    checked = 0
+    for index, header in enumerate(lines):
+        if not header.strip().endswith("retained"):
+            continue
+        for row in lines[index + 1:]:
+            if not row.strip():
+                break
+            if row.strip().split()[0] in bundle["factors"]:
+                assert len(row.rstrip()) == len(header.rstrip()), (header, row)
+                checked += 1
+    assert checked > 0

@@ -412,7 +412,7 @@ def main(argv: list[str] | None = None) -> int:
         u = run.universe_filter
         emit(
             f"  {factor_id:<14}{u.n_input:>12,}{u.n_output:>12,}"
-            f"{u.n_excluded_outside_universe:>12,}{u.retention:>10.1%}"
+            f"{u.n_excluded_outside_universe:>12,}{u.retention:>11.1%}"
         )
     emit()
     emit("  'excluded' is reported independently from missing-value cleaning and")
@@ -460,7 +460,7 @@ def main(argv: list[str] | None = None) -> int:
         label = run.label_join
         emit(
             f"  {factor_id:<14}{label.n_input:>12,}{label.n_output:>12,}"
-            f"{label.n_dropped_without_label:>12,}{label.retention:>10.1%}"
+            f"{label.n_dropped_without_label:>12,}{label.retention:>11.1%}"
         )
         reasons = {
             reason: count
