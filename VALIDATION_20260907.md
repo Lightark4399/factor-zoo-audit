@@ -149,7 +149,15 @@ supplying complete instant-fact records, the old code produced one intended
 ordering failure and one passing no-exposure control. Corrected code passes both.
 The new total is 225 (+2 ordering cases, zero removals/renames). Full runs for
 this source snapshot use `b-final-locked-20260907.xml` and
-`b-final-minimum-20260907.xml`; until those finish, do not call it 225 passed.
+`b-final-minimum-20260907.xml`. Both completed: 225 passed, zero failures/errors/
+skips, including all 14 demo tests. Completion XMLs were rechecked on 2026-09-08:
+
+| Environment | Duration (s) | JUnit SHA-256 |
+|---|---:|---|
+| Python 3.12.14 / pandas 3.0.5 | 4791.193 | `962edceaa6136c05e7ffeb4a328190aa86fbed0067dd7e315030edfcb00f7ab0` |
+| Python 3.10.21 / pandas 2.0.0 | 5152.446 | `1fedbabf826bb80ee7af9f3d5c24d36c482f77d9bfb7ac3bdfa66b5d0d5007a9` |
+
+These results cover the pre-2026-09-08 source, not subsequent vintage-scope fixes.
 
 The temporary isolation worktree was fast-forward merged into the existing work
 branch. It is retained as a local review artifact; no user data was removed.

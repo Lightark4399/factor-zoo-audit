@@ -83,7 +83,7 @@ def test_demo_runs_end_to_end_on_fixtures(full_fixture_report):
 def test_price_only_factor_is_marked_not_applicable(full_fixture_report):
     """Reporting a zero gap for momentum would invite the wrong conclusion."""
     _, out, _ = full_fixture_report
-    assert "not applicable" in out
+    assert "NOT APPLICABLE" in out
     assert "not\n    evidence" in out or "not" in out
 
 

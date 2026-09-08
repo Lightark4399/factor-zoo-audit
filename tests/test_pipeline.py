@@ -515,6 +515,15 @@ def test_price_only_factor_is_not_applicable(store, factors):
     assert "NOT APPLICABLE" in c.verdict
 
 
+@pytest.mark.parametrize("factor_id", ["log_mktcap", "turnover"])
+def test_embedded_share_path_is_not_a_fundamental_revision_test(store, factors, factor_id):
+    comparison = compare_vintages(factors[factor_id], store, SIGNAL_DATES)
+    assert comparison.applicable is False
+    assert comparison.passed is None
+    assert comparison.detail["read_path_coverage"] == "NOT_EXERCISED"
+    assert np.isnan(comparison.ic_gap)
+
+
 def test_vintage_comparison_scores_both_arms_on_shared_dates(store, factors):
     """Otherwise the gap is partly a comparison of different samples."""
     c = compare_vintages(factors["bm_ratio"], store, SIGNAL_DATES)

@@ -1,25 +1,19 @@
 """Running a factor, and running it twice on purpose.
 
-The second run is the point. A factor computed on point-in-time data answers
-"what could have been known"; the same factor computed on restated data answers
-"what we know now". The difference between the two scores is the value of the
-look-ahead, in the same units as everything else in the report.
+The comparison relaxes filing visibility, retaining the accounting-period bound.
+It holds the historical-membership input and protocol settings fixed, not the
+effective sample: filing visibility can change both values and their availability.
 
-That comparison only means something if the two runs differ in **one** respect.
-So the runner holds everything else fixed: the same signal dates, the same
-universe, the same cleaning parameters, the same forward returns, the same
-protocol. The vintage is the only thing that varies.
+The original-process diagnostic scores each arm's own cleaned observations on
+shared signal dates. It does NOT intersect securities before cleaning or scoring.
+Counts and key hashes disclose that distinction. Its gap is not an isolated
+restatement-value effect, a causal decomposition, or evidence of significance.
+Common-observation and common-support re-cleaning diagnostics are separate work.
 
-Measured wrong, this number is easy to inflate. Two ways it goes wrong, both
-guarded here:
-
-* **Different samples.** If the restated run produces values for dates or names
-  the point-in-time run could not, the two scores describe different
-  cross-sections. The runner intersects them before scoring.
-* **A factor that never touches fundamentals.** Momentum reads prices only, so
-  its two vintages are identical by construction and the gap is exactly zero. The
-  runner detects this and reports "not applicable" rather than a zero that a
-  reader might mistake for evidence of cleanliness.
+Declared fundamental tags do not establish coverage of the substituted methods.
+The runner counts actual calls to those methods; an untouched embedded price-table
+share count cannot produce evidence about share-count revisions merely by giving
+a zero gap. No common dates or no exercised read path can produce a PASS.
 """
 
 from __future__ import annotations
@@ -40,8 +34,8 @@ from .prepare import (
 )
 from .protocol import ProtocolResult, run_protocol
 
-# Below this the two vintages agree to within estimation noise on a panel of the
-# sizes this project works with.
+# Preconfigured directional diagnostic threshold; not calibrated to sampling
+# uncertainty, not a significance/equivalence test, and not evidence of no effect.
 MATERIAL_GAP = 0.005
 
 
@@ -59,13 +53,13 @@ class VintageComparison:
 
     @property
     def ic_gap(self) -> float:
-        if self.restated is None:
+        if not self.applicable or self.restated is None:
             return float("nan")
         return self.restated.summary["ic_mean"] - self.pit.summary["ic_mean"]
 
     @property
     def sharpe_gap(self) -> float:
-        if self.restated is None:
+        if not self.applicable or self.restated is None:
             return float("nan")
         return self.restated.summary["ls_sharpe"] - self.pit.summary["ls_sharpe"]
 
@@ -480,6 +474,44 @@ def compute_factor(
     )
 
 
+def comparison_sample_report(pit: pd.DataFrame, restated: pd.DataFrame) -> dict:
+    """Describe scoring keys, not label identity or common cleaning inputs.
+
+    Keys are unique observations, not just counts: equal counts can hide entirely
+    different securities. Hashes use the same canonical order as membership.
+    """
+    columns = ["ticker", "signal_date"]
+
+    def keys(panel):
+        out = panel[columns].copy()
+        out["signal_date"] = pd.to_datetime(out["signal_date"])
+        if out.isna().any().any() or out.duplicated(columns).any():
+            raise ValueError("Vintage scoring keys must be non-null and unique")
+        return out.sort_values(["signal_date", "ticker"]).reset_index(drop=True)
+
+    def key_hash(frame):
+        hashed = pd.util.hash_pandas_object(frame[columns], index=False)
+        return hashlib.sha256(hashed.to_numpy().tobytes()).hexdigest()
+
+    left, right = keys(pit), keys(restated)
+    joined = left.merge(right, on=columns, how="outer", indicator=True, validate="one_to_one")
+    common = keys(joined.loc[joined["_merge"] == "both", columns])
+    return {
+        "scoring_scope": "ARM_SPECIFIC_OBSERVATIONS_ON_SHARED_DATES",
+        "cleaning_scope": "ARM_SPECIFIC_INPUT_KEYS",
+        "pit_observations": len(left),
+        "restated_observations": len(right),
+        "common_observations": len(common),
+        "pit_only_observations": int((joined["_merge"] == "left_only").sum()),
+        "restated_only_observations": int((joined["_merge"] == "right_only").sum()),
+        "identical_observation_keys": left.equals(right),
+        "pit_key_hash": key_hash(left),
+        "restated_key_hash": key_hash(right),
+        "common_key_hash": key_hash(common),
+        "label_and_holding_period_identity": "NOT_CHECKED",
+    }
+
+
 def compare_vintages(
     factor: Factor,
     store: Store,
@@ -489,11 +521,10 @@ def compare_vintages(
 ) -> VintageComparison:
     """Run a factor on both data vintages and report the gap.
 
-    The restated run is produced by a store whose ``fundamentals_asof`` has been
-    replaced with a call that ignores the signal date — which is precisely the
-    query a pipeline written against a mutable database would issue. Simulating
-    the mistake rather than describing it is what makes the resulting number a
-    measurement.
+    Both fundamental read methods retain ``period_end <= asof`` but ignore filing
+    visibility. This includes premature access to first filings as well as later
+    amendments. Each arm retains its own effective sample and cleaning inputs;
+    this diagnostic does not isolate amendments to already-available facts.
     """
     # Construct membership once.  Reusing the exact key panel makes it
     # impossible for the PIT/restated comparison to vary both vintage and
@@ -542,8 +573,10 @@ def compare_vintages(
 
     original = store.fundamentals_asof
     original_history = store.fundamentals_history_asof
+    substituted_calls = {"fundamentals_asof": 0, "fundamentals_history_asof": 0}
 
     def leaking_asof(signal_date, tags=None, intended_signal_date=None):
+        substituted_calls["fundamentals_asof"] += 1
         # Mirrors the real signature so a factor can be swapped onto this path
         # unchanged. ``intended_signal_date`` is accepted and ignored: this arm
         # keeps no read log, because the whole point of it is to bypass the
@@ -563,6 +596,7 @@ def compare_vintages(
 
     def leaking_history_asof(signal_date, tags=None, intended_signal_date=None):
         """Restated arm retaining every start/end context needed for TTM."""
+        substituted_calls["fundamentals_history_asof"] += 1
         out = restated_frame
         if tags:
             out = out.loc[out["tag"].isin(tags)]
@@ -584,22 +618,19 @@ def compare_vintages(
         store.fundamentals_asof = original  # type: ignore[method-assign]
         store.fundamentals_history_asof = original_history  # type: ignore[method-assign]
 
-    # Score both arms on the dates they share. Without this the gap would partly
-    # be a comparison of different samples -- the same confound that produced a
-    # spurious -0.013 in the sibling project's point-in-time module.
+    # Incident 6 in the sibling repository needed date alignment for its fixture.
+    # That fix shape does not establish identical (date, ticker) subsets here.
+    # Preserve this original-process diagnostic and explicitly expose the scope.
     shared = sorted(
         set(pit_run.panel["signal_date"]).intersection(restated_run.panel["signal_date"])
     )
-    if shared:
-        pit_protocol = run_protocol(
-            factor.factor_id, pit_run.panel[pit_run.panel["signal_date"].isin(shared)]
-        )
-        restated_protocol = run_protocol(
-            factor.factor_id,
-            restated_run.panel[restated_run.panel["signal_date"].isin(shared)],
-        )
-    else:
-        pit_protocol, restated_protocol = pit_run.protocol, restated_run.protocol
+    pit_scored = pit_run.panel[pit_run.panel["signal_date"].isin(shared)]
+    restated_scored = restated_run.panel[restated_run.panel["signal_date"].isin(shared)]
+    sample = comparison_sample_report(pit_scored, restated_scored)
+    sample["pit_observations_before_date_alignment"] = len(pit_run.panel)
+    sample["restated_observations_before_date_alignment"] = len(restated_run.panel)
+    pit_protocol = run_protocol(factor.factor_id, pit_scored)
+    restated_protocol = run_protocol(factor.factor_id, restated_scored)
 
     gap = restated_protocol.summary["ic_mean"] - pit_protocol.summary["ic_mean"]
 
@@ -612,43 +643,55 @@ def compare_vintages(
             "the vintage comparison is confounded"
         )
 
-    if not np.isfinite(gap):
+    path_exercised = sum(substituted_calls.values()) > 0
+    if not path_exercised:
+        passed, verdict = None, (
+            "NOT APPLICABLE: substituted fundamental read methods were not called; "
+            "embedded price-table inputs were not revised. No cleanliness inference."
+        )
+    elif not shared:
+        passed, verdict = None, "INCONCLUSIVE: no shared signal dates."
+    elif not np.isfinite(gap):
         passed, verdict = None, "INCONCLUSIVE: one of the vintages could not be scored."
     elif gap > MATERIAL_GAP:
         passed = False
         verdict = (
             f"FAIL: the restated vintage scores {gap:+.4f} higher in IC "
             f"({restated_protocol.summary['ic_mean']:+.4f} vs "
-            f"{pit_protocol.summary['ic_mean']:+.4f}). A backtest built on a "
-            "mutable fundamentals table would have reported the larger figure, "
-            "and the difference is information that was not available when the "
-            "signal was formed."
+            f"{pit_protocol.summary['ic_mean']:+.4f}), exceeding the positive "
+            f"diagnostic threshold {MATERIAL_GAP:.4f}. This is not a significance test "
+            "or an isolated restatement-value effect."
         )
     elif gap < -MATERIAL_GAP:
         passed = True
         verdict = (
             f"PASS (opposite direction): the point-in-time vintage scores HIGHER "
-            f"by {-gap:.4f}. Restatements moved the data away from what predicted "
-            "returns here, so using them understates rather than flatters."
+            f"by {-gap:.4f}. The negative gap exceeds the diagnostic threshold "
+            "in magnitude; PASS only means the positive-gap trigger did not fire. "
+            "This is not evidence of cleanliness or statistical significance."
         )
     else:
         passed = True
         verdict = (
-            f"PASS: the two vintages agree to within {abs(gap):.4f}. Restatements "
-            "in this sample carried no information about subsequent returns, so "
-            "reading them conferred no advantage."
+            f"PASS: absolute IC gap {abs(gap):.4f} is within the preconfigured "
+            f"diagnostic threshold {MATERIAL_GAP:.4f}. This does not establish "
+            "equivalence, absence of information, or an estimation-noise bound."
         )
 
     return VintageComparison(
         factor_id=factor.factor_id,
         pit=pit_protocol,
         restated=restated_protocol,
-        applicable=True,
+        applicable=path_exercised,
         passed=passed,
         verdict=verdict,
         detail={
             "n_shared_dates": len(shared),
             "material_gap_threshold": MATERIAL_GAP,
+            "threshold_kind": "PRECONFIGURED_DIAGNOSTIC_NOT_SIGNIFICANCE_TEST",
+            "sample_comparison": sample,
+            "substituted_read_calls": substituted_calls,
+            "read_path_coverage": "EXERCISED" if path_exercised else "NOT_EXERCISED",
             "read_path_violations": pit_run.read_path_check["n_violations"],
             "naive_trap_rows": pit_run.naive_trap["n_trap_rows"],
             "universe_membership_key_hash": (

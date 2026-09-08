@@ -1,5 +1,15 @@
 # Cross-repository audit results
 
+## Observation-subset follow-up — 2026-09-08
+
+| Failure class | Origin / pointer | Local result | Next gate |
+|---|---|---|---|
+| Concrete repair shape substitutes for the full abstract comparison constraint | backtest-audit AI_NOTES incident 6 at locally inspected `2e4b2b0`; full local narrative: [incident 18](AI_NOTES.md#incident-18--a-repairs-shape-displaced-its-broader-constraint) | `defect-found`: dates aligned, securities not intersected despite docstring promise; no-call embedded-share paths mislabelled as PASS | First correction adds sample/coverage disclosure; common-observation and common-support diagnostics remain separate work, not checked-clean |
+
+No sibling file was edited. Claude Code owns its local verification result and
+pointer back to incident 18. This observation does not establish a systematic
+failure rate or a defect in the sibling's current release.
+
 Keep the original incident narrative in its originating repository. Each local
 row records what was actually inspected here; links alone are not a result.
 

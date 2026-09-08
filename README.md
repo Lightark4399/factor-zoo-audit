@@ -14,7 +14,9 @@ outcomes remain unresolved; **no market-wide anomaly survival rate is claimed**.
 Read the [full-grid diagnostic report](examples/outputs/b_selected_200_20260907/demo_report.txt)
 and its [run manifest](examples/outputs/b_selected_200_20260907/demo_run.json).
 They preserve the `0bd03bf` computation snapshot, not a live claim about every
-later code revision; known presentation follow-ups are in the validation record.
+later code revision. Read the accompanying [interpretation corrections](examples/outputs/b_selected_200_20260907/README.md#interpretation-correction--2026-09-08):
+shared dates are not shared securities, and its vintage threshold is not a
+significance test. Presentation follow-ups are in the validation record.
 
 The current deliverable is a diagnostic report plus machine-readable evidence,
 sample/implementation manifests, and counted processing losses. It measures
@@ -35,7 +37,11 @@ a published-anomaly survival headline. The demo propagates diagnostic status
 to stdout, saved text and structured evidence, even if a sidecar claims otherwise.
 See the [assertion audit](ASSERTION_SCOPE_AUDIT.md),
 [validation record](VALIDATION_20260907.md), [B delivery guide](B_DELIVERY.md), and
-[data/exit policy awaiting review](DATA_EXIT_POLICY_DRAFT.md).
+[optional data/exit policy, not implemented](DATA_EXIT_POLICY_DRAFT.md).
+
+B is the current delivery route; licensed-data acquisition is not a waiting
+dependency. No longer waiting for resolution does not mean the historical-member
+and terminal-outcome gaps are resolved.
 
 ---
 

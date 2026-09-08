@@ -12,3 +12,14 @@ from byte-identical presentation and provenance.
 
 The database is not distributed. Its initial selection is not verified
 historical membership; unresolved terminal outcomes remain a research blocker.
+
+## Interpretation correction — 2026-09-08
+
+The archived vintage comparison aligns dates, not effective securities. In
+asset_growth its two arms have different observation counts and were independently
+cleaned; the gap is not an isolated amendment-value effect or a paired-sample
+finding. Its PASS/FAIL threshold was not calibrated as a significance test.
+For log_mktcap and turnover, embedded price-table shares were not changed by the
+substituted fundamental reads; their zero gaps do not test share-count revisions.
+See [incident 18](../../../AI_NOTES.md#incident-18--a-repairs-shape-displaced-its-broader-constraint).
+These corrections qualify the old artifacts without rewriting their bytes.

@@ -86,6 +86,34 @@ def test_populated_real_store_retains_diagnostic_label_with_actual_results(tmp_p
         assert record["status"] in {"UNRESOLVED", "NOT_IMPLEMENTED"}, gate
         assert record["status"] in output
 
+    # Property spans every comparison emitted by the actual CLI, not one factor.
+    saved = (outdir / "demo_report.txt").read_text(encoding="utf-8")
+    for surface in (output, saved):
+        assert "shared dates, arm-specific observations" in surface
+        assert "not significance" in surface
+    compared = 0
+    for name, comparison in bundle["vintage_comparisons"].items():
+        detail = comparison.get("detail", {})
+        sample = detail.get("sample_comparison")
+        if sample is None:
+            continue
+        compared += 1
+        assert sample["pit_observations"] == comparison["pit"]["n_observations"]
+        assert sample["restated_observations"] == comparison["restated"]["n_observations"]
+        assert (sample["common_observations"] + sample["pit_only_observations"]
+                == sample["pit_observations"])
+        for surface in (output, saved):
+            section = surface.split("POINT-IN-TIME VS RESTATED")[1]
+            section = section.split(f"  {name}\n")[1].split("\n\n")[0]
+            counts = (f"PIT {sample['pit_observations']:,} / "
+                      f"restated {sample['restated_observations']:,}")
+            assert counts in section
+            assert detail["read_path_coverage"] in section
+        if detail["read_path_coverage"] == "NOT_EXERCISED":
+            assert comparison["status"] == "NOT_APPLICABLE"
+            assert comparison["ic_gap"] is None
+    assert compared > 0
+
     # Every retained-count table must align with its headings, regardless of
     # which table first exposed this problem. A total-width cap cannot do this.
     lines = output.splitlines()

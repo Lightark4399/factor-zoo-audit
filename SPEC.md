@@ -25,6 +25,11 @@ qualification on output, changing a sample without recording it, or presenting
 fixture statistics as findings. Provider acquisition, terminal-return rules and
 backtest-audit integration remain outside this delivery.
 
+As of 2026-09-08, licensed-data acquisition (route A) is not a pending dependency
+of delivery B. Historical-membership completeness and terminal outcomes remain
+UNRESOLVED: no longer waiting for resolution does not mean resolved. The ordered
+correctness work and optional comparator boundary are recorded in B_DELIVERY.md.
+
 ## Historical research-extension design (not current delivery guarantees)
 
 The original proposal below is retained for context, not as a claim of shipped

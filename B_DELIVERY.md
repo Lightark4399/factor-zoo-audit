@@ -93,7 +93,40 @@ The bundle records main-file hashes before/after the run. Equality is not a
 transactional snapshot guarantee or proof of historical accuracy. The local
 200-company report should show unchanged bytes; any discrepancy requires review.
 
-## Next decision, not a hidden dependency
+## Delivery scope decision — 2026-09-08
+
+B is the current delivery route. A (the licensed-data research extension) is
+removed from current delivery dependencies, not kept as a pending prerequisite.
+No institution reply, new provider, larger roster or exit-return implementation
+is required to finish B. Previously downloaded licensed data are not incorporated
+into this public delivery while post-affiliation usage rights are unconfirmed;
+this is not a finding that all retention or publication is permanently forbidden.
+
+`historical_membership_completeness` and `terminal_outcomes` remain `UNRESOLVED`.
+**No longer waiting for resolution does not mean resolved.** A permissions enquiry
+addresses access/use rights, not those substantive data-quality gates. No email
+has been sent by this repository's implementation task.
+
+The remaining correctness work is ordered, with separate verification:
+
+1. Correct vintage explanations and disclose actual scoring-key overlap and
+   substituted-read coverage (including the docstrings and threshold comment).
+   First correction implemented and tested: [2026-09-08 checkpoint](VALIDATION_20260908.md).
+2. Add three diagnostic layers: original-process gap; common-observation scoring
+   after arm-specific cleaning; common-support re-cleaning with fixed input keys
+   and checked label/holding-period identity. Contrasts measure sensitivity, not
+   a pure value/sample decomposition. The selected common set is not the cohort.
+3. Clarify breadth as names per retained date/quantile group. Any newly chosen
+   warning threshold is post-observation, not preregistered.
+4. Implement the reviewed multi-rule PlausibilityRule design. Input domains and
+   transformed-output ranges must be distinguished; undefined is not passed.
+
+OSAP is only a candidate external implementation comparator after these items.
+No installation, integration, expanded factor set, code copying or data-package
+redistribution is approved. Matching public implementations cannot verify an
+unread original reference. No claim of unique novelty is made.
+
+## Optional research extension, outside current delivery
 
 Institutional access must cover the needed CRSP stock history and event/return
 fields, not merely a WRDS login. Provider access and dataset acceptance remain

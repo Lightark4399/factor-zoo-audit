@@ -15,11 +15,10 @@ would run is a demo most readers never see, and CI could not run it at all.
 
 Reading the output
 ------------------
-The headline is the point-in-time gap. Every other number in this project is a
-conventional factor statistic that a reader could compute elsewhere; the gap is
-the one that requires the bitemporal store, and it answers a question most factor
-research does not ask: *how much of this result depends on data that had not been
-published when the signal was formed?*
+The deliverable is the audit and its evidence limits. Vintage differences are
+diagnostics of two reading pipelines, not isolated causal effects: samples and
+cleaning inputs can differ even on shared dates. Read-path coverage and observed
+key overlap must accompany the gap, not be inferred from a PASS label.
 """
 
 from __future__ import annotations
@@ -27,6 +26,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import textwrap
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -515,8 +515,12 @@ def main(argv: list[str] | None = None) -> int:
     emit(_header("POINT-IN-TIME VS RESTATED"))
     emit()
     emit("  " + qualification_lines(evidence)[0])
-    emit("  Within-sample comparison; shared defects need not cancel.")
-    emit("  Could this result have been obtained when the signal was formed?")
+    emit("  Original-process diagnostic: shared dates, arm-specific observations.")
+    emit("  Cleaning uses each arm's own sample; shared defects need not cancel.")
+    emit("  The gap mixes value/availability/processing changes, not pure revisions.")
+    emit("  PASS/FAIL uses a preconfigured directional threshold, not significance.")
+    emit("  PASS means no positive-gap trigger, not validated evidence.")
+    emit("  Identical keys do not certify matching labels or holding periods.")
     emit()
 
     comparisons = {}
@@ -549,15 +553,25 @@ def main(argv: list[str] | None = None) -> int:
 
         emit(f"  {factor_id}")
         if not comp.applicable:
-            emit("    not applicable -- this factor reads no fundamentals, so the")
-            emit("    two vintages are identical by construction. That is not")
-            emit("    evidence it is free of look-ahead.")
+            for line in textwrap.wrap(comp.verdict, width=WIDTH - 4):
+                emit("    " + line)
         else:
             emit(f"    point-in-time IC   {comp.pit.summary['ic_mean']:>+10.4f}")
             emit(f"    restated IC        {comp.restated.summary['ic_mean']:>+10.4f}")
             emit(f"    restated minus PIT {comp.ic_gap:>+10.4f}")
             verdict = comp.verdict.split(":")[0]
             emit(f"    verdict            {verdict:>10}")
+        sample = comp.detail.get("sample_comparison")
+        if sample is not None:
+            emit(f"    observations       PIT {sample['pit_observations']:,} / "
+                 f"restated {sample['restated_observations']:,}")
+            emit(f"    shared keys        {sample['common_observations']:,}; "
+                 f"PIT-only {sample['pit_only_observations']:,}; "
+                 f"restated-only {sample['restated_only_observations']:,}")
+            emit(f"    identical keys     {sample['identical_observation_keys']}")
+            emit(f"    read-path coverage {comp.detail['read_path_coverage']}")
+            emit(f"    IC gap threshold   {comp.detail['material_gap_threshold']:.4f} "
+                 "(diagnostic, not significance)")
         emit()
 
     gates = research_gate_ledger()

@@ -1,9 +1,13 @@
 # Historical membership and exit policy — review draft
 
-Status: `DRAFT / AWAITING_USER_REVIEW / NOT_IMPLEMENTED`
+Status: `OPTIONAL_RESEARCH_EXTENSION / NOT_IMPLEMENTED / OUTSIDE_B_DELIVERY`
+Scope update 2026-09-08: no source acquisition, rights enquiry or exit-policy
+decision is a pending prerequisite of B. The proposals below are retained for
+context, not active implementation tasks. Reopening this extension would require
+new approval and data acceptance. The two substantive data gaps remain UNRESOLVED.
 Review update 2026-09-06: agreed conceptual corrections incorporated below.
 AS-03 and the B diagnostic delivery are authorised; historical source selection,
-any numerical exit-estimation rule and exit-policy implementation remain pending.
+any numerical exit-estimation rule and exit-policy implementation were not approved.
 Policy ID: `historical_membership_exit_v1_draft`
 Prepared: 2026-09-05. Source verification means the specific material described
 below was checked, not that a vendor subscription or dataset was obtained.

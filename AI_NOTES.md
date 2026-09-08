@@ -799,6 +799,59 @@ not relabelled after the fact to sound more realistic.
 
 ---
 
+## Incident 18 — a repair's shape displaced its broader constraint
+
+**Observed 2026-09-08.** The immutable selected-200 diagnostic's asset-growth
+comparison has 183 dates in both arms but 13,404 PIT observations versus 22,642
+restated observations. The runner's docstring promised intersection of dates and
+names, while the executable path intersected dates only. Both arms had already
+been cleaned independently. The reported gap is not an isolated revision-value
+effect; neither matching dates nor a shared historical-membership input proves
+matching effective observations.
+
+**Propagation evidence.** The runner explicitly cites backtest-audit's comparison
+incident. In the locally inspected sibling revision
+`2e4b2b024b9a6b27ae764d63b57c4e821063c75e`, AI_NOTES incident 6 fixed a date-sampling
+confound by matching dates, then stated the broader identical-subset constraint.
+That fixture only required date alignment. Here the same repair shape stops one
+dimension short. This demonstrates a possible constraint-transfer failure, not
+proof that cross-repository transfer systematically fails or that anyone's
+intentions caused it.
+
+**Related output overclaims.** The 0.005 directional threshold was described as
+an estimation-noise bound without calibration. PASS prose claimed absence of
+information. Also, log_mktcap and turnover use embedded price-table shares, which
+the substituted fundamental-read methods do not change; a zero gap cannot test
+that revision channel. Merely declaring a fundamental tag is not coverage.
+
+**First correction.** Preserve the original-process scoring on shared dates, but
+disclose both arm counts, shared/exclusive keys and hashes, and explicitly name
+arm-specific cleaning. Count actual calls to the substituted methods. An
+unexercised path is NOT_APPLICABLE, never PASS. No shared dates produce empty,
+unscorable comparison panels instead of falling back to unmatched scores.
+Threshold decisions are diagnostic, not significance/equivalence tests.
+
+**Not yet delivered by this correction.** Common-observation scoring and
+common-support re-cleaning require separate diagnostics and tests. Equal scoring
+keys after independent cleaning do not remove earlier cleaning-sample effects.
+Fixed common-support keys still select a subset and do not represent the cohort.
+Their contrasts must not be called a pure value/sample causal decomposition.
+
+**Constraint and tests.** Enumerate all dimensions of the asserted comparison:
+dates, securities, unique keys, label/holding periods, cleaning support and
+actually exercised inputs. Test equal dates/counts with different names, unequal
+counts, row permutation, invalid duplicate/null keys, empty date intersections,
+and an unexercised read substitution. The actual CLI must project counts and
+coverage for every comparison into stdout, text and structured output. These
+synthetic properties complement the concrete embedded-share pipeline regression;
+the old real-data numbers are diagnostic evidence, never test oracles.
+
+The original 200-company artifact is retained unchanged. Sibling documentation
+belongs to its owner: their audit row should record their own inspection and link
+here, not duplicate this incident or assume that their current code is defective.
+
+---
+
 ## What the live data changed
 
 The first thirty companies produced facts, not assumptions:
