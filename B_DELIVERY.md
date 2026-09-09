@@ -166,7 +166,7 @@ No dependency was installed or bridge code added as part of this preflight.
 
 The four column names do not establish semantic compatibility: upstream
 `event_date` is target realisation time, whereas this pipeline retains
-`signal_date`, `formation_date`, `entry_date` and `exit_date`. The eventual adapter
+the following current timing fields. The eventual adapter
 must use verified label timing, preserve those dates, and reject unaccounted
 sample loss; a rename of signal_date is not sufficient. The baseline runner
 requires a train/test boundary. Real-data cutoffs must be explicit, with boundary
@@ -174,3 +174,10 @@ overlap and information availability at signal formation checked. Do not infer
 that a previous row's holding-period return was already known at the next signal.
 No new real-data split, annualisation factor, trial count or exit assumption is
 approved merely by the dependency release.
+
+| Current local timing field | Meaning |
+|---|---|
+| `signal_date` | Research signal date |
+| `formation_session` | Last market session on or before the signal date |
+| `entry_date` | Entry session after the configured execution lag |
+| `exit_date` | Exit session after the configured holding horizon |
