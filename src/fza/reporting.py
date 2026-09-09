@@ -7,6 +7,36 @@ from datetime import date, datetime
 import numpy as np
 import pandas as pd
 
+from .pipeline.protocol import MIN_PER_QUANTILE
+
+
+def breadth_diagnostic(summary):
+    """Display-only rule, selected after observation; not a power test.
+
+    The existing protocol uses MIN_PER_QUANTILE as a total-size multiplier,
+    not a guaranteed minimum realised group size when ranks have ties.
+    """
+    minimum = json_safe(summary.get("names_per_quantile_min"))
+    dates = summary.get("n_quantile_dates", 0)
+    if not dates or minimum is None:
+        status, marker = "UNAVAILABLE", "[B?]"
+    elif minimum <= MIN_PER_QUANTILE:
+        status, marker = "THIN_GROUP_WARNING", "[B]"
+    else:
+        status, marker = "NO_LOW_GROUP_FLAG", ""
+    return {
+        "status": status,
+        "marker": marker,
+        "unit": "names_per_retained_date_quantile",
+        "minimum": minimum,
+        "retained_dates": dates,
+        "dropped_dates": summary.get("n_dates_dropped_insufficient_cross_section"),
+        "warning_cutoff": MIN_PER_QUANTILE,
+        "threshold_origin": "POST_OBSERVATION_DISPLAY_RULE",
+        "rationale": "Uses existing nominal size multiplier; not calibrated for power.",
+        "changes_samples_or_metrics": False,
+    }
+
 
 def json_safe(value):
     """Use JSON null for undefined numbers; never emit nonstandard NaN tokens."""
@@ -32,6 +62,7 @@ def factor_record(run, evidence):
         "statistics_status": evidence["statistics_status"],
         "policy_id": evidence["policy_id"],
         "protocol": run.protocol.to_dict(),
+        "breadth_diagnostic": breadth_diagnostic(run.protocol.to_dict()),
         "universe_filter": run.universe_filter.to_dict(),
         "cleaning": run.cleaning.to_dict(),
         "label_join": run.label_join.to_dict(),

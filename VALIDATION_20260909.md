@@ -67,3 +67,31 @@ acquisition, exit-return implementation, OSAP integration, sibling edit or email
 The archived 200-company report predates these layers. Its former IC gap is not
 a substitute for their as-yet-uncomputed real-data values. Breadth messaging and
 PlausibilityRule remain separate work after this checkpoint.
+
+## Subsequent breadth-display checkpoint
+
+Base: `796e6c4` (the three-layer checkpoint above). Added a group-scoped
+`breadth_diagnostic` projection to structured factor records and standard-protocol
+text rows. Its post-observation display rule does not modify any numerical
+protocol, input sample, score or vintage verdict. Retained date-by-quantile
+distributions are explicitly distinguished from total cross-section sizes and
+from dropped dates. Absence of a warning is not a power certificate.
+
+Both environments passed 27 tests, zero failures/errors/skips: breadth policy,
+reporting, qualification, all seven CLI-evidence tests and packaging. There are
+seven new breadth tests and zero deleted tests. Collection is now 255; this is
+NOT a claim of 255 passes. These suites overlap the preceding checkpoint and
+their counts must not be added as distinct tests. Full 14-case demo-module
+regression and a full-grid selected-200 rerun remain outstanding.
+
+| Local JUnit file | Tests | Seconds | SHA-256 |
+|---|---|---|---|
+| `.diagnostic-envs/breadth-locked-0909.xml` | 27 | 63.342 | `596225b071e40e3d806ae5e41468ae68b857221728cd6cd8e992038410e62f17` |
+| `.diagnostic-envs/breadth-minimum-0909.xml` | 27 | 65.909 | `894e76830254b5458dd00060c375dadd4ac3c6a8bbbc7f310fee8e82ab3845b4` |
+
+The generated populated synthetic CLI report was read: columns remain aligned,
+and its undersized cross-sections correctly show `[B?]` rather than a successful
+breadth check. Unit cases cover low-group, unflagged and missing-group states.
+Existing protocol summary zero/NaN placeholders are preserved, not redefined as
+new numerical results. Lint and whitespace checks passed. PlausibilityRule is
+still the next implementation item; no old archive or evidence claim was upgraded.

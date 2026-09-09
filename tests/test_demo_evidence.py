@@ -82,6 +82,9 @@ def test_populated_real_store_retains_diagnostic_label_with_actual_results(tmp_p
         assert record["universe_filter"]["n_output"] == record["cleaning"]["n_input"]
         assert record["cleaning"]["n_output"] == record["label_join"]["n_input"]
         assert record["label_join"]["n_output"] == record["protocol"]["n_observations"]
+        from fza.reporting import breadth_diagnostic
+
+        assert record["breadth_diagnostic"] == breadth_diagnostic(record["protocol"])
     for gate, record in bundle["research_gates"].items():
         assert record["status"] in {"UNRESOLVED", "NOT_IMPLEMENTED"}, gate
         assert record["status"] in output
@@ -89,6 +92,15 @@ def test_populated_real_store_retains_diagnostic_label_with_actual_results(tmp_p
     # Property spans every comparison emitted by the actual CLI, not one factor.
     saved = (outdir / "demo_report.txt").read_text(encoding="utf-8")
     for surface in (output, saved):
+        assert "not whole cross-sections" in surface
+        protocol_table = surface.split("STANDARD PROTOCOL")[1].split("HISTORICAL UNIVERSE")[0]
+        for name, record in bundle["factors"].items():
+            if record["computation_status"] == "COMPLETED":
+                row = next(line for line in protocol_table.splitlines()
+                           if line.strip().startswith(name + " "))
+                assert row.rstrip().endswith(
+                    ("OK " + record["breadth_diagnostic"]["marker"]).rstrip()
+                )
         assert "shared dates, arm-specific observations" in surface
         assert "not significance" in surface
     compared = 0

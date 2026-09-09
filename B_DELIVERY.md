@@ -58,6 +58,21 @@ null protocol; unavailable stage counts are not invented. Raw counts start
 after factor-specific construction filters, which are reported separately.
 LS Sharpe is the existing per-observation statistic, not an annualised claim.
 
+### Breadth is group size, not total cross-section size
+
+The breadth distribution pools retained date-by-quantile groups. Dropped dates
+are not in that distribution. A minimum of three therefore describes a retained
+group, not a three-security cross-section or the cause of a dropped date.
+
+`breadth_diagnostic` supplies both the JSON status and the standard-protocol row
+marker. `[B]` flags a retained group at or below the existing nominal size
+multiplier (three); `[B?]` means breadth is unavailable. This is an explicitly
+post-observation display rule, not a predeclared or calibrated power threshold.
+The multiplier is used by the protocol on total date size and does not guarantee
+each realised group has that many names in the presence of ties. No samples,
+scores or verdicts are changed by the marker. `NO_LOW_GROUP_FLAG` is not PASS
+and does not establish adequate power or IC validity.
+
 ## What the selected roster means
 
 The bundle freezes the stored selection for reproducibility. It does not turn

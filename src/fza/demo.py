@@ -53,7 +53,7 @@ from .provenance import (
     research_environment,
 )
 from .qualification import qualification_lines
-from .reporting import factor_record, json_safe, research_gate_ledger
+from .reporting import breadth_diagnostic, factor_record, json_safe, research_gate_ledger
 from .store import Store
 
 DEFAULT_DB = Path("data/fza.duckdb")
@@ -386,6 +386,7 @@ def main(argv: list[str] | None = None) -> int:
             f"  {factor_id:<14}{s['ic_mean']:>+10.4f}{s['ls_sharpe']:>+11.4f}"
             f"{run.protocol.monotonicity_rho:>+10.2f}{run.protocol.n_dates:>7}"
             f"{('yes' if run.read_path_check['ok'] else 'VIOLATION'):>11}  OK"
+            f" {breadth_diagnostic(s)['marker']}".rstrip()
         )
 
     emit()
@@ -398,6 +399,10 @@ def main(argv: list[str] | None = None) -> int:
     emit("  run completed; it does not mean the factor works. A FAILED row has no")
     emit("  numbers because none were computed -- the run stopped at the check")
     emit("  named in the status, and that row is excluded from every table below.")
+    emit("  [B]: a retained quantile group has <= 3 names; [B?]: breadth unavailable.")
+    emit("  This display rule was chosen after observing data, using the existing")
+    emit("  nominal size multiplier. It changes no samples or metrics; absence of")
+    emit("  a flag is not evidence of adequate power or IC validity.")
 
     emit(_header("HISTORICAL UNIVERSE GATE"))
     emit()
@@ -476,8 +481,9 @@ def main(argv: list[str] | None = None) -> int:
 
     emit(_header("CROSS-SECTION BREADTH"))
     emit()
-    emit("  Names per quantile are reported as a distribution. The average alone")
-    emit("  can hide a month whose portfolios nearly disappeared.")
+    emit("  Distribution over retained date x quantile groups, not whole cross-sections.")
+    emit("  Dropped dates are absent from this distribution. A minimum of 3 means")
+    emit("  a retained group had 3 names; it does not explain a dropped date.")
     emit()
     emit(
         f"  {'factor':<14}{'avg':>7}{'min':>7}{'p10':>7}{'median':>9}"
