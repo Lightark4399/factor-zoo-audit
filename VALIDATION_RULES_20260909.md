@@ -58,3 +58,29 @@ After full regression, the selected-200 report must be regenerated on its full
 signal grid into a new archive, with expected/observed changes disclosed. That
 run has not started. No historical archive, research claim or WRDS gate was
 promoted; no dependency bridge, data acquisition or sibling modification occurred.
+
+## Subsequent full-suite outcome and repair
+
+Both initial full runs have now finished: 271 tests each, 270 passed and one
+failed, zero errors/skips. Locked elapsed 2242.848 seconds; minimum 20492.925
+seconds. The same test failed in both:
+`test_an_undeclared_range_is_printed_as_undefined_not_as_a_pass`, because its
+required explicit phrase "NOT that the factor passed" had been replaced by
+different wording. This was not a numerical assertion failure. These failed
+full runs are retained, not overwritten or presented as successful regression.
+
+JUnit SHA-256: full-rules-locked-0909.xml:
+`9b0f2c58d9d6e1948a1c41b55e9ff1f03e321de7f8f4022bad528ab7d12a65b1`;
+full-rules-minimum-0909.xml:
+`39bf7121398c1e72402add36c3c8a9bf66b58d82ced4414f34022cafc735c117`.
+
+Commit `51627f9` restores the phrase while retaining its legacy-only scope;
+no assertion was deleted or weakened. All fourteen demo tests were then launched
+again in each environment, targeting demo-disclaimer-locked-0909.xml and
+demo-disclaimer-minimum-0909.xml. Those repair runs are not yet certified here;
+even successful module XMLs must be described as module runs, not new 271-case
+single-invocation full passes.
+
+The same commit freezes `SELECTED_200_RERUN_EXPECTATIONS.md` BEFORE any new
+selected-200 computation. The database hash was rechecked and matches the old
+archive. New real-data generation remains unstarted pending regression acceptance.
