@@ -18,10 +18,13 @@ def panel(names, date="2020-01-31", reverse=False):
     return pd.DataFrame({
         "ticker": names, "signal_date": pd.Timestamp(date),
         "prediction": -x if reverse else x, "label": x / 100,
+        "formation_session": pd.Timestamp(date),
+        "entry_date": pd.Timestamp(date) + pd.Timedelta(days=1),
+        "exit_date": pd.Timestamp(date) + pd.Timedelta(days=30),
     })
 
 
-def compare_panels(monkeypatch, pit, restated, exercised=True):
+def compare_panels(monkeypatch, pit, restated, exercised=True, n_quantiles=5):
     """Run the real comparator with controlled panels from its compute boundary."""
     fundamentals = pd.DataFrame({
         "cik": ["1"], "tag": ["assets"],
@@ -54,10 +57,19 @@ def compare_panels(monkeypatch, pit, restated, exercised=True):
     result = runner.compare_vintages(
         SimpleNamespace(factor_id="synthetic", uses_fundamentals=True), store,
         pd.DatetimeIndex(["2020-01-31"]),
+        n_quantiles=n_quantiles,
     )
     assert store.fundamentals_asof is original
     assert store.fundamentals_history_asof is original_history
     return result
+
+
+def test_requested_quantiles_reach_runner_rescoring_and_layers(monkeypatch):
+    data = panel([f"S{i}" for i in range(20)])
+    result = compare_panels(monkeypatch, data, data, n_quantiles=2)
+    assert result.pit.summary["names_per_quantile_avg"] == 10
+    for name in ("original-process", "common-observation"):
+        assert result.detail["layers"][name]["pit"]["names_per_quantile_avg"] == 10
 
 
 def test_same_dates_and_counts_do_not_establish_same_observations():
@@ -88,7 +100,7 @@ def test_runner_discloses_asymmetric_samples_without_changing_original_scores(mo
     assert sample["common_observations"] == 15
     assert sample["restated_only_observations"] == 10
     assert sample["cleaning_scope"] == "ARM_SPECIFIC_INPUT_KEYS"
-    assert sample["label_and_holding_period_identity"] == "NOT_CHECKED"
+    assert sample["label_and_holding_period_identity"] == "MATCHED"
     for protocol, original in [(result.pit, left), (result.restated, right)]:
         expected = run_protocol("synthetic", original)
         pd.testing.assert_series_equal(protocol.ic_series, expected.ic_series)

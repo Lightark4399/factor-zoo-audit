@@ -102,6 +102,11 @@ is required to finish B. Previously downloaded licensed data are not incorporate
 into this public delivery while post-affiliation usage rights are unconfirmed;
 this is not a finding that all retention or publication is permanently forbidden.
 
+Current access update (user confirmation, recorded 2026-09-09): WRDS access is
+unavailable and is not awaiting a reply. Rights to retain/use old downloads or
+publish aggregate results remain unconfirmed unless separately established.
+Neither access nor usage-right status changes the two substantive data gates.
+
 `historical_membership_completeness` and `terminal_outcomes` remain `UNRESOLVED`.
 **No longer waiting for resolution does not mean resolved.** A permissions enquiry
 addresses access/use rights, not those substantive data-quality gates. No email
@@ -116,6 +121,9 @@ The remaining correctness work is ordered, with separate verification:
    after arm-specific cleaning; common-support re-cleaning with fixed input keys
    and checked label/holding-period identity. Contrasts measure sensitivity, not
    a pure value/sample decomposition. The selected common set is not the cohort.
+   Implementation contract: [three-layer comparison](VINTAGE_COMPARISON.md).
+   Implemented and verified by [the 2026-09-09 checkpoint](VALIDATION_20260909.md);
+   this is not a new full-grid selected-200 run or a complete regression claim.
 3. Clarify breadth as names per retained date/quantile group. Any newly chosen
    warning threshold is post-observation, not preregistered.
 4. Implement the reviewed multi-rule PlausibilityRule design. Input domains and

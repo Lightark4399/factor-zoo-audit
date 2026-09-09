@@ -850,6 +850,14 @@ The original 200-company artifact is retained unchanged. Sibling documentation
 belongs to its owner: their audit row should record their own inspection and link
 here, not duplicate this incident or assume that their current code is defective.
 
+**2026-09-09 implementation follow-up.** Three separate layers now preserve their
+own scope and outcome/timing checks. Common-support processing starts with saved
+post-universe raw values; shared cleaned keys are not a substitute. Metric-eligible
+dates are checked separately from observation keys. Re-scoring now propagates the
+requested quantile count instead of silently falling back to five. A two-quantile
+synthetic regression covers this additional configuration defect. See
+VINTAGE_COMPARISON.md; the original archive does not contain the new diagnostics.
+
 ---
 
 ## What the live data changed

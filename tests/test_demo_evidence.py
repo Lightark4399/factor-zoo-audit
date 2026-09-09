@@ -94,6 +94,18 @@ def test_populated_real_store_retains_diagnostic_label_with_actual_results(tmp_p
     compared = 0
     for name, comparison in bundle["vintage_comparisons"].items():
         detail = comparison.get("detail", {})
+        for layer_name, layer in detail.get("layers", {}).items():
+            assert layer_name in output and layer_name in saved
+            assert layer["scope"] in output and layer["scope"] in saved
+            assert layer["outcome_identity"]["status"] in output
+            if layer["outcome_identity"]["status"] != "MATCHED":
+                assert layer["ic_gap"] is None
+                assert layer["ls_sharpe_gap"] is None
+        if "layers" in detail:
+            assert set(detail["layers"]) == {
+                "original-process", "common-observation", "common-support",
+            }
+            assert "not a decomposition" in detail["sensitivity_notice"]
         sample = detail.get("sample_comparison")
         if sample is None:
             continue

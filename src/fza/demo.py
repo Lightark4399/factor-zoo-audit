@@ -45,6 +45,7 @@ from .pipeline.run import (
     compare_vintages,
     compute_factor,
 )
+from .pipeline.vintage import SENSITIVITY_NOTICE
 from .provenance import (
     dataset_evidence,
     file_sha256,
@@ -520,7 +521,7 @@ def main(argv: list[str] | None = None) -> int:
     emit("  The gap mixes value/availability/processing changes, not pure revisions.")
     emit("  PASS/FAIL uses a preconfigured directional threshold, not significance.")
     emit("  PASS means no positive-gap trigger, not validated evidence.")
-    emit("  Identical keys do not certify matching labels or holding periods.")
+    emit("  Label/holding-period checks are shown per layer; a mismatch blocks gaps.")
     emit()
 
     comparisons = {}
@@ -558,7 +559,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             emit(f"    point-in-time IC   {comp.pit.summary['ic_mean']:>+10.4f}")
             emit(f"    restated IC        {comp.restated.summary['ic_mean']:>+10.4f}")
-            emit(f"    restated minus PIT {comp.ic_gap:>+10.4f}")
+            gap_text = "unavailable" if pd.isna(comp.ic_gap) else f"{comp.ic_gap:+.4f}"
+            emit(f"    restated minus PIT {gap_text:>10}")
             verdict = comp.verdict.split(":")[0]
             emit(f"    verdict            {verdict:>10}")
         sample = comp.detail.get("sample_comparison")
@@ -572,6 +574,27 @@ def main(argv: list[str] | None = None) -> int:
             emit(f"    read-path coverage {comp.detail['read_path_coverage']}")
             emit(f"    IC gap threshold   {comp.detail['material_gap_threshold']:.4f} "
                  "(diagnostic, not significance)")
+        for name, layer in comp.detail.get("layers", {}).items():
+            gap = "unavailable" if layer["ic_gap"] is None else f"{layer['ic_gap']:+.4f}"
+            emit(f"    {name:<20} IC gap {gap} | {layer['status']}")
+            emit(f"      label/holding-period: {layer['outcome_identity']['status']}")
+            if "source_outcome_identity" in layer:
+                emit("      source label/holding-period: "
+                     + layer["source_outcome_identity"]["status"])
+            if "sample" in layer:
+                sample_row = layer["sample"]
+                emit(f"      observations: PIT {sample_row['pit_observations']:,} / "
+                     f"restated {sample_row['restated_observations']:,}; "
+                     f"common {sample_row['common_observations']:,}")
+            if "ic" in layer.get("metrics", {}):
+                metric = layer["metrics"]["ic"]
+                emit(f"      IC dates: PIT {len(metric['pit_dates'])} / "
+                     f"restated {len(metric['restated_dates'])}; "
+                     f"same {metric['identical_metric_dates']}")
+            for line in textwrap.wrap(layer["scope"], width=WIDTH - 6):
+                emit("      " + line)
+            if layer.get("reason"):
+                emit(f"      reason: {layer['reason']}")
         emit()
 
     gates = research_gate_ledger()
@@ -579,6 +602,8 @@ def main(argv: list[str] | None = None) -> int:
     for gate, state in gates.items():
         emit(f"  {gate}: {state['status']} -- {state['reason']}")
     emit("  UNRESOLVED is not a measured bias size; NOT_IMPLEMENTED is not passed.")
+    for line in textwrap.wrap(SENSITIVITY_NOTICE, width=WIDTH - 2):
+        emit("  " + line)
 
     emit(_rule("="))
     for line in qualification_lines(evidence):

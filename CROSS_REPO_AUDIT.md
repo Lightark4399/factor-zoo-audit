@@ -10,6 +10,13 @@ No sibling file was edited. Claude Code owns its local verification result and
 pointer back to incident 18. This observation does not establish a systematic
 failure rate or a defect in the sibling's current release.
 
+2026-09-09: common-observation and common-support diagnostics are now wired into
+the local runner and report. Outcome/timing and metric-date checks accompany
+the key checks; mismatch withholds dependent gaps. Synthetic controls and the
+actual pipeline/CLI were verified in both supported environments. See
+[validation](VALIDATION_20260909.md). This is not a new real-data comparison or
+completion of the full regression / remaining delivery work.
+
 Keep the original incident narrative in its originating repository. Each local
 row records what was actually inspected here; links alone are not a result.
 

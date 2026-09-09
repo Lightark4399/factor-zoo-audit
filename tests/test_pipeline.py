@@ -531,6 +531,12 @@ def test_vintage_comparison_scores_both_arms_on_shared_dates(store, factors):
     assert c.detail["n_shared_dates"] > 0
     assert c.pit.n_dates == c.restated.n_dates
     assert len(c.detail["universe_membership_key_hash"]) == 64
+    assert set(c.detail["layers"]) == {
+        "original-process", "common-observation", "common-support",
+    }
+    common = c.detail["layers"]["common-support"]
+    assert common["cleaning_input_sample"]["identical_observation_keys"] is True
+    assert common["outcome_identity"]["status"] == "MATCHED"
 
 
 def test_vintage_comparison_builds_one_membership_panel(

@@ -8,7 +8,8 @@ The original-process diagnostic scores each arm's own cleaned observations on
 shared signal dates. It does NOT intersect securities before cleaning or scoring.
 Counts and key hashes disclose that distinction. Its gap is not an isolated
 restatement-value effect, a causal decomposition, or evidence of significance.
-Common-observation and common-support re-cleaning diagnostics are separate work.
+Common-observation and common-support re-cleaning diagnostics are reported
+separately, with outcome/timing and metric-date eligibility checks beside them.
 
 Declared fundamental tags do not establish coverage of the substituted methods.
 The runner counts actual calls to those methods; an untouched embedded price-table
@@ -33,6 +34,7 @@ from .prepare import (
     prepare_cross_sections,
 )
 from .protocol import ProtocolResult, run_protocol
+from .vintage import SCOPES, SENSITIVITY_NOTICE, diagnostic_layers
 
 # Preconfigured directional diagnostic threshold; not calibrated to sampling
 # uncertainty, not a significance/equivalence test, and not evidence of no effect.
@@ -55,12 +57,18 @@ class VintageComparison:
     def ic_gap(self) -> float:
         if not self.applicable or self.restated is None:
             return float("nan")
+        if "layers" in self.detail:
+            gap = self.detail["layers"]["original-process"]["ic_gap"]
+            return float("nan") if gap is None else gap
         return self.restated.summary["ic_mean"] - self.pit.summary["ic_mean"]
 
     @property
     def sharpe_gap(self) -> float:
         if not self.applicable or self.restated is None:
             return float("nan")
+        if "layers" in self.detail:
+            gap = self.detail["layers"]["original-process"]["ls_sharpe_gap"]
+            return float("nan") if gap is None else gap
         return self.restated.summary["ls_sharpe"] - self.pit.summary["ls_sharpe"]
 
     def to_dict(self) -> dict:
@@ -104,6 +112,8 @@ class FactorRun:
     # What was lost when cleaned signals were aligned to realised returns.
     label_join: LabelJoinReport
     vintage: str
+    # Exact post-membership input; never reconstruct this from cleaned z-scores.
+    eligible_values: pd.DataFrame | None = None
 
 
 @dataclass
@@ -471,6 +481,7 @@ def compute_factor(
         universe_filter=universe_report,
         label_join=label_report,
         vintage=vintage,
+        eligible_values=raw.copy(deep=True),
     )
 
 
@@ -553,6 +564,15 @@ def compare_vintages(
                 "the factor is free of look-ahead — it means this particular "
                 "channel cannot apply to it."
             ),
+            detail={
+                "sensitivity_notice": SENSITIVITY_NOTICE,
+                "layers": {name: {
+                    "scope": scope, "status": "NOT_APPLICABLE",
+                    "reason": "no_declared_fundamental_dependency",
+                    "outcome_identity": {"status": "NOT_CHECKED"},
+                    "ic_gap": None, "ls_sharpe_gap": None,
+                } for name, scope in SCOPES.items()},
+            },
         )
 
     # Substitute a leaking read path. The substitution must relax EXACTLY ONE
@@ -629,8 +649,9 @@ def compare_vintages(
     sample = comparison_sample_report(pit_scored, restated_scored)
     sample["pit_observations_before_date_alignment"] = len(pit_run.panel)
     sample["restated_observations_before_date_alignment"] = len(restated_run.panel)
-    pit_protocol = run_protocol(factor.factor_id, pit_scored)
-    restated_protocol = run_protocol(factor.factor_id, restated_scored)
+    n_quantiles = kwargs.get("n_quantiles", 5)
+    pit_protocol = run_protocol(factor.factor_id, pit_scored, n_quantiles=n_quantiles)
+    restated_protocol = run_protocol(factor.factor_id, restated_scored, n_quantiles=n_quantiles)
 
     gap = restated_protocol.summary["ic_mean"] - pit_protocol.summary["ic_mean"]
 
@@ -644,6 +665,25 @@ def compare_vintages(
         )
 
     path_exercised = sum(substituted_calls.values()) > 0
+    comparison_prices = None
+
+    def label_builder(cleaned):
+        nonlocal comparison_prices
+        if comparison_prices is None:
+            comparison_prices = store.prices()
+        return build_panel_with_report(
+            cleaned, comparison_prices, horizon_sessions=kwargs.get("horizon_sessions", 21),
+            execution_lag_sessions=kwargs.get("execution_lag_sessions", 1),
+        )
+
+    layers = diagnostic_layers(
+        factor.factor_id, pit_scored, restated_scored,
+        getattr(pit_run, "eligible_values", None), getattr(restated_run, "eligible_values", None),
+        groups=groups, label_builder=label_builder, n_quantiles=n_quantiles,
+        sample_report=comparison_sample_report, path_exercised=path_exercised,
+    )
+    original_layer = layers["original-process"]
+    sample["label_and_holding_period_identity"] = original_layer["outcome_identity"]["status"]
     if not path_exercised:
         passed, verdict = None, (
             "NOT APPLICABLE: substituted fundamental read methods were not called; "
@@ -651,6 +691,8 @@ def compare_vintages(
         )
     elif not shared:
         passed, verdict = None, "INCONCLUSIVE: no shared signal dates."
+    elif original_layer["ic_gap"] is None:
+        passed, verdict = None, f"INCONCLUSIVE: {original_layer['reason']}."
     elif not np.isfinite(gap):
         passed, verdict = None, "INCONCLUSIVE: one of the vintages could not be scored."
     elif gap > MATERIAL_GAP:
@@ -690,6 +732,8 @@ def compare_vintages(
             "material_gap_threshold": MATERIAL_GAP,
             "threshold_kind": "PRECONFIGURED_DIAGNOSTIC_NOT_SIGNIFICANCE_TEST",
             "sample_comparison": sample,
+            "layers": layers,
+            "sensitivity_notice": SENSITIVITY_NOTICE,
             "substituted_read_calls": substituted_calls,
             "read_path_coverage": "EXERCISED" if path_exercised else "NOT_EXERCISED",
             "read_path_violations": pit_run.read_path_check["n_violations"],
