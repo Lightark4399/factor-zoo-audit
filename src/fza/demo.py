@@ -313,7 +313,8 @@ def main(argv: list[str] | None = None) -> int:
     emit("  it. Registration fails without one.")
     emit()
     emit("  'plausible range' shows the legacy economic scale guard only.")
-    emit("  'undefined' is not PASS and does not describe additional rules.")
+    emit("  'undefined': NOT that the factor passed; no legacy range is declared.")
+    emit("  It does not describe additional rules.")
     emit("  RAW-OUTPUT PLAUSIBILITY RULES below reports all evaluated declarations.")
 
     denominator = published_anomaly_denominator()
