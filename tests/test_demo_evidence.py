@@ -92,6 +92,12 @@ def test_populated_real_store_retains_diagnostic_label_with_actual_results(tmp_p
     # Property spans every comparison emitted by the actual CLI, not one factor.
     saved = (outdir / "demo_report.txt").read_text(encoding="utf-8")
     for surface in (output, saved):
+        assert "DECLARED_UNBOUNDED is not PASS" in surface
+        for name, record in bundle["factors"].items():
+            if record["computation_status"] != "COMPLETED":
+                continue
+            for rule in record["magnitude_check"].get("rules", []):
+                assert f"{name}: {rule['rule_id']} -- {rule['status']}" in surface
         assert "not whole cross-sections" in surface
         protocol_table = surface.split("STANDARD PROTOCOL")[1].split("HISTORICAL UNIVERSE")[0]
         for name, record in bundle["factors"].items():

@@ -73,6 +73,34 @@ each realised group has that many names in the presence of ties. No samples,
 scores or verdicts are changed by the marker. `NO_LOW_GROUP_FLAG` is not PASS
 and does not establish adequate power or IC validity.
 
+### Raw-output plausibility rules
+
+Each rule declares `rule_id`, `kind` (domain/construction/economic), `severity`
+(error/warning), inclusive nullable bounds and a nonblank rationale. Rules apply
+after historical-membership filtering and before cross-sectional cleaning.
+Several rules can apply to one factor. Their structured results are in
+`magnitude_check.rules` and their statuses are printed in the report.
+
+Four existing economic ranges retain their historical thresholds and tolerance;
+they are not universal physical boundaries. The compatibility fields `checked`,
+`range` and `share_outside` describe that legacy range only, as indicated by
+`compatibility_field_scope`. Use the rules list to inspect all declarations.
+Legacy missing values are excluded and infinities compared against the bounds;
+the new evaluator explicitly reports finite and missing/nonfinite counts. This
+compatibility distinction is exposed rather than silently changing old counts.
+
+`log_mktcap` declares an unbounded output: positivity of market-cap inputs does
+not give a finite bound on negative-log outputs. `turnover` checks its nonpositive
+stored sign, without imposing a turnover cap of one. That check cannot establish
+share-count freshness or input correctness. The four remaining factors have no
+declared raw-output rule and are explicitly UNDECLARED.
+
+DECLARED_UNBOUNDED is not PASS. NO_FINITE_VALUES is not a successful test.
+Domain/construction violations have zero tolerance; economic rules use the
+explicit share tolerance. Warning rules report violations without stopping the
+run, while error rules block on a breached tolerance. No plausibility result
+promotes research evidence or repairs fabricated but numerically plausible values.
+
 ## What the selected roster means
 
 The bundle freezes the stored selection for reproducibility. It does not turn

@@ -74,3 +74,22 @@ regressions and passed the 12-case focused suite in both environments. See
 The upstream default-branch tree was rechecked: still `bdb6250`; the generic
 docs-quote implementation/ref has not yet been received. That audit item stays
 pending, not checked-clean. No duplicate scanner or sibling edit was made.
+
+## Current-interface documentation check — 2026-09-09
+
+The user supplied the sibling's documentation-contract follow-up (`4cacd5d`);
+that new commit and its reported 238 passes were not independently verified in
+this pass. Local read-only inventory covered 19 tracked Markdown files and ten
+cards: no file:line or #L source references were found. Twenty card locators
+were retained (14 populated, six explicitly UNVERIFIED/null); this was not a
+fresh verification of their papers. The 162 distinct candidate inline tokens
+include paths and historical names, not 162 interfaces or defects.
+
+Local result: **defect-found, corrected**. The bridge preflight named
+`formation_date` although actual label output uses `formation_session`. The
+current timing-field list is now an ordinary table checked against datetime
+columns in generated labels; the existing vintage-layer table is checked against
+the executable layer registry. Historical/proposed names and unstructured prose
+are outside these tests. No sentence-specific regex or duplicate upstream
+docs-quote scanner was added. Field existence does not establish semantic truth;
+the separate label/holding-period controls remain necessary.

@@ -86,6 +86,11 @@ def _describe_failure(exc: Exception) -> tuple[str, list[str]]:
     """
     if isinstance(exc, ImplausibleMagnitudeError):
         d = exc.detail
+        if "rule_id" in d:
+            return "FAILED: magnitude", [
+                f"{d['rule_id']}: {d['status']} ({d['n_outside']} raw-output violations)",
+                d["rationale"],
+            ]
         lo, hi = d.get("range", (float("nan"), float("nan")))
         reason = [
             f"{d.get('share_outside', float('nan')):.2%} of "
@@ -307,11 +312,9 @@ def main(argv: list[str] | None = None) -> int:
     emit("  the conditions under which it should persist, and what would falsify")
     emit("  it. Registration fails without one.")
     emit()
-    emit("  'plausible range' is the interval the factor's raw values are checked")
-    emit("  against before any cleaning. 'undefined' means no range has been")
-    emit("  declared -- NOT that the factor passed. An undeclared range is an")
-    emit("  unchecked magnitude, and the two states are printed differently for")
-    emit("  the same reason an unknown share count is null and not zero.")
+    emit("  'plausible range' shows the legacy economic scale guard only.")
+    emit("  'undefined' is not PASS and does not describe additional rules.")
+    emit("  RAW-OUTPUT PLAUSIBILITY RULES below reports all evaluated declarations.")
 
     denominator = published_anomaly_denominator()
     emit(_header("PUBLISHED-ANOMALY DENOMINATOR"))
@@ -403,6 +406,20 @@ def main(argv: list[str] | None = None) -> int:
     emit("  This display rule was chosen after observing data, using the existing")
     emit("  nominal size multiplier. It changes no samples or metrics; absence of")
     emit("  a flag is not evidence of adequate power or IC validity.")
+
+    emit(_header("RAW-OUTPUT PLAUSIBILITY RULES"))
+    emit("  These supplement legacy ranges; they do not verify input provenance.")
+    for factor_id, run in runs.items():
+        if not run.magnitude_check.get("rules"):
+            emit(f"  {factor_id}: UNDECLARED -- no raw-output rule evaluated")
+        for rule in run.magnitude_check.get("rules", []):
+            emit(f"  {factor_id}: {rule['rule_id']} -- {rule['status']}")
+            emit(f"    {rule['kind']} / {rule['severity']}; "
+                 f"bounds [{rule['lower']}, {rule['upper']}]")
+            for line in textwrap.wrap(rule["rationale"], width=WIDTH - 4):
+                emit(f"    {line}")
+    emit("  DECLARED_UNBOUNDED is not PASS; no finite magnitude bound was tested.")
+    emit("  Missing/nonfinite values are counted, not certified by a finite-value check.")
 
     emit(_header("HISTORICAL UNIVERSE GATE"))
     emit()

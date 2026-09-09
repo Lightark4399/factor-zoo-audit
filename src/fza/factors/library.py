@@ -32,6 +32,7 @@ import numpy as np
 import pandas as pd
 
 from ..store import Store
+from .plausibility import PlausibilityRule
 from .registry import register
 
 
@@ -402,7 +403,11 @@ def reversal_1m(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
 # ----------------------------------------------------------------------
 # Size, risk, liquidity
 # ----------------------------------------------------------------------
-@register("log_mktcap", tags=("CommonStockSharesOutstanding",), filing_lag_days=2)
+@register("log_mktcap", tags=("CommonStockSharesOutstanding",), filing_lag_days=2,
+          plausibility_rules=(PlausibilityRule(
+              "negative_log_output", "construction", "warning", None, None,
+              "Negative log of positive market cap has no universal finite output bounds. "
+              "This declaration does not check input market-cap positivity."),))
 def log_market_cap(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
     """Negative log market capitalisation, so that small is the long side."""
     caps = _market_cap(store, signal_dates)
@@ -437,7 +442,11 @@ def total_volatility_60d(
     return _long(-_derived_at_signal_dates(vol, daily, signal_dates))
 
 
-@register("turnover", tags=("CommonStockSharesOutstanding",), filing_lag_days=2)
+@register("turnover", tags=("CommonStockSharesOutstanding",), filing_lag_days=2,
+          plausibility_rules=(PlausibilityRule(
+              "negative_turnover_sign", "construction", "error", None, 0.0,
+              "Stored turnover is negative nonnegative volume over positive shares. "
+              "Turnover can exceed one, so no finite lower bound is imposed."),))
 def share_turnover(
     store: Store, signal_dates: pd.DatetimeIndex, window: int = 21
 ) -> pd.DataFrame:
@@ -452,8 +461,8 @@ def share_turnover(
 
     avg_volume = _derived_at_signal_dates(volume, raw_volume, signal_dates)
     # Same bound, same reason: a share count that is no longer filed must not be
-    # carried into a present-day volume. turnover has no plausible range yet, so
-    # nothing downstream would have caught it here.
+    # carried into a present-day volume. The output sign rule cannot establish
+    # that the share count used here was fresh or split-consistent.
     shares_at = _at_signal_dates(shares, signal_dates, max_staleness_days=MAX_CARRY_DAYS)
 
     with np.errstate(divide="ignore", invalid="ignore"):

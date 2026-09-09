@@ -39,6 +39,8 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
+from .plausibility import PlausibilityRule
+
 CARDS_DIR = files("fza.factors").joinpath("cards")
 DENOMINATORS_FILE = files("fza.factors").joinpath("denominators.yaml")
 
@@ -239,8 +241,7 @@ class Factor:
     # deliberately require a reporting lag beyond the physical constraint;
     # stating it here lets the look-ahead check enforce it.
     filing_lag_days: int = 0
-    # (low, high) bounds this factor's raw values are physically capable of
-    # taking, or None.
+    # Legacy (low, high) economic scale guard, or None.
     #
     # NONE MEANS UNDEFINED, NOT PASSED. The two are different states and the
     # report distinguishes them: a factor with no declared range has not been
@@ -248,11 +249,30 @@ class Factor:
     # count null instead of zero. Reading None as "fine" would make the check
     # weakest exactly where nobody has thought about the factor yet.
     #
-    # The bounds are physical, not statistical -- the widest values the quantity
-    # could take and still mean what its name says. A range fitted to observed
-    # data would move whenever the data moved, and would have accepted the
-    # market cap that caused incident 12.
+    # Legacy economic scale guards, not universal physical limits. Retained for
+    # caller compatibility; exposed as an economic rule by declared_rules.
     plausible_range: tuple[float, float] | None = None
+    plausibility_rules: tuple[PlausibilityRule, ...] = ()
+
+    def __post_init__(self):
+        if not isinstance(self.plausibility_rules, tuple) or not all(
+            isinstance(rule, PlausibilityRule) for rule in self.plausibility_rules
+        ):
+            raise ValueError("plausibility_rules must be a tuple of PlausibilityRule")
+        ids = [rule.rule_id for rule in self.plausibility_rules]
+        if len(ids) != len(set(ids)):
+            raise ValueError("plausibility rule IDs must be unique within a factor")
+        if "legacy_economic_range" in ids:
+            raise ValueError("legacy_economic_range is reserved for compatibility")
+
+    @property
+    def declared_rules(self):
+        legacy = () if self.plausible_range is None else (PlausibilityRule(
+            "legacy_economic_range", "economic", "error", *self.plausible_range,
+            "Retained legacy scale guard and tolerance, not a universal domain limit "
+            "or a calibrated statistical test. Valid economic extremes may exceed it.",
+        ),)
+        return legacy + self.plausibility_rules
 
     @property
     def factor_id(self) -> str:
@@ -275,6 +295,7 @@ def register(
     tags: tuple[str, ...] = (),
     filing_lag_days: int = 0,
     plausible_range: tuple[float, float] | None = None,
+    plausibility_rules: tuple[PlausibilityRule, ...] = (),
 ) -> Callable:
     """Decorator registering a factor. The card must already exist.
 
@@ -315,6 +336,7 @@ def register(
             tags=tags,
             filing_lag_days=filing_lag_days,
             plausible_range=plausible_range,
+            plausibility_rules=plausibility_rules,
         )
         return fn
 

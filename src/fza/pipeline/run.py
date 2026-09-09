@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
+from ..factors.plausibility import evaluate_rule
 from ..factors.registry import Factor
 from ..store import Store
 from .prepare import (
@@ -266,7 +267,41 @@ def filter_to_historical_universe(
     return filtered, report
 
 
-def check_plausible_magnitude(
+def check_plausible_magnitude(factor: Factor, raw: pd.DataFrame, max_share=0.01) -> dict:
+    """Legacy economic guard plus independently scoped raw-output rules."""
+    if not 0 <= max_share <= 1:
+        raise ValueError("max_share must be between zero and one")
+    rules = [evaluate_rule(rule, raw, max_share) for rule in factor.plausibility_rules]
+    failure = None
+    try:
+        result = _check_legacy_magnitude(factor, raw, max_share)
+    except ImplausibleMagnitudeError as exc:
+        failure, result = exc, exc.detail
+    if factor.plausible_range is not None:
+        legacy = {
+            **factor.declared_rules[0].to_dict(), **result,
+            "scope": "post_universe_raw_output",
+            "status": ("VIOLATION" if failure else "WITHIN_TOLERANCE")
+            if result["n_values"] else "NO_FINITE_VALUES",
+            "blocking": failure is not None,
+            "max_share": max_share,
+            "compatibility_semantics": "missing excluded; infinity counted by legacy bounds",
+        }
+        rules.insert(0, legacy)
+    result["compatibility_field_scope"] = "legacy_range_only"
+    result["rules"] = rules
+    if failure:
+        raise failure
+    for rule in rules:
+        if rule["blocking"]:
+            raise ImplausibleMagnitudeError(
+                f"{factor.factor_id}: raw-output rule {rule['rule_id']} violated",
+                detail={**rule, "rules": rules},
+            )
+    return result
+
+
+def _check_legacy_magnitude(
     factor: Factor, raw: pd.DataFrame, max_share: float = 0.01
 ) -> dict:
     """Assert a factor's raw values are within the magnitude it declared.
@@ -303,11 +338,10 @@ def check_plausible_magnitude(
     table says the factor is guarded. A range set too tight fails loudly on valid
     economic extremes. Repeated false alarms teach the operator to ignore the
     check, so the practical result is the same. That is the same shape as
-    incident 9, where the check's name and its behaviour had come apart. Bounds
-    are therefore written as the widest values the quantity could take and still
-    mean what its name says, not fitted to what the data happens to show. They
-    need not be symmetric: opposite tails can represent different economic and
-    data failure modes.
+    incident 9, where the check's name and its behaviour had come apart. These
+    retained intervals are economic scale guards, not universal physical limits
+    or calibrated tests. Valid economic extremes can exceed them. Their historical
+    tolerance and extreme-row ranking remain unchanged during schema migration.
     """
     if factor.plausible_range is None:
         return {
