@@ -1,0 +1,474 @@
+{
+  "status": "DIAGNOSTIC_ONLY",
+  "observations": [
+    {
+      "trial": 0,
+      "anchor": "0bd03bf",
+      "plain": {
+        "wall_seconds": 22.44406650000019,
+        "cpu_seconds": 22.328125
+      },
+      "instrumented": {
+        "wall_seconds": 24.203678200021386,
+        "cpu_seconds": 24.25
+      },
+      "stages": {
+        "fza.pipeline.run.historical_universe_membership": {
+          "calls": 1,
+          "inclusive_wall": 0.062201299995649606,
+          "inclusive_cpu": 0.046875
+        },
+        "fza.factors.library._fundamental_history": {
+          "calls": 2,
+          "inclusive_wall": 0.5037513999850489,
+          "inclusive_cpu": 0.828125
+        },
+        "fza.factors.library._ttm_fundamental_panel": {
+          "calls": 2,
+          "inclusive_wall": 23.401783199980855,
+          "inclusive_cpu": 23.375
+        },
+        "fza.pipeline.run.prepare_cross_sections": {
+          "calls": 2,
+          "inclusive_wall": 0.08150919998297468,
+          "inclusive_cpu": 0.0625
+        },
+        "fza.pipeline.run.build_panel_with_report": {
+          "calls": 2,
+          "inclusive_wall": 0.18131250009173527,
+          "inclusive_cpu": 0.171875
+        },
+        "fza.pipeline.run.run_protocol": {
+          "calls": 4,
+          "inclusive_wall": 0.0643866999889724,
+          "inclusive_cpu": 0.078125
+        },
+        "fza.pipeline.run.compute_factor": {
+          "calls": 2,
+          "inclusive_wall": 24.05074669996975,
+          "inclusive_cpu": 24.109375
+        }
+      },
+      "ttm_calls": 331,
+      "ttm_rows_sum": 18732,
+      "input_sha256": "26f45287116cd6004afadcbc095936e44cfe7b68ef47514a1e42d1b363c09603",
+      "harness_sha256": "446b5ec004c338877350704b7bb1a225739e38db2b49646a538e7e1dd12da2b3",
+      "environment": {
+        "python": "3.12.14",
+        "pandas": "3.0.5",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "statsmodels": "0.15.0",
+        "lock_file": "research-requirements.lock",
+        "lock_sha256": "a41ad3c608214966996bb7fe0891d9671ea1322c6bb63fa3572f8b510b19bc64",
+        "lock_status": "MATCHED",
+        "lock_mismatches": {}
+      },
+      "result_sha256": "236fd2e780265f53168257150d88a5ab9b9e388f11f189813d1c73ee7a417e93"
+    },
+    {
+      "trial": 1,
+      "post_measurement_annotation": {
+        "plain_wall_speed_comparison": "CONFOUNDED_BY_POWER_STATE",
+        "kernel_power_entry_record_id": 13952,
+        "kernel_power_exit_record_id": 13970,
+        "scope": "Retained observation; not a valid code-speed estimate. See validation document."
+      },
+      "anchor": "de1e836",
+      "plain": {
+        "wall_seconds": 4061.329944900004,
+        "cpu_seconds": 37.09375
+      },
+      "instrumented": {
+        "wall_seconds": 28.10738639999181,
+        "cpu_seconds": 26.21875
+      },
+      "stages": {
+        "fza.pipeline.run.historical_universe_membership": {
+          "calls": 1,
+          "inclusive_wall": 0.05177149997325614,
+          "inclusive_cpu": 0.046875
+        },
+        "fza.factors.library._fundamental_history": {
+          "calls": 2,
+          "inclusive_wall": 0.4761086999787949,
+          "inclusive_cpu": 0.71875
+        },
+        "fza.factors.library._ttm_fundamental_panel": {
+          "calls": 2,
+          "inclusive_wall": 26.94190819998039,
+          "inclusive_cpu": 25.09375
+        },
+        "fza.pipeline.run.prepare_cross_sections": {
+          "calls": 2,
+          "inclusive_wall": 0.06946639996021986,
+          "inclusive_cpu": 0.0625
+        },
+        "fza.pipeline.run.build_panel_with_report": {
+          "calls": 4,
+          "inclusive_wall": 0.316190000041388,
+          "inclusive_cpu": 0.296875
+        },
+        "fza.pipeline.run.run_protocol": {
+          "calls": 4,
+          "inclusive_wall": 0.05651239992585033,
+          "inclusive_cpu": 0.0625
+        },
+        "fza.pipeline.run.compute_factor": {
+          "calls": 2,
+          "inclusive_wall": 27.49398959998507,
+          "inclusive_cpu": 25.640625
+        },
+        "fza.pipeline.vintage.run_protocol": {
+          "calls": 6,
+          "inclusive_wall": 0.0766127000679262,
+          "inclusive_cpu": 0.09375
+        },
+        "fza.pipeline.vintage.prepare_cross_sections": {
+          "calls": 2,
+          "inclusive_wall": 0.05732319998787716,
+          "inclusive_cpu": 0.0625
+        },
+        "fza.pipeline.run.diagnostic_layers": {
+          "calls": 1,
+          "inclusive_wall": 0.46348669996950775,
+          "inclusive_cpu": 0.4375
+        }
+      },
+      "ttm_calls": 331,
+      "ttm_rows_sum": 18732,
+      "input_sha256": "26f45287116cd6004afadcbc095936e44cfe7b68ef47514a1e42d1b363c09603",
+      "harness_sha256": "446b5ec004c338877350704b7bb1a225739e38db2b49646a538e7e1dd12da2b3",
+      "environment": {
+        "python": "3.12.14",
+        "pandas": "3.0.5",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "statsmodels": "0.15.0",
+        "lock_file": "research-requirements.lock",
+        "lock_sha256": "a41ad3c608214966996bb7fe0891d9671ea1322c6bb63fa3572f8b510b19bc64",
+        "lock_status": "MATCHED",
+        "lock_mismatches": {}
+      },
+      "result_sha256": "c4c86ed1b6ccbb143d1b688c5d1e9ac49cdc164c52af988d50fadbd4585a7cb5"
+    },
+    {
+      "trial": 2,
+      "anchor": "de1e836",
+      "plain": {
+        "wall_seconds": 18.366901199973654,
+        "cpu_seconds": 18.46875
+      },
+      "instrumented": {
+        "wall_seconds": 18.645598100032657,
+        "cpu_seconds": 18.765625
+      },
+      "stages": {
+        "fza.pipeline.run.historical_universe_membership": {
+          "calls": 1,
+          "inclusive_wall": 0.025589499971829355,
+          "inclusive_cpu": 0.03125
+        },
+        "fza.factors.library._fundamental_history": {
+          "calls": 2,
+          "inclusive_wall": 0.29490940005052835,
+          "inclusive_cpu": 0.609375
+        },
+        "fza.factors.library._ttm_fundamental_panel": {
+          "calls": 2,
+          "inclusive_wall": 17.477403199998662,
+          "inclusive_cpu": 17.609375
+        },
+        "fza.pipeline.run.prepare_cross_sections": {
+          "calls": 2,
+          "inclusive_wall": 0.07274209999013692,
+          "inclusive_cpu": 0.078125
+        },
+        "fza.pipeline.run.build_panel_with_report": {
+          "calls": 4,
+          "inclusive_wall": 0.3092703999718651,
+          "inclusive_cpu": 0.28125
+        },
+        "fza.pipeline.run.run_protocol": {
+          "calls": 4,
+          "inclusive_wall": 0.058281100005842745,
+          "inclusive_cpu": 0.0625
+        },
+        "fza.pipeline.run.compute_factor": {
+          "calls": 2,
+          "inclusive_wall": 18.092741200060118,
+          "inclusive_cpu": 18.21875
+        },
+        "fza.pipeline.vintage.run_protocol": {
+          "calls": 6,
+          "inclusive_wall": 0.0726639999775216,
+          "inclusive_cpu": 0.0625
+        },
+        "fza.pipeline.vintage.prepare_cross_sections": {
+          "calls": 2,
+          "inclusive_wall": 0.0628160999622196,
+          "inclusive_cpu": 0.0625
+        },
+        "fza.pipeline.run.diagnostic_layers": {
+          "calls": 1,
+          "inclusive_wall": 0.4302793000242673,
+          "inclusive_cpu": 0.421875
+        }
+      },
+      "ttm_calls": 331,
+      "ttm_rows_sum": 18732,
+      "input_sha256": "26f45287116cd6004afadcbc095936e44cfe7b68ef47514a1e42d1b363c09603",
+      "harness_sha256": "446b5ec004c338877350704b7bb1a225739e38db2b49646a538e7e1dd12da2b3",
+      "environment": {
+        "python": "3.12.14",
+        "pandas": "3.0.5",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "statsmodels": "0.15.0",
+        "lock_file": "research-requirements.lock",
+        "lock_sha256": "a41ad3c608214966996bb7fe0891d9671ea1322c6bb63fa3572f8b510b19bc64",
+        "lock_status": "MATCHED",
+        "lock_mismatches": {}
+      },
+      "result_sha256": "1d1339e3b276245359beab41dc1fd028a00b31f4b195a9a9d2622afd4d9a824e"
+    },
+    {
+      "trial": 3,
+      "anchor": "0bd03bf",
+      "plain": {
+        "wall_seconds": 17.356335600023158,
+        "cpu_seconds": 17.75
+      },
+      "instrumented": {
+        "wall_seconds": 21.79708309995476,
+        "cpu_seconds": 21.53125
+      },
+      "stages": {
+        "fza.pipeline.run.historical_universe_membership": {
+          "calls": 1,
+          "inclusive_wall": 0.02457660000072792,
+          "inclusive_cpu": 0.03125
+        },
+        "fza.factors.library._fundamental_history": {
+          "calls": 2,
+          "inclusive_wall": 0.29319940006826073,
+          "inclusive_cpu": 0.53125
+        },
+        "fza.factors.library._ttm_fundamental_panel": {
+          "calls": 2,
+          "inclusive_wall": 21.185522000014316,
+          "inclusive_cpu": 20.828125
+        },
+        "fza.pipeline.run.prepare_cross_sections": {
+          "calls": 2,
+          "inclusive_wall": 0.057501600007526577,
+          "inclusive_cpu": 0.0625
+        },
+        "fza.pipeline.run.build_panel_with_report": {
+          "calls": 2,
+          "inclusive_wall": 0.14696109999204054,
+          "inclusive_cpu": 0.125
+        },
+        "fza.pipeline.run.run_protocol": {
+          "calls": 4,
+          "inclusive_wall": 0.0535527000320144,
+          "inclusive_cpu": 0.0625
+        },
+        "fza.pipeline.run.compute_factor": {
+          "calls": 2,
+          "inclusive_wall": 21.694349299999885,
+          "inclusive_cpu": 21.328125
+        }
+      },
+      "ttm_calls": 331,
+      "ttm_rows_sum": 18732,
+      "input_sha256": "26f45287116cd6004afadcbc095936e44cfe7b68ef47514a1e42d1b363c09603",
+      "harness_sha256": "446b5ec004c338877350704b7bb1a225739e38db2b49646a538e7e1dd12da2b3",
+      "environment": {
+        "python": "3.12.14",
+        "pandas": "3.0.5",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "statsmodels": "0.15.0",
+        "lock_file": "research-requirements.lock",
+        "lock_sha256": "a41ad3c608214966996bb7fe0891d9671ea1322c6bb63fa3572f8b510b19bc64",
+        "lock_status": "MATCHED",
+        "lock_mismatches": {}
+      },
+      "result_sha256": "7770cc6239410bcb365fa2a129a2d0a2bff2200619c2c4e356869a41dfb4223b"
+    },
+    {
+      "trial": 4,
+      "anchor": "0bd03bf",
+      "plain": {
+        "wall_seconds": 26.952651700004935,
+        "cpu_seconds": 27.09375
+      },
+      "instrumented": {
+        "wall_seconds": 25.121546200010926,
+        "cpu_seconds": 25.1875
+      },
+      "stages": {
+        "fza.pipeline.run.historical_universe_membership": {
+          "calls": 1,
+          "inclusive_wall": 0.032375300012063235,
+          "inclusive_cpu": 0.03125
+        },
+        "fza.factors.library._fundamental_history": {
+          "calls": 2,
+          "inclusive_wall": 0.39392560004489496,
+          "inclusive_cpu": 0.78125
+        },
+        "fza.factors.library._ttm_fundamental_panel": {
+          "calls": 2,
+          "inclusive_wall": 24.30224950000411,
+          "inclusive_cpu": 24.375
+        },
+        "fza.pipeline.run.prepare_cross_sections": {
+          "calls": 2,
+          "inclusive_wall": 0.08531620004214346,
+          "inclusive_cpu": 0.09375
+        },
+        "fza.pipeline.run.build_panel_with_report": {
+          "calls": 2,
+          "inclusive_wall": 0.19630670006154105,
+          "inclusive_cpu": 0.21875
+        },
+        "fza.pipeline.run.run_protocol": {
+          "calls": 4,
+          "inclusive_wall": 0.06828859995584935,
+          "inclusive_cpu": 0.078125
+        },
+        "fza.pipeline.run.compute_factor": {
+          "calls": 2,
+          "inclusive_wall": 24.999395599996205,
+          "inclusive_cpu": 25.0625
+        }
+      },
+      "ttm_calls": 331,
+      "ttm_rows_sum": 18732,
+      "input_sha256": "26f45287116cd6004afadcbc095936e44cfe7b68ef47514a1e42d1b363c09603",
+      "harness_sha256": "446b5ec004c338877350704b7bb1a225739e38db2b49646a538e7e1dd12da2b3",
+      "environment": {
+        "python": "3.12.14",
+        "pandas": "3.0.5",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "statsmodels": "0.15.0",
+        "lock_file": "research-requirements.lock",
+        "lock_sha256": "a41ad3c608214966996bb7fe0891d9671ea1322c6bb63fa3572f8b510b19bc64",
+        "lock_status": "MATCHED",
+        "lock_mismatches": {}
+      },
+      "result_sha256": "4314e1e1c5a43a4e6ca14798dcfe2cb4eb504716576f03421a870b3e2fbecf48"
+    },
+    {
+      "trial": 5,
+      "anchor": "de1e836",
+      "plain": {
+        "wall_seconds": 28.14741190004861,
+        "cpu_seconds": 28.328125
+      },
+      "instrumented": {
+        "wall_seconds": 37.2033056000364,
+        "cpu_seconds": 36.828125
+      },
+      "stages": {
+        "fza.pipeline.run.historical_universe_membership": {
+          "calls": 1,
+          "inclusive_wall": 0.040318400016985834,
+          "inclusive_cpu": 0.046875
+        },
+        "fza.factors.library._fundamental_history": {
+          "calls": 2,
+          "inclusive_wall": 0.4538775000255555,
+          "inclusive_cpu": 0.8125
+        },
+        "fza.factors.library._ttm_fundamental_panel": {
+          "calls": 2,
+          "inclusive_wall": 35.62357009999687,
+          "inclusive_cpu": 35.15625
+        },
+        "fza.pipeline.run.prepare_cross_sections": {
+          "calls": 2,
+          "inclusive_wall": 0.09532379999291152,
+          "inclusive_cpu": 0.09375
+        },
+        "fza.pipeline.run.build_panel_with_report": {
+          "calls": 4,
+          "inclusive_wall": 0.4087820000713691,
+          "inclusive_cpu": 0.421875
+        },
+        "fza.pipeline.run.run_protocol": {
+          "calls": 4,
+          "inclusive_wall": 0.07965949998470023,
+          "inclusive_cpu": 0.09375
+        },
+        "fza.pipeline.run.compute_factor": {
+          "calls": 2,
+          "inclusive_wall": 36.37552489998052,
+          "inclusive_cpu": 35.90625
+        },
+        "fza.pipeline.vintage.run_protocol": {
+          "calls": 6,
+          "inclusive_wall": 0.11364360013976693,
+          "inclusive_cpu": 0.109375
+        },
+        "fza.pipeline.vintage.prepare_cross_sections": {
+          "calls": 2,
+          "inclusive_wall": 0.09481779998168349,
+          "inclusive_cpu": 0.078125
+        },
+        "fza.pipeline.run.diagnostic_layers": {
+          "calls": 1,
+          "inclusive_wall": 0.6555824999813922,
+          "inclusive_cpu": 0.640625
+        }
+      },
+      "ttm_calls": 331,
+      "ttm_rows_sum": 18732,
+      "input_sha256": "26f45287116cd6004afadcbc095936e44cfe7b68ef47514a1e42d1b363c09603",
+      "harness_sha256": "446b5ec004c338877350704b7bb1a225739e38db2b49646a538e7e1dd12da2b3",
+      "environment": {
+        "python": "3.12.14",
+        "pandas": "3.0.5",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "statsmodels": "0.15.0",
+        "lock_file": "research-requirements.lock",
+        "lock_sha256": "a41ad3c608214966996bb7fe0891d9671ea1322c6bb63fa3572f8b510b19bc64",
+        "lock_status": "MATCHED",
+        "lock_mismatches": {}
+      },
+      "result_sha256": "f82e7c222c428d11e8183a820214e8cfdee62a05b25705d7b9baebb0549f1439"
+    }
+  ],
+  "plain_wall_summary": {
+    "de1e836": {
+      "median": 28.14741190004861,
+      "minimum": 18.366901199973654,
+      "maximum": 4061.329944900004,
+      "observations": [
+        4061.329944900004,
+        18.366901199973654,
+        28.14741190004861
+      ]
+    },
+    "0bd03bf": {
+      "median": 22.44406650000019,
+      "minimum": 17.356335600023158,
+      "maximum": 26.952651700004935,
+      "observations": [
+        22.44406650000019,
+        17.356335600023158,
+        26.952651700004935
+      ]
+    }
+  },
+  "paired_new_minus_old_seconds": [
+    4038.885878400004,
+    1.010565599950496,
+    1.1947602000436746
+  ],
+  "limitation": "inclusive stages overlap; no causal or historical ratio proof"
+}

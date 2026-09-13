@@ -26,10 +26,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import textwrap
+import sys
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
+from time import perf_counter
 
 import pandas as pd
 
@@ -45,15 +46,14 @@ from .pipeline.run import (
     compare_vintages,
     compute_factor,
 )
-from .pipeline.vintage import SENSITIVITY_NOTICE
 from .provenance import (
     dataset_evidence,
     file_sha256,
     implementation_manifest,
     research_environment,
 )
-from .qualification import qualification_lines
-from .reporting import breadth_diagnostic, factor_record, json_safe, research_gate_ledger
+from .render import render_report
+from .reporting import factor_record, json_safe, research_gate_ledger
 from .store import Store
 
 DEFAULT_DB = Path("data/fza.duckdb")
@@ -177,493 +177,114 @@ def signal_dates_for(
     return pd.DatetimeIndex(pd.date_range(start, pd.Timestamp(last), freq=freq))
 
 
+def failure_record(exc: Exception) -> dict:
+    """Capture the same failure details consumed by the text renderer."""
+    status, reasons = _describe_failure(exc)
+    return {
+        "exception_type": type(exc).__name__,
+        "status": status,
+        "message": str(exc),
+        "display_reasons": reasons,
+        "detail": json_safe(getattr(exc, "detail", None)),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Run the factor pipeline and report.")
-    ap.add_argument(
-        "--db",
-        type=Path,
-        default=DEFAULT_DB,
-        help=f"path to an ingested store (default {DEFAULT_DB}); falls back to fixtures",
-    )
+    ap.add_argument("--db", type=Path, default=DEFAULT_DB)
     ap.add_argument("--outdir", type=Path, default=None)
-    ap.add_argument(
-        "--max-dates",
-        type=int,
-        default=0,
-        help="cap the number of signal dates, for a quick run (0 = all)",
-    )
+    ap.add_argument("--max-dates", type=int, default=0,
+                    help="cap signal dates for a diagnostic run (0 = all)")
     args = ap.parse_args(argv)
-
+    started = datetime.now(timezone.utc)
+    clock_start = perf_counter()
     store, mode = open_store(args.db)
-    info = describe_data(store, mode)
-    evidence = dataset_evidence(args.db, mode)
-    factors = load_all()
-
-    lines: list[str] = []
-
-    def emit(text: str = "") -> None:
-        print(text, flush=True)
-        lines.append(text)
-
-    emit(_rule("="))
-    emit("FACTOR ZOO AUDIT".center(WIDTH))
-    emit(_rule("="))
-    emit()
-
-    if mode == "fixture":
-        emit("  DATA: synthetic fixtures (no ingested store found)")
-        emit()
-        emit("  The numbers below are NOT findings. Fixture prices are a random")
-        emit("  walk, so no factor can predict them and none is meant to. What")
-        emit("  this run demonstrates is that the machinery behaves: the")
-        emit("  point-in-time view returns the pre-restatement value, the")
-        emit("  look-ahead check fires when it should, and the vintage comparison")
-        emit("  isolates the filing constraint.")
-        emit()
-        emit("  For real numbers, ingest first:")
-        emit("    python -m fza.ingest.run --user-agent 'Name you@example.com'")
-    else:
-        emit(f"  DATA: {args.db}")
-    emit()
-    for line in qualification_lines(evidence):
-        emit("  " + line)
-    emit(f"  reasons: {', '.join(evidence['reasons'])}")
-    if mode == "real":
-        emit(f"  sidecar binding: {evidence['sidecar_binding']}")
-        emit("  declared research_evidence: " + json.dumps(evidence['declared_research_evidence']))
-        emit("  declared run purpose: " + json.dumps(evidence['declared_run_purpose']))
-        emit(f"  database SHA-256: {evidence['database_sha256']}")
-        emit(f"  sidecar SHA-256: {evidence['sidecar_sha256']}")
-        emit("  declared survivorship-prone source share: " +
-             json.dumps(evidence['declared_survivorship_prone_share']))
-        emit("  Source share is NOT the magnitude or direction of survivorship bias.")
-        emit("  Sidecar declarations, even true or hash-matched, do not certify research.")
-    emit()
-    emit(f"  securities     {info['securities']:>10,}")
-    emit(
-        f"  with us-gaap   {info['securities_usgaap']:>10,}   "
-        f"(fundamental factors see only these)"
-    )
-    other = {
-        k: v for k, v in info['securities_by_standard'].items() if k != 'us-gaap'
-    }
-    if other:
-        detail = ", ".join(f"{v} {k}" for k, v in sorted(other.items()))
-        emit(f"  excluded       {detail:>10}   "
-             f"(prices only -- no readable fundamentals)")
-    emit(f"  fundamentals   {info['fundamentals']:>10,}")
-    emit(f"  prices         {info['prices']:>10,}")
-    emit(f"  restatements   {info['restatements']:>10,}   "
-         f"({info['restatement_rate']:.1%} of fundamental rows)")
-    emit(f"  price history  {info['first_date']} .. {info['last_date']}")
-
-    environment = research_environment()
-    emit(_header("RESEARCH ENVIRONMENT"))
-    emit()
-    emit(f"  {'Python':<14}{environment['python']}")
-    for package in ("pandas", "numpy", "scipy", "statsmodels"):
-        emit(f"  {package:<14}{environment[package]}")
-    emit(f"  {'lock':<14}{environment['lock_file']}")
-    emit(f"  {'lock SHA-256':<14}{environment['lock_sha256']}")
-    emit(f"  {'lock status':<14}{environment['lock_status']}")
-    if environment["lock_mismatches"]:
-        for package, versions in environment["lock_mismatches"].items():
-            emit(
-                f"    {package}: installed {versions['installed']}, "
-                f"locked {versions['locked']}"
-            )
-    emit()
-    emit("  These are the versions that produced this report. MATCHED means the")
-    emit("  four numerical libraries equal the exact shipped research lock;")
-    emit("  MISMATCH keeps the report diagnostic and prints every difference.")
-
-    coverage = store.column_coverage("prices")
-    thin = coverage.loc[coverage["coverage"] < 0.99]
-    if len(thin):
-        emit(_header("DATA QUALITY"))
-        emit()
-        emit("  Price columns that are not fully populated. A column at 0.0%")
-        emit("  empties every factor that reads it, and the failure surfaces as")
-        emit("  'factor produced no values' -- naming the factor, not the column.")
-        emit()
-        emit(f"  {'column':<16}{'non-null':>12}{'coverage':>12}")
-        for _, row in thin.iterrows():
-            emit(
-                f"  {row['column']:<16}{int(row['non_null']):>12,}"
-                f"{row['coverage']:>11.1%}"
-            )
-
-    emit(_header("REGISTERED FACTORS"))
-    emit()
-    table = summary_table()
-    emit(
-        f"  {'factor':<14}{'category':<14}{'fundamentals':<14}"
-        f"{'falsification':>14}{'plausible range':>20}"
-    )
-    for _, row in table.iterrows():
-        emit(
-            f"  {row['factor_id']:<14}{row['category']:<14}"
-            f"{'yes' if row['uses_fundamentals'] else 'no':<14}"
-            f"{row['n_falsification_criteria']:>14}"
-            f"{row['plausible_range']:>20}"
-        )
-    emit()
-    emit("  Every factor carries a hypothesis card stating an economic mechanism,")
-    emit("  the conditions under which it should persist, and what would falsify")
-    emit("  it. Registration fails without one.")
-    emit()
-    emit("  'plausible range' shows the legacy economic scale guard only.")
-    emit("  'undefined': NOT that the factor passed; no legacy range is declared.")
-    emit("  It does not describe additional rules.")
-    emit("  RAW-OUTPUT PLAUSIBILITY RULES below reports all evaluated declarations.")
-
-    denominator = published_anomaly_denominator()
-    emit(_header("PUBLISHED-ANOMALY DENOMINATOR"))
-    emit()
-    emit(f"  claim             {denominator['claim_id']}")
-    emit(
-        f"  current base      {denominator['current_n']} included "
-        f"(baseline {denominator['baseline_n']}, delta {denominator['delta_n']:+d})"
-    )
-    emit(f"  included          {', '.join(denominator['current_included'])}")
-    emit(f"  excluded          {', '.join(denominator['excluded']) or 'none'}")
-    emit(f"  pending           {', '.join(denominator['pending']) or 'none'}")
-    emit(
-        "  removed vs base   "
-        f"{', '.join(denominator['removed_since_baseline']) or 'none'}"
-    )
-    for factor_id in denominator["excluded"] + denominator["pending"]:
-        emit(f"    {factor_id}: {denominator['reasons'][factor_id]}")
-    emit()
-    emit("  INCLUDED requires a verified definition-origin citation. PENDING means")
-    emit("  the proposed origin has not been checked at a primary-source locator;")
-    emit("  EXCLUDED means the implemented quantity is not the published anomaly.")
-    emit("  Definition eligibility is separate from outcome evidence; no survival rate")
-    emit("  follows from this denominator or from a completed computation.")
-
-    dates = signal_dates_for(store, min_history_months=15)
-    available_signal_dates = len(dates)
-    protocol_settings = {"horizon_sessions": 21, "execution_lag_sessions": 1, "n_quantiles": 5}
-    if args.max_dates and len(dates) > args.max_dates:
-        idx = pd.Index(range(len(dates)))
-        keep = idx[:: max(1, len(dates) // args.max_dates)][: args.max_dates]
-        dates = dates[keep]
-
-    emit(_header("STANDARD PROTOCOL"))
-    emit()
-    emit("  " + qualification_lines(evidence)[0])
-    emit(f"  {len(dates)} signal dates from the monthly grid, "
-         f"{dates[0].date() if len(dates) else 'n/a'} .. "
-         f"{dates[-1].date() if len(dates) else 'n/a'}")
-    if len(dates) < available_signal_dates:
-        emit("  SUBSAMPLED diagnostic grid: formation shifts count selected dates.")
-        emit("  This is not definition-equivalent to the full monthly run.")
-    emit()
-    emit(
-        f"  {'factor':<14}{'IC':>10}{'LS Sharpe':>11}"
-        f"{'monotone':>10}{'dates':>7}{'as-of held':>11}  status"
-    )
-
-    runs = {}
-    failures: dict[str, str] = {}
-    for factor_id, factor in factors.items():
-        try:
-            run = compute_factor(factor, store, dates, **protocol_settings)
-        except Exception as exc:
-            # A factor that fails a check must stay in the table. Catching the
-            # error keeps the other nine computable; dropping the row would make
-            # the failure disappear, which is the opposite of what the check is
-            # for. So the row is printed with its numbers withheld -- they were
-            # never computed -- and the reason underneath it.
-            status, reason = _describe_failure(exc)
-            failures[factor_id] = status
-            emit(
-                f"  {factor_id:<14}{'--':>10}{'--':>11}"
-                f"{'--':>10}{'--':>7}{'--':>11}  {status}"
-            )
-            for line in reason:
-                emit(f"      {line}")
-            continue
-        runs[factor_id] = run
-        s = run.protocol.summary
-        emit(
-            f"  {factor_id:<14}{s['ic_mean']:>+10.4f}{s['ls_sharpe']:>+11.4f}"
-            f"{run.protocol.monotonicity_rho:>+10.2f}{run.protocol.n_dates:>7}"
-            f"{('yes' if run.read_path_check['ok'] else 'VIOLATION'):>11}  OK"
-            f" {breadth_diagnostic(s)['marker']}".rstrip()
-        )
-
-    emit()
-    emit("  'as-of held' is a check on this code: did every read return only")
-    emit("  filings that were already public on the day being forecast, including")
-    emit("  any reporting lag the factor declared? A VIOLATION here would void")
-    emit("  every number in the row.")
-    emit()
-    emit("  'status' is whether the factor produced a result at all. OK means the")
-    emit("  run completed; it does not mean the factor works. A FAILED row has no")
-    emit("  numbers because none were computed -- the run stopped at the check")
-    emit("  named in the status, and that row is excluded from every table below.")
-    emit("  [B]: a retained quantile group has <= 3 names; [B?]: breadth unavailable.")
-    emit("  This display rule was chosen after observing data, using the existing")
-    emit("  nominal size multiplier. It changes no samples or metrics; absence of")
-    emit("  a flag is not evidence of adequate power or IC validity.")
-
-    emit(_header("RAW-OUTPUT PLAUSIBILITY RULES"))
-    emit("  These supplement legacy ranges; they do not verify input provenance.")
-    for factor_id, run in runs.items():
-        if not run.magnitude_check.get("rules"):
-            emit(f"  {factor_id}: UNDECLARED -- no raw-output rule evaluated")
-        for rule in run.magnitude_check.get("rules", []):
-            emit(f"  {factor_id}: {rule['rule_id']} -- {rule['status']}")
-            emit(f"    {rule['kind']} / {rule['severity']}; "
-                 f"bounds [{rule['lower']}, {rule['upper']}]")
-            for line in textwrap.wrap(rule["rationale"], width=WIDTH - 4):
-                emit(f"    {line}")
-    emit("  DECLARED_UNBOUNDED is not PASS; no finite magnitude bound was tested.")
-    emit("  Missing/nonfinite values are counted, not certified by a finite-value check.")
-
-    emit(_header("HISTORICAL UNIVERSE GATE"))
-    emit()
-    emit("  Membership is applied to raw factor rows before magnitude checks,")
-    emit("  winsorisation and standardisation. An excluded row therefore cannot")
-    emit("  alter the score of a security that was eligible on the same date.")
-    emit()
-    emit(
-        f"  {'factor':<14}{'raw rows':>12}{'eligible':>12}"
-        f"{'excluded':>12}{'retained':>11}"
-    )
-    for factor_id, run in runs.items():
-        u = run.universe_filter
-        emit(
-            f"  {factor_id:<14}{u.n_input:>12,}{u.n_output:>12,}"
-            f"{u.n_excluded_outside_universe:>12,}{u.retention:>11.1%}"
-        )
-    emit()
-    emit("  'excluded' is reported independently from missing-value cleaning and")
-    emit("  label attrition: outside the historical universe is an eligibility")
-    emit("  decision, not a missing observation.")
-    emit("  For ingested data this is a filing-activity proxy, not verified exchange")
-    emit("  membership. It cannot recover securities missing from the initial selection.")
-
-    emit(_header("FACTOR-CONSTRUCTION SAMPLE FILTERS"))
-    emit()
-    emit("  These are definition-level eligibility rules applied inside a factor,")
-    emit("  before the common universe gate and missing-value cleaning.")
-    emit()
-    emit(f"  {'factor':<14}{'filter':<38}{'input':>9}{'excluded':>11}")
-    any_filter = False
-    for factor_id, run in runs.items():
-        for construction_filter in run.construction_filters:
-            any_filter = True
-            emit(
-                f"  {factor_id:<14}{construction_filter['filter_id']:<38}"
-                f"{construction_filter['n_input']:>9,}"
-                f"{construction_filter['n_excluded']:>11,}"
-            )
-            sample = construction_filter.get("excluded_keys", [])[:5]
-            if sample:
-                shown = ", ".join(
-                    f"{row['signal_date']} {row['ticker']} ({row['equity']:g})"
-                    for row in sample
-                )
-                emit(f"      excluded keys: {shown}")
-    if not any_filter:
-        emit("  none")
-
-    emit(_header("FORWARD-LABEL ATTRITION"))
-    emit()
-    emit("  Every cleaned signal is left-joined to its realised return before")
-    emit("  invalid rows are removed, so an absent label cannot disappear without")
-    emit("  a counted reason.")
-    emit()
-    emit(
-        f"  {'factor':<14}{'signals':>12}{'labelled':>12}"
-        f"{'dropped':>12}{'retained':>11}"
-    )
-    for factor_id, run in runs.items():
-        label = run.label_join
-        emit(
-            f"  {factor_id:<14}{label.n_input:>12,}{label.n_output:>12,}"
-            f"{label.n_dropped_without_label:>12,}{label.retention:>11.1%}"
-        )
-        reasons = {
-            reason: count
-            for reason, count in label.outcome_counts.items()
-            if reason != "matched" and count
+    try:
+        info = describe_data(store, mode)
+        evidence = dataset_evidence(args.db, mode)
+        factors = load_all()
+        environment = research_environment()
+        presentation = {
+            "database_display": str(args.db),
+            "price_coverage": store.column_coverage("prices").to_dict("records"),
+            "registered_factors": summary_table().to_dict("records"),
+            "capture_method": "captured_during_this_run",
         }
-        if reasons:
-            rendered = ", ".join(
-                f"{reason}={count:,}" for reason, count in sorted(reasons.items())
-            )
-            emit(f"    {rendered}")
-
-    emit(_header("CROSS-SECTION BREADTH"))
-    emit()
-    emit("  Distribution over retained date x quantile groups, not whole cross-sections.")
-    emit("  Dropped dates are absent from this distribution. A minimum of 3 means")
-    emit("  a retained group had 3 names; it does not explain a dropped date.")
-    emit()
-    emit(
-        f"  {'factor':<14}{'avg':>7}{'min':>7}{'p10':>7}{'median':>9}"
-        f"{'p90':>7}{'max':>7}{'dropped':>10}"
-    )
-    for factor_id, run in runs.items():
-        s = run.protocol.summary
-        emit(
-            f"  {factor_id:<14}{s['names_per_quantile_avg']:>7.1f}"
-            f"{s['names_per_quantile_min']:>7}{s['names_per_quantile_p10']:>7.1f}"
-            f"{s['names_per_quantile_median']:>9.1f}{s['names_per_quantile_p90']:>7.1f}"
-            f"{s['names_per_quantile_max']:>7}"
-            f"{s['n_dates_dropped_insufficient_cross_section']:>10}"
-        )
-    emit()
-    emit("  'dropped' counts signal dates present in the aligned panel but absent")
-    emit("  from quantile portfolios because the cross-section was too small or")
-    emit("  ties prevented all five groups from being formed.")
-
-    emit(_header("THE TRAP, MEASURED"))
-    emit()
-    emit("  How much would a naive query have read early? This is the hazard the")
-    emit("  bitemporal store exists to avoid -- a diagnostic count, not an alpha finding.")
-    emit()
-    emit(f"  {'factor':<14}{'signal dates':>14}{'exposed':>10}{'trap rows':>12}{'rate':>9}")
-    for factor_id, run in runs.items():
-        t = run.naive_trap
-        if not t.get("n_signal_dates"):
-            emit(f"  {factor_id:<14}{'n/a -- reads no fundamentals':>45}")
-            continue
-        emit(
-            f"  {factor_id:<14}{t['n_signal_dates']:>14,}{t['n_dates_exposed']:>10,}"
-            f"{t['n_trap_rows']:>12,}{t['exposure_rate']:>9.1%}"
-        )
-
-    emit(_header("POINT-IN-TIME VS RESTATED"))
-    emit()
-    emit("  " + qualification_lines(evidence)[0])
-    emit("  Original-process diagnostic: shared dates, arm-specific observations.")
-    emit("  Cleaning uses each arm's own sample; shared defects need not cancel.")
-    emit("  The gap mixes value/availability/processing changes, not pure revisions.")
-    emit("  PASS/FAIL uses a preconfigured directional threshold, not significance.")
-    emit("  PASS means no positive-gap trigger, not validated evidence.")
-    emit("  Label/holding-period checks are shown per layer; a mismatch blocks gaps.")
-    emit()
-
-    comparisons = {}
-    for factor_id, factor in factors.items():
-        if factor_id not in runs:
-            # Named rather than skipped. A factor absent from this section
-            # because its run failed looks identical to one that was never
-            # registered, and the two mean very different things.
-            emit(f"  {factor_id}")
-            emit(f"    not compared -- {failures.get(factor_id, 'run failed')};")
-            emit("    see the status column above")
-            emit()
-            comparisons[factor_id] = {"status": "NOT_COMPUTED", "reason": failures[factor_id]}
-            continue
-        try:
-            comp = compare_vintages(factor, store, dates, **protocol_settings)
-        except Exception as exc:
-            emit(f"  {factor_id}: comparison failed: {type(exc).__name__}: {exc}")
-            comparisons[factor_id] = {"status": "FAILED", "reason": type(exc).__name__}
-            continue
-
-        comparisons[factor_id] = {
-            "status": evidence["statistics_status"] if comp.applicable else "NOT_APPLICABLE",
-            "pit": comp.pit.to_dict(),
-            "restated": comp.restated.to_dict() if comp.restated is not None else None,
-            "ic_gap": comp.ic_gap if comp.applicable else None,
-            "diagnostic_verdict": comp.verdict,
-            "detail": comp.detail,
+        denominator = published_anomaly_denominator()
+        dates = signal_dates_for(store, min_history_months=15)
+        available_signal_dates = len(dates)
+        if args.max_dates and len(dates) > args.max_dates:
+            keep = range(0, len(dates), max(1, len(dates) // args.max_dates))
+            dates = dates[list(keep)[:args.max_dates]]
+        protocol_settings = {
+            "horizon_sessions": 21, "execution_lag_sessions": 1, "n_quantiles": 5,
         }
-
-        emit(f"  {factor_id}")
-        if not comp.applicable:
-            for line in textwrap.wrap(comp.verdict, width=WIDTH - 4):
-                emit("    " + line)
-        else:
-            emit(f"    point-in-time IC   {comp.pit.summary['ic_mean']:>+10.4f}")
-            emit(f"    restated IC        {comp.restated.summary['ic_mean']:>+10.4f}")
-            gap_text = "unavailable" if pd.isna(comp.ic_gap) else f"{comp.ic_gap:+.4f}"
-            emit(f"    restated minus PIT {gap_text:>10}")
-            verdict = comp.verdict.split(":")[0]
-            emit(f"    verdict            {verdict:>10}")
-        sample = comp.detail.get("sample_comparison")
-        if sample is not None:
-            emit(f"    observations       PIT {sample['pit_observations']:,} / "
-                 f"restated {sample['restated_observations']:,}")
-            emit(f"    shared keys        {sample['common_observations']:,}; "
-                 f"PIT-only {sample['pit_only_observations']:,}; "
-                 f"restated-only {sample['restated_only_observations']:,}")
-            emit(f"    identical keys     {sample['identical_observation_keys']}")
-            emit(f"    read-path coverage {comp.detail['read_path_coverage']}")
-            emit(f"    IC gap threshold   {comp.detail['material_gap_threshold']:.4f} "
-                 "(diagnostic, not significance)")
-        for name, layer in comp.detail.get("layers", {}).items():
-            gap = "unavailable" if layer["ic_gap"] is None else f"{layer['ic_gap']:+.4f}"
-            emit(f"    {name:<20} IC gap {gap} | {layer['status']}")
-            emit(f"      label/holding-period: {layer['outcome_identity']['status']}")
-            if "source_outcome_identity" in layer:
-                emit("      source label/holding-period: "
-                     + layer["source_outcome_identity"]["status"])
-            if "sample" in layer:
-                sample_row = layer["sample"]
-                emit(f"      observations: PIT {sample_row['pit_observations']:,} / "
-                     f"restated {sample_row['restated_observations']:,}; "
-                     f"common {sample_row['common_observations']:,}")
-            if "ic" in layer.get("metrics", {}):
-                metric = layer["metrics"]["ic"]
-                emit(f"      IC dates: PIT {len(metric['pit_dates'])} / "
-                     f"restated {len(metric['restated_dates'])}; "
-                     f"same {metric['identical_metric_dates']}")
-            for line in textwrap.wrap(layer["scope"], width=WIDTH - 6):
-                emit("      " + line)
-            if layer.get("reason"):
-                emit(f"      reason: {layer['reason']}")
-        emit()
-
-    gates = research_gate_ledger()
-    emit(_header("RESEARCH CLAIM GATES"))
-    for gate, state in gates.items():
-        emit(f"  {gate}: {state['status']} -- {state['reason']}")
-    emit("  UNRESOLVED is not a measured bias size; NOT_IMPLEMENTED is not passed.")
-    for line in textwrap.wrap(SENSITIVITY_NOTICE, width=WIDTH - 2):
-        emit("  " + line)
-
-    emit(_rule("="))
-    for line in qualification_lines(evidence):
-        emit("  " + line)
-    emit("  The vintage gap is conditional on the selected data and label samples;")
-    emit("  it does not establish a market-wide effect or cancel shared data defects.")
-    emit("  Ingest alone does not qualify research evidence.")
-    emit(_rule("="))
-    emit()
-
-    if args.outdir:
+        runs, failures, records, comparisons = {}, {}, {}, {}
+        for factor_id, factor in factors.items():
+            print(f"Computing PIT {factor_id}", file=sys.stderr, flush=True)
+            try:
+                runs[factor_id] = compute_factor(factor, store, dates, **protocol_settings)
+            except Exception as exc:
+                failures[factor_id] = failure_record(exc)
+            if factor_id in runs:
+                records[factor_id] = factor_record(runs[factor_id], evidence)
+            else:
+                records[factor_id] = {
+                    "computation_status": failures[factor_id]["status"],
+                    "statistics_status": "NOT_COMPUTED",
+                    "protocol": None,
+                    "failure": failures[factor_id],
+                }
+        for factor_id, factor in factors.items():
+            if factor_id not in runs:
+                comparisons[factor_id] = {
+                    "status": "NOT_COMPUTED",
+                    "reason": failures[factor_id]["status"],
+                    "failure": failures[factor_id],
+                }
+                continue
+            print(f"Computing vintage {factor_id}", file=sys.stderr, flush=True)
+            try:
+                comp = compare_vintages(factor, store, dates, **protocol_settings)
+            except Exception as exc:
+                comparisons[factor_id] = {
+                    "status": "FAILED", "reason": type(exc).__name__,
+                    "failure": failure_record(exc),
+                }
+                continue
+            comparisons[factor_id] = {
+                "status": evidence["statistics_status"] if comp.applicable else "NOT_APPLICABLE",
+                "pit": comp.pit.to_dict(),
+                "restated": comp.restated.to_dict() if comp.restated is not None else None,
+                "ic_gap": comp.ic_gap if comp.applicable else None,
+                "diagnostic_verdict": comp.verdict,
+                "detail": comp.detail,
+            }
         roster = store.con.execute(
             "SELECT cik, ticker, first_filing, last_filing, accounting_standard "
             "FROM securities ORDER BY ticker, cik"
         ).df().to_dict("records")
         roster_json = json.dumps(json_safe(roster), sort_keys=True, allow_nan=False)
-        records = {}
-        for factor_id in factors:
-            completed = factor_id in runs
-            records[factor_id] = factor_record(runs[factor_id], evidence) if completed else {
-                "computation_status": failures[factor_id],
-                "statistics_status": "NOT_COMPUTED",
-                "protocol": None,
-                "reason": "see_text_failure_details; no_zero_imputed_for_missing_result",
-            }
         try:
             end_hash = file_sha256(args.db) if mode == "real" else None
         except OSError:
             end_hash = None
+        finished = datetime.now(timezone.utc)
         bundle = {
-            "schema_version": 1,
+            "schema_version": 2,
             "artifact_role": evidence["statistics_status"] + " / NOT_AN_ASSERTION",
-            "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+            "generated_at_utc": finished.isoformat(),
             "evidence": evidence,
             "environment": environment,
             "implementation": implementation_manifest(),
+            "presentation": presentation,
+            "runtime": {
+                "started_at_utc": started.isoformat(),
+                "computation_finished_at_utc": finished.isoformat(),
+                "elapsed_seconds": perf_counter() - clock_start,
+                "scope": "start_through_computation_and_manifest_excludes_render_and_write",
+                "clock": "perf_counter",
+            },
             "data_summary": info,
             "fixture_spec": asdict(FixtureSpec()) if mode == "fixture" else None,
             "selected_roster": roster,
@@ -685,20 +306,23 @@ def main(argv: list[str] | None = None) -> int:
             "denominator": denominator,
             "factors": records,
             "vintage_comparisons": comparisons,
-            "research_gates": gates,
+            "research_gates": research_gate_ledger(),
         }
-        args.outdir.mkdir(parents=True, exist_ok=True)
-        (args.outdir / "demo_report.txt").write_text("\n".join(lines), encoding="utf-8")
-        (args.outdir / "demo_evidence.json").write_text(
-            json.dumps(evidence, indent=2, allow_nan=False), encoding="utf-8"
-        )
-        (args.outdir / "demo_run.json").write_text(
-            json.dumps(json_safe(bundle), indent=2, allow_nan=False), encoding="utf-8"
-        )
-        print(f"report written to {args.outdir / 'demo_report.txt'}")
-
-    store.close()
-    return 0
+        bundle = json_safe(bundle)
+        report = render_report(bundle)
+        print(report, flush=True)
+        if args.outdir:
+            args.outdir.mkdir(parents=True, exist_ok=True)
+            for name, content in (
+                ("demo_report.txt", report),
+                ("demo_evidence.json", json.dumps(evidence, indent=2, allow_nan=False)),
+                ("demo_run.json", json.dumps(bundle, indent=2, allow_nan=False)),
+            ):
+                (args.outdir / name).write_text(content, encoding="utf-8", newline="\n")
+            print(f"report written to {args.outdir / 'demo_report.txt'}")
+        return 0
+    finally:
+        store.close()
 
 
 if __name__ == "__main__":

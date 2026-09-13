@@ -1,0 +1,93 @@
+{
+  "role": "PRESENTATION_REPLAY_NOT_A_NEW_COMPUTATION",
+  "rendered_at_utc": "2026-09-12T00:38:41.485547+00:00",
+  "sources": [
+    {
+      "file": "examples\\outputs\\b_selected_200_rerun_20260909\\demo_run.json",
+      "sha256": "4bcefb562c17971de93604dd952ba1e61781d29c1dbf57722d26f29e404c4f34",
+      "locator": "/",
+      "extraction_method": "JSON decode; no recalculation"
+    },
+    {
+      "file": "examples\\outputs\\b_selected_200_rerun_20260909\\demo_report.txt",
+      "sha256": "7cf55ae6643e96bd97c1fadd3d03c6d1a47749b43b828421d1b676e179964332",
+      "locator": "DATA / DATA QUALITY / REGISTERED FACTORS",
+      "extraction_method": "fixed-column display extraction; coverage precision limited to printed percentage"
+    }
+  ],
+  "renderer": {
+    "file": "C:\\Users\\86181\\OneDrive\\\u6587\u6863\\ChatGPT\\github\\factor-zoo-audit\\src\\fza\\render.py",
+    "sha256": "456af02157957ae540fdc039b062f2a1f5ef7e84bf4df14ad5052af4a4e44627",
+    "locator": "/",
+    "extraction_method": "source bytes"
+  },
+  "replay_adapter": {
+    "file": "C:\\Users\\86181\\OneDrive\\\u6587\u6863\\ChatGPT\\github\\factor-zoo-audit\\src\\fza\\replay.py",
+    "sha256": "77c77a7834935a990a53cf91fb3d171b852f5e8ede6499be0e7bdcf80d91c036",
+    "locator": "/",
+    "extraction_method": "source bytes"
+  },
+  "render_implementation": {
+    "files": {
+      "demo.py": "8b0c95e1c6849e46e57f70fd4b4cbc3c320f5046333c3164df5a997bb0491ac7",
+      "factors/cards/asset_growth.yaml": "b409f8ae664247b6391ee46522af7e96c757c06461612baa1be6202a165d4fef",
+      "factors/cards/bm_ratio.yaml": "6ea954c6eb412be777975bb61f18fb020d41585496781868d25bdf75fba621a0",
+      "factors/cards/ep_ratio.yaml": "0130bc2a45da05fec655c5614f2d95ec28640b0f9bfdfab3c360ddef4121500f",
+      "factors/cards/log_mktcap.yaml": "3eda0dfae0448b9f3dc99e768a116c07625bb8385e32ea55c75498fa712c5fcd",
+      "factors/cards/mom_12_1.yaml": "f5b97e19c46915f03c8c6e1c26bb9ae9f9ab23ed2daea91e443f27d438f46a4f",
+      "factors/cards/mom_6_1.yaml": "4e1616e5b83c4040f2f89a0a4eb1b4f6b7c76370cbb8d492cee68d819b922376",
+      "factors/cards/rev_1m.yaml": "a3ae1ccfb6065eee1c3bbb92eab8a52e12993e8e426b2efdfb406c78ca4f1142",
+      "factors/cards/roe.yaml": "132f02b829052295224fc070778314bd63268e4069cec468bc1d7e72aa809cf8",
+      "factors/cards/total_vol_60d.yaml": "d53dce069bd21eb15ec11fb0f811b8268fef3bf5097efab41dc9e21d600bc1ab",
+      "factors/cards/turnover.yaml": "dcbf3b4ebaca39a6f4d2301d6130d1e63ac5f5bb10d5a2fdcd14c111fd9b8d44",
+      "factors/denominators.yaml": "ec4c8005727c5ce2c2a8c50cec5e1080bb7ff257c05e6cdf5cfbea3d23d678b5",
+      "factors/library.py": "95e0f0c14a81ef0e8879ad0c99b50e14ce19a9b43419ce914f7afbba6443f7f8",
+      "factors/plausibility.py": "1d1e987a1bb3fd7a0a9e810ea26ff6ab166de9aac3734606bfbb29e9e0ee7b1b",
+      "factors/registry.py": "5a73492d3c245cea5f3d6ae7a789daef79b17a99dd72f21c2eaa7d2b00f2686c",
+      "factors/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fixtures.py": "b826ec1beaebd56a58276cf7b9526fbdd4319f065ea374467ac266ca9f79344b",
+      "ingest/prices.py": "0a59524caef8ab0987d90bd000e6cbead8def783af8210f865985d35c97d60db",
+      "ingest/run.py": "9ca88cfe680066e33193d3dc31581dcf207fbb57c04007e9fd8b02e9c078d4b4",
+      "ingest/sec.py": "7608f7f91c1f880c58551b838e31fa4522a6afd7a8401724b7da0e68b79d64bc",
+      "ingest/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "pipeline/prepare.py": "da88e41e8c6ce8b2a19a216c4d382ae9326af8cb4b7e08a8058eb3b8b858815f",
+      "pipeline/protocol.py": "cd363848d56bae9aad30f6c5333b78a6732cfbff931b499e995fa480071f3cdb",
+      "pipeline/run.py": "2528b03530c2fc64689cf4a9de3f8f3f8c003838617119129242fc7bdb688d4b",
+      "pipeline/vintage.py": "f2911fbf910d3bf70670c5935a129f1c902775e543ea92c1bbff3edba3c54117",
+      "pipeline/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance.py": "ffe8f3579a9fafc171b55d7daa7d6c7ae2df5ef52a89a8f5e15a209e3ce8f250",
+      "qualification.py": "78a845c65a5649069274bc3ea4b7977a90f8097d338cebc08875d087f7d05baa",
+      "render.py": "456af02157957ae540fdc039b062f2a1f5ef7e84bf4df14ad5052af4a4e44627",
+      "replay.py": "77c77a7834935a990a53cf91fb3d171b852f5e8ede6499be0e7bdcf80d91c036",
+      "report/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "reporting.py": "524b071803abac909db7373547a8b32b1a5a3678d86bd0d461c88c5bc58732d6",
+      "research-requirements.lock": "3014091ea5f7c2b51f3a1d867a674a65be84bf2d8e27348ad6b7b7e512df99f3",
+      "sql/001_schema.sql": "354fcaa1baa3eb99fdb9cb5c36ef00d70248ed2a36579be0b001fb618d16b384",
+      "store.py": "3fdba15f8c1fbb1bcea0cff52a5d78f064f876a3ae56bd125dd2ac99f9312df4",
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "sha256": "c7d0f43d99c30c8ffb91f8a9e91fadc567fe3b10b4749890a5d0a8acae179655"
+  },
+  "render_environment": {
+    "python": "3.12.14",
+    "pandas": "3.0.5",
+    "numpy": "2.5.2",
+    "scipy": "1.18.1",
+    "statsmodels": "0.15.0",
+    "lock_file": "research-requirements.lock",
+    "lock_sha256": "3014091ea5f7c2b51f3a1d867a674a65be84bf2d8e27348ad6b7b7e512df99f3",
+    "lock_status": "MATCHED",
+    "lock_mismatches": {}
+  },
+  "computation_fields_changed": false,
+  "original_schema_version": 1,
+  "supplement_added_after_run": true,
+  "source_types_are_not_evidence_grades": true,
+  "line_endings": "LF",
+  "presentation_changes": [
+    "84-column wrapping",
+    "one excluded key per line",
+    "repeat sensitivity limitation within each comparison block"
+  ],
+  "report_sha256": "b810b76ac8a67969be4d77bea42c51faa7b4d86bb672eda8b7201f593fa3ed0d"
+}

@@ -1,0 +1,87 @@
+{
+  "status": "DIAGNOSTIC_ONLY",
+  "source": "Windows System log; Power-Troubleshooter event 1; Kernel-Power 506/507",
+  "run_windows": {
+    "old": [
+      "2026-09-07T01:04:25.312917+00:00",
+      "2026-09-07T05:16:19.490939+00:00"
+    ],
+    "new": [
+      "2026-09-09T17:10:27.462148+00:00",
+      "2026-09-11T10:51:12.242619+00:00"
+    ]
+  },
+  "sleep_wake_overlap": {
+    "old": [],
+    "new": [
+      {
+        "record_id": 13353,
+        "sleep": "2026-09-11T10:15:03.9672303Z",
+        "wake": "2026-09-11T10:15:58.1168752Z",
+        "effective_state": "5",
+        "overlap_seconds": 54.149645
+      },
+      {
+        "record_id": 13271,
+        "sleep": "2026-09-11T09:12:18.6524698Z",
+        "wake": "2026-09-11T09:14:18.9867085Z",
+        "effective_state": "5",
+        "overlap_seconds": 120.334239
+      },
+      {
+        "record_id": 13244,
+        "sleep": "2026-09-11T08:10:20.7937608Z",
+        "wake": "2026-09-11T08:25:29.9889469Z",
+        "effective_state": "5",
+        "overlap_seconds": 909.195186
+      },
+      {
+        "record_id": 13150,
+        "sleep": "2026-09-10T15:18:27.1335151Z",
+        "wake": "2026-09-11T06:56:41.9289987Z",
+        "effective_state": "5",
+        "overlap_seconds": 56294.795483
+      },
+      {
+        "record_id": 13081,
+        "sleep": "2026-09-10T11:28:10.2682040Z",
+        "wake": "2026-09-10T14:11:10.9823158Z",
+        "effective_state": "5",
+        "overlap_seconds": 9780.714111
+      },
+      {
+        "record_id": 12972,
+        "sleep": "2026-09-10T01:08:52.4673220Z",
+        "wake": "2026-09-10T07:40:47.9411545Z",
+        "effective_state": "5",
+        "overlap_seconds": 23515.473832
+      },
+      {
+        "record_id": 12915,
+        "sleep": "2026-09-10T00:03:01.8471720Z",
+        "wake": "2026-09-10T00:03:45.9947108Z",
+        "effective_state": "5",
+        "overlap_seconds": 44.147538
+      },
+      {
+        "record_id": 12871,
+        "sleep": "2026-09-09T20:46:43.7355201Z",
+        "wake": "2026-09-09T23:45:20.9675134Z",
+        "effective_state": "5",
+        "overlap_seconds": 10717.231993
+      },
+      {
+        "record_id": 12782,
+        "sleep": "2026-09-09T17:50:10.8816242Z",
+        "wake": "2026-09-09T19:16:25.9659905Z",
+        "effective_state": "5",
+        "overlap_seconds": 5175.084366
+      }
+    ]
+  },
+  "modern_standby_overlap_seconds": {
+    "old": 1117.50279,
+    "new": 20809.925571
+  },
+  "limitation": "Do not add overlapping event classes or infer active compute time by subtraction."
+}

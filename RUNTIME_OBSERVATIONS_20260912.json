@@ -1,0 +1,27 @@
+{
+  "role": "RECOVERED_RUNTIME_OBSERVATIONS_NOT_ORIGINAL_RUN_MANIFEST",
+  "scope": "wrapper start-to-end wall clock, not CPU time or an isolated benchmark",
+  "old_run": {
+    "source_file": ".diagnostic-envs/b-selected-200-20260907.status.json",
+    "source_sha256": "bd20f254729faf5f2baba4b87f8781209788f2b978eab2fb7f7ca69c31aa7ef0",
+    "extraction": "started_at_utc and finished_at_utc from saved status JSON",
+    "started_at": "2026-09-07T01:04:25.312917+00:00",
+    "finished_at": "2026-09-07T05:16:19.490939+00:00",
+    "elapsed_seconds": 15114.178022,
+    "returncode": 0
+  },
+  "new_run": {
+    "source_kind": "task_tool_transcript",
+    "locator": "run_gated_selected_200.ps1 REAL_RUN_START and REAL_RUN_END messages",
+    "wrapper_sha256": "3e932b7a17fd4bde1255cdf0bbfad952d32383f7131785074f1dccd277471a5f",
+    "limitation": "wrapper hash identifies emitting code, not a saved log of the timestamps",
+    "started_at": "2026-09-09T18:10:27.4621480+01:00",
+    "finished_at": "2026-09-11T11:51:12.2426191+01:00",
+    "elapsed_seconds": 150044.7804711,
+    "returncode": 0
+  },
+  "ratio_rounded": 9.93,
+  "causal_attribution": "UNDETERMINED",
+  "profile_scope": "short incomplete py-spy sample located _ttm_value in PIT ep_ratio; not a whole-run time allocation",
+  "original_archives_modified": false
+}

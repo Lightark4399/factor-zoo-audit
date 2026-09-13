@@ -100,6 +100,43 @@ def test_report_is_written_when_requested(full_fixture_report):
     assert len(bundle["factors"]) == 10
 
 
+def test_saved_json_replays_without_computation(full_fixture_report, monkeypatch):
+    from fza.render import render_report, validate_report_width
+
+    _, _, report = full_fixture_report
+    bundle = json.loads(report.with_name("demo_run.json").read_text(encoding="utf-8"))
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("rendering must not compute or open a store")
+
+    monkeypatch.setattr("fza.demo.compute_factor", forbidden)
+    monkeypatch.setattr("fza.demo.compare_vintages", forbidden)
+    monkeypatch.setattr("fza.demo.open_store", forbidden)
+    rendered = render_report(bundle)
+    assert rendered == report.read_text(encoding="utf-8")
+    validate_report_width(rendered)
+    assert b"\r\n" not in report.read_bytes()
+    assert bundle["runtime"]["elapsed_seconds"] >= 0
+    assert bundle["presentation"]["capture_method"] == "captured_during_this_run"
+
+
+def test_failed_results_keep_machine_readable_details(tmp_path, monkeypatch):
+    def fail(*args, **kwargs):
+        raise ValueError("explicit synthetic failure\nfull second line")
+
+    monkeypatch.setattr("fza.demo.compute_factor", fail)
+    outdir = tmp_path / "failed-report"
+    code, text = _capture_demo(_FAST + ["--outdir", str(outdir)])
+    bundle = json.loads((outdir / "demo_run.json").read_text(encoding="utf-8"))
+    assert code == 0
+    for record in bundle["factors"].values():
+        assert record["protocol"] is None
+        assert record["failure"]["message"] == "explicit synthetic failure\nfull second line"
+        assert record["failure"]["display_reasons"][0] in text
+    for record in bundle["vintage_comparisons"].values():
+        assert record["failure"]["exception_type"] == "ValueError"
+
+
 # ----------------------------------------------------------------------
 # Signal dates
 # ----------------------------------------------------------------------

@@ -11,12 +11,15 @@ Synthetic controls test the audit mechanics. A selected 200-company dataset
 demonstrates the workflow. Historical-universe completeness and delisting
 outcomes remain unresolved; **no market-wide anomaly survival rate is claimed**.
 
-Read the [full-grid diagnostic report](examples/outputs/b_selected_200_20260907/demo_report.txt)
-and its [run manifest](examples/outputs/b_selected_200_20260907/demo_run.json).
-They preserve the `0bd03bf` computation snapshot, not a live claim about every
-later code revision. Read the accompanying [interpretation corrections](examples/outputs/b_selected_200_20260907/README.md#interpretation-correction--2026-09-08):
-shared dates are not shared securities, and its vintage threshold is not a
-significance test. Presentation follow-ups are in the validation record.
+Read the [full-grid diagnostic report, re-rendered without recomputation](examples/outputs/b_selected_200_presentation_20260912_final/demo_report.txt)
+and its [render/source manifest](examples/outputs/b_selected_200_presentation_20260912_final/render_manifest.json).
+Computed results come from the [unaltered de1e836 run](examples/outputs/b_selected_200_rerun_20260909/demo_run.json);
+missing presentation inputs were recovered from its companion text, with source
+hashes and extraction limits recorded separately. This is not a new numerical run.
+See [scoped verification and remaining gates](VALIDATION_20260912.md).
+The [earlier 0bd03bf snapshot and interpretation corrections](examples/outputs/b_selected_200_20260907/README.md#interpretation-correction--2026-09-08)
+remain available; shared dates are not shared securities, and the vintage
+threshold is not a significance test.
 
 The current deliverable is a diagnostic report plus machine-readable evidence,
 sample/implementation manifests, and counted processing losses. It measures
@@ -185,7 +188,7 @@ not complete. See the delivery guide for reproducibility and evidence limits.
 ✓ Wheel contains its SQL schema and ten hypothesis cards; clean-install smoke tested
 ✓ Prior baseline validated on 2026-09-05; current acceptance is recorded in the linked validation log
 ✓ Real-store diagnostic qualification reaches all current demo outputs (AS-03)
-○ Historical data access and terminal-outcome implementation remain pending
+○ Historical membership and terminal outcomes remain unresolved; access is not a delivery dependency
 ○ Evidence-eligible real baseline refresh (the available 200-company store is diagnostic)
 ○ Audit layer wired to backtest-audit
 ○ Style orthogonalisation, factor structure (PCA), costs
@@ -340,6 +343,16 @@ counted once inside FY and again as a quarter. Annual-only 20-F filers retain th
 latest genuine annual TTM observation rather than receiving invented quarters.
 
 ## Running it
+
+Saved schema-2 bundles can be rendered without opening a database or recomputing:
+
+```bash
+python -m fza.replay path/to/demo_run.json --outdir new-presentation-directory
+```
+
+Schema-1 bundles also require `--legacy-text path/to/demo_report.txt`. The replay
+rejects source conflicts and existing output directories. Presentation-source
+provenance does not change research qualification. See [replay boundaries](RENDERING.md).
 
 The test suite and the demo need no network and no credentials — everything runs
 on fixtures, so the correctness argument is verifiable by anyone who clones the

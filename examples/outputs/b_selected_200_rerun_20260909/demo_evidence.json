@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "mode": "real",
+  "policy_id": "selected_sample_diagnostic_v1",
+  "statistics_status": "DIAGNOSTIC_ONLY",
+  "statistics_notice": "the statistics below are NOT findings.",
+  "claims": {
+    "selected_sample_statistics": {
+      "status": "DIAGNOSTIC_ONLY",
+      "reason": "describes_this_run_not_market_wide_evidence"
+    },
+    "market_wide_anomaly_survival": {
+      "status": "NOT_EVIDENCE",
+      "reason": "historical_membership_outcomes_and_research_gates_not_validated",
+      "label": "Market-wide anomaly survival",
+      "notice": "no survival rate claimed."
+    }
+  },
+  "database_path": "C:\\Users\\86181\\OneDrive\\\u6587\u6863\\ChatGPT\\github\\factor-zoo-audit\\data\\fza_200.duckdb",
+  "database_sha256": "66c60785d1c085d4883f49796a33f20ad2bdf418072086fbfd938100666312d9",
+  "sidecar_path": "C:\\Users\\86181\\OneDrive\\\u6587\u6863\\ChatGPT\\github\\factor-zoo-audit\\data\\fza_200.report.json",
+  "sidecar_sha256": "718a03dd30f80a20366623ebdaeea237a2141230f9eef1123aa52545914790b4",
+  "sidecar_binding": "UNVERIFIED",
+  "declared_research_evidence": false,
+  "declared_run_purpose": "diagnostic_scale",
+  "declared_survivorship_prone_share": 1.0,
+  "reasons": [
+    "research_qualification_not_implemented",
+    "sidecar_database_binding_unverified",
+    "declared_diagnostic"
+  ]
+}
