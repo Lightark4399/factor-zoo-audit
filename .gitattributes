@@ -1,4 +1,5 @@
 # Archived evidence is hashed as bytes. Preserve each original newline format.
+README.md text eol=lf
 examples/outputs/b_selected_200_rerun_20260909/*.json -text
 examples/outputs/b_selected_200_rerun_20260909/*.txt -text
 examples/outputs/b_selected_200_presentation_20260912_final/*.json -text
