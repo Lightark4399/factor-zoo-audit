@@ -1,6 +1,6 @@
 # Three-layer comparison checkpoint
 
-Base: `f3bce92`. Contract: [VINTAGE_COMPARISON.md](VINTAGE_COMPARISON.md).
+Base: `f3bce92`. Contract: [VINTAGE_COMPARISON.md](../../VINTAGE_COMPARISON.md).
 Three diagnostic layers are implemented, with post-universe raw-input capture,
 shared outcome/timing checks, common metric-date checks, and withheld gaps on
 failed required checks. Text and structured outputs retain scope/reasons. They

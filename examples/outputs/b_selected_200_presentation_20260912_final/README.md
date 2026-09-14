@@ -12,7 +12,7 @@ have only the precision printed in that text; unprinted columns are not recovere
 The original token stream was checked before adding local copies of the existing
 sensitivity disclaimer. Source consistency is not proof of economic correctness.
 
-The [scoped validation](../../../VALIDATION_20260912.md) distinguishes checked
+The [scoped validation](../../../docs/validation/VALIDATION_20260912.md) distinguishes checked
 archive metrics, missing raw-panel evidence, presentation and performance.
 [Recovered runtime observations](../../../RUNTIME_OBSERVATIONS_20260912.json)
 are explicitly later recovery, not original demo_run.json fields. No research

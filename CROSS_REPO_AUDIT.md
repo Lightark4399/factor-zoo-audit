@@ -14,7 +14,7 @@ failure rate or a defect in the sibling's current release.
 the local runner and report. Outcome/timing and metric-date checks accompany
 the key checks; mismatch withholds dependent gaps. Synthetic controls and the
 actual pipeline/CLI were verified in both supported environments. See
-[validation](VALIDATION_20260909.md). This is not a new real-data comparison or
+[validation](docs/validation/VALIDATION_20260909.md). This is not a new real-data comparison or
 completion of the full regression / remaining delivery work.
 
 Keep the original incident narrative in its originating repository. Each local
@@ -70,7 +70,7 @@ and data differed by one column (`4968b1d`), and unordered SQL made naive-trap
 examples change across matching-environment runs (`e341991`). The latter altered
 example selection, not IC, LS Sharpe or counts. Both have synthetic/actual-CLI
 regressions and passed the 12-case focused suite in both environments. See
-`VALIDATION_20260907.md` for the failed reproductions, scope and pending full run.
+`docs/validation/VALIDATION_20260907.md` for the failed reproductions, scope and pending full run.
 The upstream default-branch tree was rechecked: still `bdb6250`; the generic
 docs-quote implementation/ref has not yet been received. That audit item stays
 pending, not checked-clean. No duplicate scanner or sibling edit was made.

@@ -159,13 +159,13 @@ The remaining correctness work is ordered, with separate verification:
 
 1. Correct vintage explanations and disclose actual scoring-key overlap and
    substituted-read coverage (including the docstrings and threshold comment).
-   First correction implemented and tested: [2026-09-08 checkpoint](VALIDATION_20260908.md).
+   First correction implemented and tested: [2026-09-08 checkpoint](docs/validation/VALIDATION_20260908.md).
 2. Add three diagnostic layers: original-process gap; common-observation scoring
    after arm-specific cleaning; common-support re-cleaning with fixed input keys
    and checked label/holding-period identity. Contrasts measure sensitivity, not
    a pure value/sample decomposition. The selected common set is not the cohort.
    Implementation contract: [three-layer comparison](VINTAGE_COMPARISON.md).
-   Implemented and verified by [the 2026-09-09 checkpoint](VALIDATION_20260909.md);
+   Implemented and verified by [the 2026-09-09 checkpoint](docs/validation/VALIDATION_20260909.md);
    this is not a new full-grid selected-200 run or a complete regression claim.
 3. Clarify breadth as names per retained date/quantile group. Any newly chosen
    warning threshold is post-observation, not preregistered.

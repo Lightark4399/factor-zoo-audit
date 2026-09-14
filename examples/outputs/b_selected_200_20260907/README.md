@@ -1,7 +1,7 @@
 # Immutable selected-sample diagnostic
 
 Generated from computation snapshot `0bd03bf`, not a research-evidence baseline.
-See `../../../VALIDATION_20260907.md` for hashes, full-grid validation and limits.
+See `../../../docs/validation/VALIDATION_20260907.md` for hashes, full-grid validation and limits.
 
 The three original artifacts are preserved unchanged. In this snapshot the
 retained-percentage column ends one character before its heading; naive-trap

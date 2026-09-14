@@ -3,7 +3,7 @@
 `demo_report.txt` is an earlier synthetic demonstration, not a freshness
 guarantee for the current code. It labels its numbers `NOT findings`. Fresh B
 acceptance and the full-grid selected-200 archive are tracked in
-`../../VALIDATION_20260907.md`; interrupted attempts are not completed artifacts.
+`../../docs/validation/VALIDATION_20260907.md`; interrupted attempts are not completed artifacts.
 
 `pre_definition_audit_real_report.txt` preserves the former 30-company report
 exactly as generated before the annual asset-growth, volatility rename, ROE

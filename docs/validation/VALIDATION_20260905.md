@@ -102,5 +102,5 @@ not yet consume diagnostic dataset provenance. The exit-policy draft remains
 `AWAITING_USER_REVIEW`; no source subscription, historical ingest, terminal
 return imputation, policy aggregation or backtest-audit bridge was implemented.
 
-See [assertion audit](ASSERTION_SCOPE_AUDIT.md) and
-[data/exit policy draft](DATA_EXIT_POLICY_DRAFT.md).
+See [assertion audit](../../ASSERTION_SCOPE_AUDIT.md) and
+[data/exit policy draft](../../DATA_EXIT_POLICY_DRAFT.md).

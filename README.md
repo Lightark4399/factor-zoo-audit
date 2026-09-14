@@ -39,7 +39,9 @@ and its [render/source manifest](examples/outputs/b_selected_200_presentation_20
 Computed results come from the [unaltered de1e836 run](examples/outputs/b_selected_200_rerun_20260909/demo_run.json);
 missing presentation inputs were recovered from its companion text, with source
 hashes and extraction limits recorded separately. This is not a new numerical run.
-See [scoped verification and remaining gates](VALIDATION_20260912.md).
+See [scoped verification and remaining gates](docs/validation/VALIDATION_20260912.md).
+The [historical validation index](docs/validation/README.md) separates dated
+checkpoints from current acceptance; old pending items are not a live task list.
 The [earlier 0bd03bf snapshot and interpretation corrections](examples/outputs/b_selected_200_20260907/README.md#interpretation-correction--2026-09-08)
 remain available; shared dates are not shared securities, and the vintage
 threshold is not a significance test.
@@ -62,7 +64,7 @@ Historical security membership and terminal outcomes are not yet sufficient for
 a published-anomaly survival headline. The demo propagates diagnostic status
 to stdout, saved text and structured evidence, even if a sidecar claims otherwise.
 See the [assertion audit](ASSERTION_SCOPE_AUDIT.md),
-[validation record](VALIDATION_20260907.md), [B delivery guide](B_DELIVERY.md), and
+[validation record](docs/validation/VALIDATION_20260907.md), [B delivery guide](B_DELIVERY.md), and
 [optional data/exit policy, not implemented](DATA_EXIT_POLICY_DRAFT.md).
 
 B is the current delivery route; licensed-data acquisition is not a waiting

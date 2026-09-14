@@ -111,5 +111,5 @@ exit behavior is changed by this test refactoring.
 The standalone 14-test demo run passed in 741.93 seconds, retaining the full
 window (527.32 seconds for its single normal report). Its XML capture is under
 the ignored `.diagnostic-envs` directory. Full runs and final counts are recorded
-separately in `VALIDATION_20260905.md`. The earlier 166 passes remain a five-file
+separately in `docs/validation/VALIDATION_20260905.md`. The earlier 166 passes remain a five-file
 subset, not a full-suite claim.
