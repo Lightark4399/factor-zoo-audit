@@ -135,6 +135,9 @@ def describe_data(store: Store, mode: str) -> dict:
     )
     n_fun = con.execute("SELECT count(*) FROM fundamentals").fetchone()[0]
     n_px = con.execute("SELECT count(*) FROM prices").fetchone()[0]
+    # Legacy fields retained for consumers, explicitly scoped below.
+    from .disclosure import disclosure_summary
+
     n_rev = len(store.restatements())
 
     dates = con.execute(
@@ -150,6 +153,8 @@ def describe_data(store: Store, mode: str) -> dict:
         "prices": n_px,
         "restatements": n_rev,
         "restatement_rate": n_rev / n_fun if n_fun else float("nan"),
+        "legacy_restatement_scope": "multiple_filing_date_keys_divided_by_record_rows",
+        "disclosure_summary": disclosure_summary(con),
         "first_date": dates[0],
         "last_date": dates[1],
     }

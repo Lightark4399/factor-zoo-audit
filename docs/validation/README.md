@@ -10,6 +10,7 @@ identify tested code. Commit anchors below retain the roles stated in the record
 
 | Record | Source anchor / scope | Historical status and limits |
 |---|---|---|
+| [Disclosure metrics, 2026-09-14](VALIDATION_DISCLOSURE_20260914.md) | Base `f9f5638` | New counting and rendering contract; focused checks, not a real-data rerun |
 | [2026-09-05](VALIDATION_20260905.md) | Review baseline `0a2dde0`; implementation `052d696`, `82b2e55` | Local validation and test-count reconciliation; not research qualification |
 | [2026-09-06](VALIDATION_20260906.md) | Baseline `2bf5aa0`; AS-03 fix `36071e9` | Interrupted; replaced by the September 7 run, not a completed full run |
 | [2026-09-07](VALIDATION_20260907.md) | Computation `0bd03bf` | Computation snapshot verified; later presentation checks have their own scope |

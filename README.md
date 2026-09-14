@@ -34,6 +34,10 @@ these describe that selected sample, not market-wide anomaly survival.
   or that the PIT pipeline leaked.
 <!-- diagnostic-examples:end -->
 
+The naive-query example uses the implemented period-end comparator, not every
+possible naive query or a replay of the interval-aware TTM calculation. See the
+[query scope and disclosure-metric correction](docs/DISCLOSURE_METRICS.md).
+
 Read the [full-grid diagnostic report, re-rendered without recomputation](examples/outputs/b_selected_200_presentation_20260912_final/demo_report.txt)
 and its [render/source manifest](examples/outputs/b_selected_200_presentation_20260912_final/render_manifest.json).
 Computed results come from the [unaltered de1e836 run](examples/outputs/b_selected_200_rerun_20260909/demo_run.json);
@@ -225,6 +229,11 @@ the active acceptance criteria and the historical research-extension design.
 ---
 
 ## First real ingest
+
+**Historical metric correction:** percentages labelled as restatements below
+counted multiple-filing-date fact keys divided by record rows, not the share of
+rows with numerical revisions. Do not use them as numerical revision rates.
+See the [metric contract and correction](docs/DISCLOSURE_METRICS.md).
 
 Historical ingest notes, not the current selected-200 report. The original
 30-company database is no longer available for regeneration; the observations

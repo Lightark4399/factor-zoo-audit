@@ -375,6 +375,7 @@ class Store:
         return pd.DataFrame(rows).sort_values("coverage")
 
     def restatements(self) -> pd.DataFrame:
+        """Legacy repeat-date keys, not necessarily numerical revisions."""
         return self.con.execute(
             "SELECT * FROM restatements ORDER BY abs(revision_pct) DESC NULLS LAST"
         ).df()

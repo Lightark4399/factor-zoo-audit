@@ -860,6 +860,30 @@ VINTAGE_COMPARISON.md; the original archive does not contain the new diagnostics
 
 ---
 
+## Incident 19 — repeat disclosure was labelled numerical revision
+
+On 2026-09-14, source inspection confirmed that the `restatements` view required
+different filing dates, not different values. The demo divided its fact-key
+count by all record rows and labelled the result as a percentage of fundamental
+rows. Equal-value repeated disclosures entered the numerator. The ratio could
+be arithmetically reproducible without supporting the stated interpretation.
+
+The user-supplied AI review had proposed this percentage for a CV. That is
+conversation provenance, not evidence of an actually submitted CV or interview.
+
+The correction retains legacy fields and original archives, documents their
+scope, adds like-unit key denominators and explicit changed/unchanged/unknown
+counts, and removes the misleading percentage from newly rendered reports.
+Synthetic histories include same-value repetition, a change subsequently
+reversed, conflicting same-day observations, nulls and unit changes. Passing
+those controls does not establish provider completeness or accounting causality.
+See [the metric contract](docs/DISCLOSURE_METRICS.md), including the separate
+scope review of the naive-query date-exposure diagnostic.
+
+Constraint: review the numerator's event definition, counting unit, denominator
+population and displayed interpretation together. A stored number matching its
+source is insufficient evidence that its label answers the intended question.
+
 ## What the live data changed
 
 The first thirty companies produced facts, not assumptions:

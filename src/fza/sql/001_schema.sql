@@ -177,10 +177,9 @@ CREATE OR REPLACE MACRO universe_asof(signal_date) AS TABLE
 -- Restatement diagnostics
 -- ---------------------------------------------------------------------------
 
--- Every (cik, tag, period) that was ever revised, with the size and lag of the
--- revision. If nothing was ever revised, the point-in-time and restated views
--- coincide and this channel of look-ahead is absent -- which the report states
--- explicitly rather than letting a zero read as an all-clear.
+-- Legacy repeat-disclosure view: different earliest/latest filing dates do not
+-- require changed values. This is not a count of numerically revised rows.
+-- Retained for compatibility; see disclosure.py and docs/DISCLOSURE_METRICS.md.
 CREATE OR REPLACE VIEW restatements AS
 WITH first_filing AS (
     SELECT DISTINCT ON (cik, tag, period_start, period_end)

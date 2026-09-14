@@ -15,6 +15,25 @@ from .reporting import breadth_diagnostic
 WIDTH = 84
 
 
+def disclosure_lines(info):
+    """Legacy bundles cannot establish counts of changed values."""
+    summary = info.get("disclosure_summary")
+    if summary is None:
+        return [
+            f"  legacy repeat-date keys: {info['restatements']:,}",
+            "  Legacy keys/rows ratio is NOT a share of numerically revised rows.",
+            "  Changed-value counts unavailable in this historical bundle.",
+        ]
+    return [
+        f"  fact keys: {summary['fact_keys']:,}",
+        f"  multiple filing-date keys: {summary['multiple_filing_date_keys']:,}",
+        f"  comparable repeated keys, changed: {summary['changed_comparable_keys']:,}",
+        f"  comparable repeated keys, unchanged: {summary['unchanged_comparable_keys']:,}",
+        f"  repeated keys, not comparable: {summary['uncomparable_repeated_keys']:,}",
+        "  Changes compare stored values, not verified accounting restatements.",
+    ]
+
+
 def _rule(char="-", width=WIDTH):
     return char * width
 
@@ -125,10 +144,8 @@ def render_report(bundle, *, local_sensitivity_notice=True):
              f"(prices only -- no readable fundamentals)")
     emit(f"  fundamentals   {info['fundamentals']:>10,}")
     emit(f"  prices         {info['prices']:>10,}")
-    rate = ("unavailable" if info['restatement_rate'] is None
-            else f"{info['restatement_rate']:.1%}")
-    emit(f"  restatements   {info['restatements']:>10,}   "
-         f"({rate} of fundamental rows)")
+    for line in disclosure_lines(info):
+        emit(line)
     emit(f"  price history  {info['first_date']} .. {info['last_date']}")
 
     environment = bundle["environment"]
