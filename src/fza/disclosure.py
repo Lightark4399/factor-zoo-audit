@@ -4,8 +4,9 @@
 def disclosure_summary(con) -> dict:
     """Classify repeated-date keys only when values and measurement units agree.
 
-    Any distinct stored finite values count, including a change later reversed.
-    Same-day conflicting values are unknown, not ordered by arbitrary row order.
+    Among comparable repeated keys, distinct stored finite values count as changes,
+    including a change later reversed. A conflict on any filing date makes the
+    entire key uncomparable; no conflicting date is silently discarded.
     Equality is exact; this is not a materiality or accounting-error judgement.
     """
     row = con.execute("""
@@ -19,9 +20,11 @@ def disclosure_summary(con) -> dict:
         ), facts AS (
             SELECT f.cik, f.tag, f.period_start, f.period_end,
                    count(DISTINCT filed) > 1 AS repeated,
+                   -- Raw value diversity only; count changes with comparable below.
                    count(DISTINCT value) FILTER (WHERE isfinite(value)) > 1 AS changed,
                    count(*) = count(*) FILTER (WHERE isfinite(value))
                      AND count(unit) = count(*) AND count(DISTINCT unit) = 1
+                     -- The Store schema enforces fact_type NOT NULL and its enum.
                      AND count(DISTINCT fact_type) = 1
                      AND min(fact_type) <> 'unknown'
                      AND NOT bool_or(c.conflict) AS comparable

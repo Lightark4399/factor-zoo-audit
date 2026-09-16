@@ -24,6 +24,14 @@ new bundles mark `legacy_restatement_scope` and add `disclosure_summary`.
   are non-null and identical, fact types are identical and known, and no single
   filing date contains conflicting finite values. Other repeated keys are
   counted as uncomparable, not unchanged.
+- A conflict on any filing date makes the entire repeated fact key uncomparable;
+  the conflicting date is not dropped to compare the remaining dates. These are
+  counts of keys, not counts of conflicting records. Other comparability failures
+  also contribute to the uncomparable-key count.
+- The Store schema enforces `fact_type NOT NULL` and restricts it to `instant`,
+  `duration`, or `unknown`. Mixed NULL/non-NULL fact types cannot enter this table.
+  The summary relies on that schema; an unconstrained external table would need
+  its own schema validation or an explicit NULL guard.
 - Among comparable repeated keys, more than one distinct exact value means
   changed. A change subsequently reversed still counts. No rounding threshold,
   materiality test or claim of a verified accounting restatement is implied.

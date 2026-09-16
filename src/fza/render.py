@@ -30,6 +30,9 @@ def disclosure_lines(info):
         f"  comparable repeated keys, changed: {summary['changed_comparable_keys']:,}",
         f"  comparable repeated keys, unchanged: {summary['unchanged_comparable_keys']:,}",
         f"  repeated keys, not comparable: {summary['uncomparable_repeated_keys']:,}",
+        "  Counts are fact keys, not records; any same-date conflict excludes a key",
+        "  from comparison across its entire stored history.",
+        "  Changed keys include stored values that changed and later reverted.",
         "  Changes compare stored values, not verified accounting restatements.",
     ]
 
