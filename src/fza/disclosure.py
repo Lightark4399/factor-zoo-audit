@@ -52,3 +52,43 @@ def disclosure_summary(con) -> dict:
             changed / (changed + unchanged) if changed + unchanged else None
         ),
     }
+
+
+REASONS = ("nonfinite_or_missing_value", "missing_unit", "mixed_units",
+           "mixed_fact_types", "unknown_fact_type", "same_date_conflict")
+
+
+def uncomparable_reason_counts(con) -> dict:
+    """Multi-label reasons for repeated keys that ``disclosure_summary`` cannot compare.
+
+    One key may carry several reasons, so reason counts overlap and must not be
+    summed; ``any_reason_keys`` is the union and equals the uncomparable count.
+    NULL, NaN and +/-infinity values all count as non-finite or missing.
+    """
+    flags = ", ".join(f"count(*) FILTER (WHERE {r})" for r in REASONS)
+    row = con.execute(f"""
+        WITH dates AS (
+            SELECT cik, tag, period_start, period_end, filed,
+                   count(DISTINCT value) FILTER (WHERE isfinite(value)) > 1 AS conflict
+            FROM fundamentals GROUP BY ALL
+        ), facts AS (
+            SELECT count(DISTINCT filed) > 1 AS repeated,
+                   bool_or(value IS NULL OR NOT isfinite(value)) AS nonfinite_or_missing_value,
+                   bool_or(unit IS NULL) AS missing_unit,
+                   count(DISTINCT unit) > 1 AS mixed_units,
+                   count(DISTINCT fact_type) > 1 AS mixed_fact_types,
+                   bool_or(fact_type = 'unknown') AS unknown_fact_type,
+                   bool_or(conflict) AS same_date_conflict
+            FROM fundamentals JOIN dates USING (cik, tag, period_start, period_end, filed)
+            GROUP BY cik, tag, period_start, period_end
+        )
+        SELECT {flags}, count(*) FILTER (WHERE {" OR ".join(REASONS)})
+        FROM facts WHERE repeated
+    """).fetchone()
+    counts = dict(zip(REASONS, map(int, row[:-1]), strict=True))
+    return {
+        "population": "repeated_fact_keys_not_comparable",
+        "counting": "MULTI_LABEL_MAY_OVERLAP_DO_NOT_SUM",
+        "reason_keys": counts,
+        "any_reason_keys": int(row[-1]),
+    }

@@ -38,6 +38,11 @@ new bundles mark `legacy_restatement_scope` and add `disclosure_summary`.
 - The changed share divides changed comparable repeated keys by all comparable
   repeated keys. Empty denominators yield null, not zero. The repeated population
   partitions into changed, unchanged and uncomparable keys.
+- `uncomparable_reason_counts` (read-only diagnostic, not in demo bundles) labels
+  uncomparable keys by every applicable reason: non-finite or missing value
+  (NULL, NaN, ±inf), missing unit, mixed units, mixed fact types, unknown fact
+  type, same-date conflict. Reason counts may overlap and must not be summed;
+  their union equals the uncomparable count.
 
 These metrics describe stored records, not provider completeness. They do not
 recover revisions absent from the database or establish economic comparability

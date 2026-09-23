@@ -144,3 +144,15 @@ def test_threshold_verdicts_never_claim_significance_or_absence_of_information(
     assert "conferred no advantage" not in result.verdict
     assert "carried no information" not in result.verdict
     assert "is information that was not available" not in result.verdict
+
+
+def test_exercised_shared_dates_with_unscorable_ic_is_inconclusive(monkeypatch):
+    names = [f"S{i}" for i in range(15)]
+    flat = panel(names).assign(prediction=0.0)  # constant ranks: no finite IC
+    result = compare_panels(monkeypatch, panel(names), flat)
+    assert result.applicable is True
+    assert result.detail["read_path_coverage"] == "EXERCISED"
+    assert result.detail["n_shared_dates"] == 1
+    assert np.isnan(result.restated.summary["ic_mean"])
+    assert result.passed is None
+    assert result.verdict == "INCONCLUSIVE: metric_unscorable."

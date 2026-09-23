@@ -93,3 +93,113 @@ the executable layer registry. Historical/proposed names and unstructured prose
 are outside these tests. No sentence-specific regex or duplicate upstream
 docs-quote scanner was added. Field existence does not establish semantic truth;
 the separate label/holding-period controls remain necessary.
+
+
+## Four-class wording and verdict check — 2026-09-23
+
+Source: four audit classes supplied in the user's 2026-09-23 message. Their
+originating sibling incidents were not inspected; backtest-audit was not read or
+edited. Base: `c015b68`; locations below are path plus function at that commit.
+Scope: `src/`, tracked Markdown outside `examples/outputs`, and the named tests.
+Archived outputs and rendered bundles were not inspected. No verdict behavior,
+serialized field or Python name changed.
+
+| Class | Call path inspected | Local result | Evidence / not checked |
+|---|---|---|---|
+| Fixed threshold called a noise bound | `src/fza/demo.py::main` → `src/fza/pipeline/run.py::compare_vintages` (constant `MATERIAL_GAP`, verdict branches); `src/fza/render.py` vintage section; `src/fza/reporting.py::breadth_diagnostic`; `src/fza/pipeline/run.py::_check_legacy_magnitude` docstring | `no-defect-found` in inspected paths | Constant comment, verdict text, `threshold_kind` and renderer disclaim noise/significance; breadth cutoff is marked post-observation. Markdown hits are the incident-18 correction record only. |
+| Heuristic called another estimator | `src/fza/pipeline/protocol.py::run_protocol` → `::fama_macbeth`; grep of `estimat`, `power`, `tstat`, `deflat` in `src` | `no-defect-found` | `tstat` is statsmodels HAC OLS with the Newey-West lag rule; `tstat_naive` is separately named. Display after a statsmodels failure (NaN `tstat`/`pvalue`) is a follow-up, not checked. |
+| Non-finite result reported as PASS | `src/fza/pipeline/run.py::compare_vintages` branch order; `src/fza/pipeline/vintage.py::diagnostic_layers` (inner `evaluate`) and `::outcome_identity`; `src/fza/factors/plausibility.py::evaluate_rule`; `src/fza/pipeline/run.py::check_plausible_magnitude` | `no-defect-found`; test gap closed | Not-exercised, no-shared-date, unscorable-layer and non-finite-gap cases return `passed=None` before threshold comparisons. `evaluate_rule` never reports within-tolerance when nothing finite is bounded; with some finite values, non-finite rows are excluded from the share and counted in `n_nonfinite_or_missing`. The legacy guard counts ±inf as outside. New `tests/test_vintage_scope.py::test_exercised_shared_dates_with_unscorable_ic_is_inconclusive` covers an exercised path with a shared date and unscorable IC. |
+| Arm name implies unverified qualification | `src/fza/pipeline/run.py::compute_factor` (`vintage="pit"`/`"restated"`), `::compare_vintages` (inner `leaking_asof`, `leaking_history_asof`); `src/fza/store.py::Store.fundamentals_restated`; `src/fza/demo.py::main` comparison keys; `src/fza/render.py` section title | `naming-ambiguity`; compatibility names retained | The `restated` arm is a **latest-filed comparison**: for each key it reads the latest-filed stored value with `period_end <= signal_date` and the `filed <= signal_date` constraint removed. It does not require that any value changed and is not a verified accounting restatement (the incident-19 population issue). The renderer already says the gap is not pure revision. Python/JSON names are kept for compatibility, by instruction. `pit` is backed by `assert_read_path_respected` only when the factor declares tags. |
+
+The added test exposed a misattributed reason. In
+`src/fza/pipeline/vintage.py::diagnostic_layers` (inner `evaluate`), the reason
+expression tested date equality before finiteness. In the tested single-date case
+the unscorable arm had no IC dates, so the verdict read `INCONCLUSIVE: metric_dates_differ.`.
+Corrected in a follow-up by instruction: non-finite metrics now report
+`metric_unscorable`; finite metrics on different dates keep `metric_dates_differ`.
+Eligibility, INCONCLUSIVE status, threshold and finite gaps are unchanged; only
+the reason string differs. `tests/test_vintage_layers.py` had asserted the old
+reason for a constant-prediction (unscorable) case. It now asserts
+`metric_unscorable` in both scored layers, and a separate two-date case with
+finite ICs on different dates asserts `metric_dates_differ`. The comparator test
+asserts the full verdict. Against the pre-fix `vintage.py`, the two unscorable
+tests fail and the date-misalignment test passes. Archived bundles are not
+regenerated and may carry the old reason.
+
+Follow-ups, deliberately not changed here:
+
+- `compare_vintages` inner `leaking_asof` sorts by `period_end` only before
+  `.last()`; keys sharing a period end with different `period_start` have no
+  stated interval choice (compare the naive-trap limitation in
+  `docs/DISCLOSURE_METRICS.md`).
+- `fama_macbeth` HAC failure: how NaN `tstat`/`pvalue` are displayed.
+
+### Read-only disclosure reasons on the available store — 2026-09-23
+
+`src/fza/disclosure.py::uncomparable_reason_counts` adds multi-label reasons for
+repeated keys that `disclosure_summary` cannot compare: non-finite or missing
+value (NULL, NaN, ±inf), missing unit, mixed units, mixed fact types, unknown
+fact type and same-date conflict. Reason counts may overlap and must not be
+summed; their union must equal `uncomparable_repeated_keys`. It is not wired into
+demo bundles. Fixture tests in `tests/test_disclosure.py` check hand-derived
+reason counts, the overlap and union agreement.
+
+`scripts/disclosure_readonly_summary.py` opens the store read-only with
+`threads=1` and a DuckDB memory limit (script default 512 MB; this run passed
+`--memory-limit 256MB`), checks the fundamentals schema first and
+prints aggregates only. It exits 2 when `fundamentals` is absent, a required
+column is missing, or a required non-null column is nullable; it does not
+validate every schema constraint. It exits 1 when either consistency check
+fails, still printing the counts and `failed_checks`. Tests
+cover success and each deliberately broken check. On `data/fza_200.duckdb` (SHA-256 `66c60785…12d9`,
+unchanged before and after; 201,112 fundamental rows; key columns and
+`fact_type` NOT NULL):
+
+| Quantity | Keys |
+|---|---|
+| Fact keys | 91,641 |
+| Multiple-filing-date keys | 55,240 (60.3% of fact keys) |
+| Comparable, changed | 5,947 |
+| Comparable, unchanged | 49,219 |
+| Not comparable | 74, all with the same-date conflict reason; no other reason fired |
+
+Changed share of comparable repeated keys: 10.8%. The three classes sum to
+55,240, and the reason union equals 74. The 55,240 equals the legacy
+repeat-date count in the archived selected-200 reports. That is consistent with
+the same key definition, but this run does not establish that the store is
+byte-identical to the one behind those archives. These counts describe stored
+exact-value differences, not verified accounting restatements or provider
+completeness. The store is labelled diagnostic, not evidence-eligible.
+
+### Location of the 74 same-date conflicts — 2026-09-23
+
+Read-only aggregate on the same store, hash unchanged before and after; only
+counts printed. The population is the 74 uncomparable multiple-filing-date
+keys; every row of the table below uses that denominator. A conflict key is a
+repeated fact key with at least one filing date carrying more than one distinct
+finite value. "Latest" means the key's
+maximum `filed`. Two tag scopes are reported. Read-path tags are those passed to
+the substituted fundamental read methods at the `src/fza/factors/library.py`
+call sites: `Assets`, `NetIncomeLoss`, `StockholdersEquity`. Declared tags add
+`CommonStockSharesOutstanding`, which `log_mktcap`/`turnover` declare but read
+through the embedded price-table share count (read path not exercised).
+
+| Quantity | Keys |
+|---|---|
+| Conflict keys | 74 |
+| Conflict on the key's latest filing date | 0 |
+| Conflict only on earlier filing dates | 74 |
+| Keys with more than one conflict date | 0 |
+| In read-path tags | 0 |
+| In declared tags | 72, all `CommonStockSharesOutstanding`, none on the latest date |
+
+Outside that population, one single-filing-date key also has conflicting
+finite values on its only filing date (`CommonStockSharesOutstanding`, not a
+read-path tag). It is not repeated, so it is neither among the 74 nor in the
+changed/unchanged/uncomparable partition; it appears only in the total fact-key
+count.
+
+Zero on the latest date does not mean no point-in-time exposure: an as-of read
+at a signal date between the conflicting filing and the next one would meet that
+tie. That window, the effect on the embedded share count and how the price
+ingest derives it were not traced. The SQL selection rule was not changed.

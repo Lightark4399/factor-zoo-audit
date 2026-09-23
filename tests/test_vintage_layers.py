@@ -87,14 +87,36 @@ def test_identically_invalid_holding_periods_cannot_pass_identity():
     assert outcome_identity(data, data)["status"] == "MISMATCH"
 
 
-def test_common_keys_with_different_ic_eligible_dates_do_not_get_a_gap():
+def test_common_keys_with_unscorable_ic_do_not_get_a_gap():
     left = labels(raw([f"S{i}" for i in range(20)]))[0]
     right = left.copy()
     right["prediction"] = 0.0
-    row = layers(left, right)["common-observation"]
+    for name in ("original-process", "common-observation"):
+        row = layers(left, right)[name]
+        assert row["outcome_identity"]["status"] == "MATCHED"
+        assert row["ic_gap"] is None
+        assert row["status"] == "INCONCLUSIVE"
+        assert row["reason"] == "metric_unscorable"
+
+
+def test_common_keys_with_different_ic_eligible_dates_do_not_get_a_gap():
+    names = [f"S{i}" for i in range(20)]
+    frames = [raw(names).assign(signal_date=pd.Timestamp(d))
+              for d in ("2020-01-31", "2020-02-29")]
+    left = labels(pd.concat(frames, ignore_index=True))[0]
+    right = left.copy()
+    right.loc[right.signal_date == pd.Timestamp("2020-02-29"), "prediction"] = 0.0
+    result = layers(left, right)
+    row = result["common-observation"]
     assert row["outcome_identity"]["status"] == "MATCHED"
+    assert row["metrics"]["ic"]["pit_dates"] == ["2020-01-31", "2020-02-29"]
+    assert row["metrics"]["ic"]["restated_dates"] == ["2020-01-31"]
+    assert np.isfinite(row["restated"]["ic_mean"])
     assert row["ic_gap"] is None
+    assert row["status"] == "INCONCLUSIVE"
     assert row["reason"] == "metric_dates_differ"
+    # The original-process layer accepts arm-specific dates by design.
+    assert result["original-process"]["ic_gap"] is not None
 
 
 def test_nondefault_quantile_setting_reaches_every_layer():

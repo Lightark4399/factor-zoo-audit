@@ -101,8 +101,9 @@ def diagnostic_layers(factor_id, left, right, raw_left, raw_right, *, groups,
                 "pit_dates": [str(pd.Timestamp(d).date()) for d in ps.index],
                 "restated_dates": [str(pd.Timestamp(d).date()) for d in rs.index],
                 "identical_metric_dates": same_dates,
-                "reason": (None if eligible else "metric_dates_differ" if not same_dates
-                           else "metric_unscorable"),
+                # Unscorable first: an unscorable arm can also have differing dates.
+                "reason": (None if eligible else "metric_unscorable" if not finite
+                           else "metric_dates_differ"),
             }
             if eligible:
                 row[output_name] = float(r.summary[summary_name] - p.summary[summary_name])

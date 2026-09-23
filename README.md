@@ -252,11 +252,14 @@ of prices, 100% came from a source that drops delisted tickers
 
 Two things in that table shaped what came next.
 
-**Nearly a third of fundamental rows were revised after first publication.** The
-point-in-time machinery was built on the assumption that restatements matter; it
-is now built on the observation that they are pervasive. A backtest reading a
-mutable fundamentals table is reading revised figures for a large share of its
-history.
+**The restatement count measured repeat filing dates, not changed values.** The 8,999 counts `(cik, tag, period_start, period_end)` keys
+filed on more than one date, whether or not the value differed, and the 27% divides
+those keys by record rows. It shows that a fundamentals table keyed by period alone
+can hold several filings per key, which is what the point-in-time read path must
+choose between; it does not show how many values were numerically revised. The
+original 30-company store is gone, so that count was never recomputed; the
+[changed/unchanged/uncomparable contract](docs/DISCLOSURE_METRICS.md) applies to
+new reports only.
 
 **Every price row came from a source that drops delisted securities.** Stooq,
 which retains them, returned 404 for its own documented symbol format from an
