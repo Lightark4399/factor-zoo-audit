@@ -32,9 +32,9 @@ Constraints SEC imposes, and how they are handled
   economic quantity lands on different tags across filers. The scope is pinned to
   the ``us-gaap`` namespace and a fixed tag list; anything else is excluded, and
   the exclusion rate is reported rather than silently absorbed. The single
-  exception is ``DEI_TAGS`` -- see the comment there: shares outstanding is a
-  cover-page fact that us-gaap does not define, and DEI is SEC's own namespace,
-  not a filer's invention. One named tag is admitted, not a namespace.
+  exception is ``DEI_TAGS`` -- see the comment there: the cover-page share count
+  is a DEI concept distinct from the us-gaap shares-outstanding concept, and DEI is SEC's
+  own namespace, not a filer's invention. One named tag is admitted, not a namespace.
 """
 
 from __future__ import annotations
@@ -81,19 +81,28 @@ DURATION_TAGS: frozenset[str] = frozenset(
 
 # The one tag this project reads from outside us-gaap, and why.
 #
-# Shares outstanding is not a us-gaap concept. It lives on the filing's cover
-# page, which XBRL tags in the DEI (Document and Entity Information) namespace.
-# Checked against Coca-Cola (cik 0000021344): its us-gaap namespace carries 724
-# tags and `CommonStockSharesOutstanding` is not among them, while
-# `dei:EntityCommonStockSharesOutstanding` carries 71 facts spanning 2009-2026.
-# Eleven of the first thirty companies ingested had no share count at all for
-# this reason. The ingest was looking in the wrong namespace; the data was never
-# missing.
+# Two taxonomies carry a share count: `dei:EntityCommonStockSharesOutstanding`
+# is the cover-page count in SEC's DEI (Document and Entity Information)
+# taxonomy, and `us-gaap:CommonStockSharesOutstanding` is common shares
+# outstanding in the FASB's US GAAP taxonomy. The tag does not fix where a fact
+# is presented or at which date. Stored us-gaap rows have been seen at the
+# current period end and at earlier comparative dates, and a DEI row can share
+# a date with one (CAT: both 2025-06-30). Values can differ. Which XBRL context a
+# stored row came from is not recorded. Both are
+# ingested under the us-gaap name. The DEI read was added because eleven of the
+# first thirty companies ingested had no share count: Coca-Cola (cik 0000021344)
+# then carried 724 us-gaap tags without `CommonStockSharesOutstanding`, while
+# `dei:EntityCommonStockSharesOutstanding` carried 71 facts spanning 2009-2026.
+# That describes those filers at that time, not the us-gaap taxonomy: in the
+# selected-200 store, 116 of 178 companies with a share count have us-gaap rows
+# and 108 have both (probe of 2026-09-23).
 #
 # THE SCOPE RESTRICTION IS NOT RELAXED. The reason us-gaap is pinned is that a
 # custom extension tag one filer invented is not comparable with anything else
-# in the panel. DEI is not a custom extension: it is defined by SEC and reported
-# identically by every filer, so that reason does not apply to it. What is
+# in the panel. DEI is not a custom extension: it is defined by SEC rather than
+# invented by one filer, so that reason does not apply to it. Defined by SEC does
+# not mean every filer reports it, or reports it the same way -- some report it
+# per share class, and some stored series stop. What is
 # opened here is a NAMED TAG, not a namespace -- anything else under `dei` is
 # still excluded and still counted.
 DEI_TAGS: tuple[str, ...] = ("EntityCommonStockSharesOutstanding",)
@@ -108,8 +117,9 @@ DEI_TAG_ALIASES: dict[str, str] = {
 
 # The cover-page share count, singled out because it is the one tag a filer
 # can supply while supplying no accounting data at all. It comes from the DEI
-# namespace, which every filer populates regardless of taxonomy, so an IFRS
-# company reports it and nothing else. A coverage number that counts "at least
+# namespace, which filers use whatever their accounting taxonomy, so an IFRS
+# company can supply it and nothing else (five IFRS filers did, below). A
+# coverage number that counts "at least
 # one row" therefore passes companies that no value factor can read -- see
 # AI_NOTES incident 14.
 SHARE_COUNT_TAG = "CommonStockSharesOutstanding"
@@ -504,10 +514,12 @@ def parse_companyfacts(
     for tag in tags:
         collect(usgaap.get(tag), tag, "us-gaap")
 
-    # DEI second, and deliberately so. If a filer reports a share count under
-    # both namespaces, the two land on the same primary key and the de-duplication
-    # below keeps the first -- which makes us-gaap authoritative where it exists
-    # and DEI the fallback, rather than the other way round.
+    # DEI second, and deliberately so. When a DEI and a us-gaap row share the same
+    # stored de-duplication key (period, filing, form, accession and frame -- no
+    # XBRL class dimension), the de-duplication below keeps the first, the us-gaap
+    # row. Rows with different keys from the same filing, such as different period
+    # ends, are all kept; which one a price row uses is decided
+    # later, in attach_shares_outstanding, not here.
     dei = facts.get("dei", {})
     for tag in DEI_TAGS:
         collect(dei.get(tag), DEI_TAG_ALIASES.get(tag, tag), "dei")
@@ -522,8 +534,10 @@ def parse_companyfacts(
     )
 
     if not frame.empty:
-        # Exact duplicate contexts sometimes appear in the payload. Different
-        # starts or frames are NOT duplicates: a quarter, YTD and FY fact can end
+        # Rows repeating the same stored de-duplication key sometimes appear in
+        # the payload. The key omits XBRL dimensions such as share class, so it
+        # identifies repeats of what is stored, not identical XBRL contexts.
+        # Different starts or frames are NOT duplicates: a quarter, YTD and FY fact can end
         # on the same date and carry ordinary but economically different values.
         frame = frame.drop_duplicates(
             subset=[

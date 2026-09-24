@@ -324,6 +324,14 @@ and `CommonStockSharesOutstanding` is not among them, while
 `dei:EntityCommonStockSharesOutstanding` carries 71 facts spanning 2009-2026. The
 ingest was looking in the wrong place. The data had never been missing.
 
+> **Correction, 2026-09-24.** The Coca-Cola observation above stands as recorded.
+> The general statement that `us-gaap` does not define a share count does not.
+> `us-gaap:CommonStockSharesOutstanding` is common shares outstanding in the FASB
+> taxonomy; `dei:EntityCommonStockSharesOutstanding` is the cover-page count. In the
+> selected-200 store, 116 of 178 companies with a share count have us-gaap rows.
+> Both are now stored under one tag name, and price rows choose among them by row
+> order. See [the selection evidence](docs/validation/VALIDATION_SELECTION_EVIDENCE_20260923.md).
+
 **What the fix did to the results.** `bm_ratio` went from +0.0365 to **-0.0336**.
 `ep_ratio` went from +0.0169 to **-0.0382**. Both value factors changed sign. The
 pre-fix signs agreed with the literature and the post-fix signs do not — and
@@ -434,6 +442,16 @@ share classes properly, which needs a source the consolidated DEI tag does not
 provide. Choosing between those decides what the universe contains, so it is not
 a change to make in passing.
 
+> **Correction, 2026-09-24.** Two statements in this section are not supported
+> as general rules. "SEC's own `companyfacts` stops reporting" the DEI count "for
+> multi-class issuers" is an observation about Visa, Mastercard and Berkshire in
+> the ingested data, not a sourced SEC rule; why those series end was not
+> established. "The consolidated DEI tag" is also inaccurate for Berkshire: its
+> 2011-05-06 filing cover lists Class A 941,481 and Class B 1,061,009,224, so the
+> stored 941,481 is a Class A count. It is not consolidated. The stored rows
+> carry no class dimension. See incident 13's correction and
+> [the selection evidence](docs/validation/VALIDATION_SELECTION_EVIDENCE_20260923.md).
+
 **What holds until then.** The magnitude check refuses to score the affected
 factors rather than reporting a plausible number from them. That is the intended
 behaviour: a run that stops is better than a table that is quietly wrong.
@@ -535,6 +553,19 @@ a Class B price on the day it was filed, and the bound only stops it once it get
 old. A real fix needs per-class share counts, which the consolidated DEI tag
 cannot supply and which would take another source. Recording the bound as a fix
 would leave the next reader believing the market caps are sound.
+
+> **Correction, 2026-09-24.** "The consolidated DEI tag" should read "the stored
+> share rows, which carry no class dimension". Berkshire's stored 941,481 is the
+> Class A count from its filing cover, not a consolidated count. That the DEI
+> series stops for multi-class issuers generally is likewise unsourced; it is an
+> observation about the three filers here. Two more statements in this incident
+> go beyond the evidence. "Exactly right for the other 27" was not verified:
+> those share counts were not all checked against filings. The 2026-09-24 source
+> check covered single cases such as AAPL, which does not show that the rest are
+> correct. "More than 400 days old …
+> a number that is known to be wrong" should read "past the carry the policy
+> allows"; it does not prove the actual share count changed. The mitigation and
+> its measured cost below are unaffected.
 
 **The cost, measured, because it changes the sample.** The bound nulls 11,166 of
 113,216 price rows and takes `shares_out` coverage from 85.5% to 75.6%. All

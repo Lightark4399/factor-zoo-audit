@@ -89,9 +89,9 @@ CREATE TABLE IF NOT EXISTS fundamentals (
     form         VARCHAR NOT NULL,   -- 10-K, 10-Q, 8-K...
     accession    VARCHAR NOT NULL,   -- the filing this came from, for provenance
     -- Which XBRL namespace the fact was taken from. Almost always 'us-gaap'.
-    -- Shares outstanding is the exception: it is a cover-page fact that us-gaap
-    -- does not define, so it comes from 'dei' and is written under the us-gaap
-    -- name the rest of the codebase asks for. Recording the origin keeps that
+    -- Shares outstanding is the exception: the DEI cover-page count is written
+    -- under the us-gaap shares-outstanding name the rest of the codebase asks for, so
+    -- rows of that tag can come from either namespace. Recording the origin keeps that
     -- rename auditable -- `WHERE source_namespace = 'dei'` shows exactly which
     -- rows were renamed, instead of the rename being visible only in a comment.
     source_namespace VARCHAR DEFAULT 'us-gaap',

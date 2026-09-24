@@ -133,6 +133,9 @@ Follow-ups, deliberately not changed here:
   stated interval choice (compare the naive-trap limitation in
   `docs/DISCLOSURE_METRICS.md`).
 - `fama_macbeth` HAC failure: how NaN `tstat`/`pvalue` are displayed.
+- Share-count candidates and interval ties: evidence, counts and options in
+  [VALIDATION_SELECTION_EVIDENCE_20260923](docs/validation/VALIDATION_SELECTION_EVIDENCE_20260923.md);
+  no selection rule changed.
 
 ### Read-only disclosure reasons on the available store — 2026-09-23
 

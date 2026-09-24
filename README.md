@@ -294,16 +294,30 @@ volume counts today's smaller shares, so it is divided by the same factor;
 `turnover` divides volume by a point-in-time share count and the two must be in
 the same share terms.
 
-**Share counts come from the DEI namespace.** Shares outstanding is a cover-page
-fact that `us-gaap` does not define, so it is read from
-`dei:EntityCommonStockSharesOutstanding` and written under the `us-gaap` name the
-rest of the codebase asks for. The `source_namespace` column records the origin.
+**Share counts come from two taxonomies under one name.**
+`dei:EntityCommonStockSharesOutstanding` is the cover-page count in SEC's DEI
+taxonomy; `us-gaap:CommonStockSharesOutstanding` is common shares outstanding in
+the FASB's US GAAP taxonomy. Stored rows of the two can share a date or differ, as
+can their values; stored us-gaap rows include current and earlier comparative
+dates. Which XBRL context a stored row came from is not recorded. The ingest reads
+both and writes the DEI fact under the `us-gaap` name the rest of the codebase asks
+for; the `source_namespace` column records the origin. The DEI read was added after
+eleven of the first thirty companies had no share count. For example, Coca-Cola's
+`us-gaap` facts then carried 724 tags without this one. That observation is about
+those filers at the time, not evidence that the `us-gaap` tag does not exist.
+When a DEI and a `us-gaap` row share the same stored de-duplication key, the
+`us-gaap` row is kept. That key does not include XBRL class dimensions. Rows with
+different keys from one filing are all kept, and price rows currently choose among
+them by row order; see the [selection evidence](docs/validation/VALIDATION_SELECTION_EVIDENCE_20260923.md).
 
 **A share count older than 400 days is dropped, and three companies lose most of
-their history to it.** SEC stops reporting the consolidated DEI share count once
-an issuer reports per share class, so for **Visa, Mastercard and Berkshire
-Hathaway B — 3 of the 30 companies** the tag ends in 2010 or 2011 (V 2010-02-03,
-MA 2010-11-02, BRK-B 2011-05-06). The as-of join used to carry those values
+their history to it.** In the ingested data, the DEI share count for **Visa,
+Mastercard and Berkshire Hathaway B — 3 of the 30 companies** ends in 2010 or 2011
+(V 2010-02-03, MA 2010-11-02, BRK-B 2011-05-06). That is an observation about
+these three filers in the Store, not a sourced SEC rule. Why the series ends is not
+established here; per-class reporting is one possible reason. Berkshire's last
+stored value, 941,481, is the Class A count on that filing's cover page, stored
+beside a Class B price. The as-of join used to carry those values
 forward to 2026. `attach_shares_outstanding` now writes a null instead once a
 count is more than 400 days old, which is a year plus enough slack for a late
 filer or a changed fiscal year end.
@@ -326,11 +340,12 @@ still being carried into 2026. `_market_cap` and `turnover` now cap that carry a
 10 days — enough for a month end on a holiday weekend, not enough to bridge a
 share count that stopped being filed.
 
-This is a mitigation and not a fix. The underlying fault is that the tag is a
-single consolidated count: Berkshire's 941,481 is a **Class A** share count
-standing next to a **Class B** price, which was wrong on the day it was filed
-rather than wrong because it aged. Fixing that needs per-class share counts from
-a source this tag cannot supply. AI_NOTES incident 13 has the full account.
+This is a mitigation and not a fix. The underlying fault is that the stored rows
+carry no share-class dimension: Berkshire's 941,481 is the **Class A** count on its
+filing's cover page, standing next to a **Class B** price, which was wrong on the
+day it was filed rather than wrong because it aged. Fixing that needs per-class
+share counts, which the stored rows do not provide. AI_NOTES incident 13 has the
+full account.
 
 ## Who is in the universe, and who only half is
 

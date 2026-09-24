@@ -378,18 +378,18 @@ def attach_shares_outstanding(
     Carrying forward has a limit
     ----------------------------
     ``merge_asof`` will carry the last filed count forward indefinitely, and for
-    three companies in the live universe it carried one forward for a decade:
-    ``dei:EntityCommonStockSharesOutstanding`` stops being filed for multi-class
-    issuers, so V, MA and BRK-B each keep a count last reported in 2010 or 2011
-    against a price quoted in 2026. Beyond ``max_staleness_days`` the row gets a
+    three companies in the live universe it carried one forward for a decade: in
+    the ingested data ``dei:EntityCommonStockSharesOutstanding`` ends in 2010 or
+    2011 for V, MA and BRK-B (why is not established here), so each kept a count
+    last reported then against a price quoted in 2026. Beyond ``max_staleness_days`` the row gets a
     null instead, because an undefined market cap is a smaller lie than a
     confidently wrong one -- the same rule the rest of this project follows.
 
     THIS IS A MITIGATION, NOT A FIX. It treats the symptom. The disease is that
-    the tag is a single consolidated count and BRK-B's 941,481 is a Class A
-    share count standing next to a Class B price: wrong on the day it was filed,
-    not wrong because it aged. A real fix needs per-class share counts, which
-    this tag cannot supply and which would require another source. See AI_NOTES
+    the stored rows carry no share-class dimension: BRK-B's 941,481 is the Class A
+    count on its filing's cover page, standing next to a Class B price: wrong on
+    the day it was filed, not wrong because it aged. A real fix needs per-class
+    share counts, which the stored rows do not provide. See AI_NOTES
     incident 13.
     """
     if prices.empty or fundamentals.empty:
