@@ -184,14 +184,16 @@ The ordinary passing tests are:
 A choice between A and B presupposes a target quantity, and none has been
 chosen. The candidates are:
 
-- **Issuer total common shares outstanding, all classes.** This matches book
-  equity, which belongs to every class, so it suits book-to-market and
-  earnings-to-price. A market value then needs a price for each class, or a
-  stated conversion between classes; the Store has neither.
+- **Issuer total common shares outstanding, all classes.** This is a conditional
+  across-class candidate. If `StockholdersEquity` and `NetIncomeLoss` are
+  company-level amounts attributable to common holders, an all-class market
+  value is one candidate denominator for book-to-market and earnings-to-price.
+  That attribution is unverified. The value would also need a price for each
+  class, or a stated conversion between classes; the Store has neither.
 - **Listed-class shares outstanding.** This is consistent with the one price
-  series the Store holds, but gives a market cap for part of the equity. Set
-  against whole-company book equity, it overstates book-to-market for
-  multi-class issuers.
+  series the Store holds, but values only part of the equity where there are
+  several classes. If the numerator is company-level, the resulting ratio is not
+  like-for-like for multi-class issuers.
 - **Timing.** The DEI cover count's date may be later than or equal to the period
   end. Stored us-gaap rows include the current period end and earlier comparative
   dates; their exact XBRL mapping is unverified. This is a separate
@@ -214,8 +216,127 @@ wrong class. BRK-B has one stored candidate, the Class A count, beside a Class B
 price. Neither option would change it, and a latest-period rule would not detect
 it. A zero candidate is not resolved by ordering either. For HOOD 2022-02-24 the
 latest-period candidate is the 0; a latest-period rule would keep it, while B
-would refuse the group. A class-correct share count needs data the Store does not
-hold. This record states the boundary only; no policy is implemented.
+would refuse the group. The Store lacks class identifiers, so whether a stored
+count is of the right class cannot be reliably identified or verified. This
+record states the boundary only; no policy is implemented.
+
+### By consumer (read-only code review, `src/fza/factors/library.py` at `9f6dfe6`)
+
+Shared inputs:
+
+- **Price.** `prices.close` is the price for the security's one ticker. For
+  yfinance rows it is `Close` × the cumulative later split factor; that
+  reconstruction depends on the split records yfinance supplies. For Stooq rows
+  it is Stooq's `Close`, which the code comment says is already split- and
+  dividend-adjusted.
+- **Volume.** `prices.volume` is the ticker's volume. For yfinance rows it is
+  `Volume` ÷ the same split factor, so it depends on the same split records.
+- **Shares.** `prices.shares_out` is written at ingest by
+  `attach_shares_outstanding`. It is an as-of join on `filed ≤ trade_date` with
+  no filing lag, nulled beyond 400 days, and resolves same-date candidates by row
+  order.
+
+The Store does not record which source supplied a price row: **UNKNOWN** per
+row. A local companion ingest report, `data/fza_200.report.json` (gitignored, not
+archived), shows `n_stooq=0`, `n_yfinance=200` and `n_rows=768082` for prices.
+It is not bound to the Store hash, so it is not row-level provenance.
+
+| Consumer | Formula in code | Price / volume | Shares | Fundamentals | Consistent target (policy, not chosen) | Store lacks | A/B can / cannot |
+|---|---|---|---|---|---|---|---|
+| `_market_cap` (shared) | `close × shares_out` per ticker-day, pivoted, carried ≤ 10 days to each signal date | ticker `close` | `shares_out` | — | Depends on the consumer below | Class of `shares_out`; which source supplied `close` | Can: pick or refuse among one group's candidates. May pick the right class by chance, but cannot guarantee or show it; the Store lacks class identifiers |
+| `log_mktcap` | `−log(mktcap)` where `mktcap > 0` | via `_market_cap` | via `_market_cap` | none (declares `CommonStockSharesOutstanding`, `filing_lag_days=2`) | **Policy**: issuer-total equity value or listed-class value — see below | Class counts, unlisted-class prices, conversion ratios | Same as `_market_cap` |
+| `bm_ratio` | `StockholdersEquity / mktcap`; both `> 0` | via `_market_cap` | via `_market_cap` | Latest filed `StockholdersEquity`, read at signal date − 2 days | **Conditional candidate**: an across-class (issuer-total) value, if the numerator is company-level; common-only attribution of `StockholdersEquity` is unverified | As `log_mktcap`; also whether each filer's `StockholdersEquity` includes preferred or other non-common equity (**UNKNOWN**) | May select a count of the right class by chance, but cannot guarantee or verify class alignment with the numerator |
+| `ep_ratio` | TTM `NetIncomeLoss / mktcap`; both `> 0` | via `_market_cap` | via `_market_cap` | TTM `NetIncomeLoss` from history reads at signal date − 2 days | As B/M: **conditional** across-class candidate; common-only attribution of `NetIncomeLoss` is unverified | As B/M; whether income is attributable to common only (**UNKNOWN**) | As B/M |
+| `turnover` | `−(21-day rolling mean volume) / shares_out` where `shares_out > 0`; the mean needs at least 10 non-null observations (`min_periods = window // 2`); both carried ≤ 10 days separately | ticker `volume` | `shares_out` direct, not via `_market_cap` | none (declares the share tag, `filing_lag_days=2`) | Volume and shares in the same class terms: **listed-class shares** if the volume is listed-class only. Which class `volume` covers is **UNKNOWN** | Listed-class share counts; the class of the provider's volume | Can: stabilise the within-group pick. May match the volume's class by chance, but cannot guarantee or verify it |
+
+**B/M and E/P.** The numerators are company-level fundamentals (the
+`StockholdersEquity` and `NetIncomeLoss` tags) and the denominator is one
+ticker's price times a stored count of undetermined class. Whether those tags are
+attributable to common shareholders only is unverified. If they are company-level
+amounts attributable to common holders, one candidate denominator is the market
+value of all classes. For a single-class issuer the class question falls away, but other
+questions remain besides the within-group pick and timing. These include common
+attribution, the price source and split terms. For a multi-class issuer the
+Store cannot reliably form or verify the across-class candidate: it has one price
+series per security and lacks class identifiers, class counts and conversions. BRK-B's stored Class A count times the
+Class B price is neither issuer total nor listed class. The code docstring for
+`bm_ratio` says "common equity". The tag is not restricted to common equity, and
+whether a filer's figure includes preferred is **UNKNOWN** from the Store.
+
+**Turnover.** The numerator is the ticker's volume as the provider reports it.
+Whether that covers the listed class only is **UNKNOWN** from code and sources
+here, and is not inferred. Where it is listed-class volume, the matching
+denominator is listed-class shares. The Store lacks class identifiers, so for
+multi-class issuers it cannot reliably identify or verify a listed-class count.
+For HOOD's 10-K filed 2022-02-24, the only filing checked, the Class A counts on
+the cover and in R4 are not among the stored rows. A/B changes which stored count
+is used. It might pick one of the right class by chance, but cannot guarantee or
+show that.
+
+**log_mktcap.** No numerator constrains the target. There are two candidate
+definitions: whole-company equity value (issuer total) and the traded line's
+value (listed class). This is a **policy choice not yet made**, and each needs
+data the Store lacks for multi-class issuers.
+
+Code observations that bear on the choice, recorded without a fix:
+
+- **Zero shares.** A zero share count is a non-null value, so the ten-day carry
+  does not replace it with an earlier row. The 42 zero-share signal keys were
+  counted on the `_market_cap` path. On that path `log_mktcap`, `bm_ratio` and
+  `ep_ratio` (`mktcap > 0`) drop the key, so it yields no value there rather than
+  a wrong one. `turnover` selects its own `shares_at` and excludes a key when that
+  value is 0. What it does at these 42 keys was not checked.
+- **Filing lag.** The fundamentals numerators are read 2 days before the signal
+  date. The share count is attached at ingest with no lag, from the filing date
+  onward. `log_mktcap` and `turnover` declare `filing_lag_days=2`, but that
+  declaration does not reach the embedded share count. These factors make no
+  fundamentals read, so the read-path check has nothing to test and cannot verify
+  that delay. Whether a same-day attachment is later than the filing time is
+  **UNKNOWN** (no time of day is stored). No leak is asserted.
+- **Split terms.** `close` is un-split and `volume` is re-split per yfinance row,
+  subject to the split records available. For Stooq rows the stored `close` is
+  adjusted according to the code comment. If that holds and a Stooq row is used,
+  `close × shares_out` could mix adjusted and point-in-time terms. This is a
+  conditional risk, not an observed mismatch. The ingest code stores Stooq
+  `Volume` as delivered, and whether its split and class terms match the share
+  count used is likewise unverified. Row-level source is **UNKNOWN** from the
+  Store. The companion report above shows Stooq = 0 for this batch but is not
+  bound to the Store hash, so no mismatch is shown here.
+- **CIK to ticker.** `_fundamental_panel` and `_fundamental_history` build
+  `dict(zip(cik, ticker))`, which keeps one ticker when a CIK has several.
+  Whether the current sample has any such CIK was not checked. This is a code
+  boundary, not an observed sample error.
+
+**Bounded recommendation.**
+
+1. Before choosing A or B, declare a target per consumer. The candidates above
+   are:
+   - for `bm_ratio` and `ep_ratio`, an across-class value, conditional on the
+     numerators' attribution;
+   - for `turnover`, same-class volume and shares;
+   - for `log_mktcap`, an explicit choice between the two definitions.
+2. Treat the class data as a prerequisite, not something A/B can supply. Without
+   a ticker-to-class mapping and class counts, the Store cannot tell single-class
+   from multi-class issuers. Those keys can only be labelled as class-unverified,
+   not corrected.
+3. Only then use A/B for within-group selection or refusal, where it still
+   applies.
+
+The filing-lag asymmetry and the conditional price-source terms are separate
+decisions from the class question.
+
+**Unresolved choices:**
+
+- target for `log_mktcap`;
+- whether `bm_ratio` and `ep_ratio` should exclude or flag multi-class issuers
+  until issuer-total value is available;
+- turnover pairing, pending the class of provider volume;
+- whether the share count should carry the declared filing lag;
+- whether price-source adjustment terms need row-level provenance;
+- common-only attribution of `StockholdersEquity` and `NetIncomeLoss`;
+- the source for class counts and ticker-to-class mapping (XBRL instance
+  dimensions or another dataset);
+- only after these, A versus B.
 
 ## Options for review (not chosen)
 
