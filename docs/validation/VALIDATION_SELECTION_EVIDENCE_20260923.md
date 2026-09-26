@@ -1,6 +1,7 @@
 # Share-count and interval selection — evidence for review
 
-Base: `bb92bc1` on `claude/disclosure-readme-audit`, plus uncommitted files.
+Base: evidence work started from `bb92bc1` on `claude/disclosure-readme-audit`,
+was committed in `9f6dfe6`, and the "By consumer" extension in `2fa8f52`.
 Recorded 2026-09-23 and extended 2026-09-24. This is evidence for review, not a
 correction, an algorithm fix or a stage pass. No selection algorithm, database,
 historical archive or verdict behavior was changed. No factor, demo or
