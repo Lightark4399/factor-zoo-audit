@@ -6,9 +6,11 @@
 -- fundamentals_history_asof, which use the `latest_fundamental_asof` and
 -- `fundamentals_asof` macros below. Those macros require `filed <= signal_date`
 -- and `period_end <= signal_date`. The factor library's helpers query them at the
--- signal date minus 2 days. That is a default in the helpers; it matches every
--- factor's current filing_lag_days declaration but is not passed from it.
--- assert_read_path_respected checks the logged reads against the declared lag.
+-- signal date minus 2 days. That is a default in the helpers; it matches the
+-- current declarations of factors using these fundamental helpers but is not
+-- passed from them. assert_read_path_respected compares the logged returned
+-- filing dates with the intended signal date minus the declared lag; it does
+-- not check that each requested as-of date was itself moved back by 2 days.
 --
 -- That guarantee covers this read path, not the data layer as a whole. The
 -- schema also defines `fundamentals_restated`, which has no `filed` cutoff. It
