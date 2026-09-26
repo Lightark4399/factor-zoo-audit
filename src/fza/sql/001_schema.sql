@@ -5,18 +5,23 @@
 -- appeared. Fundamentals-based factors read through Store.fundamentals_asof and
 -- fundamentals_history_asof, which use the `latest_fundamental_asof` and
 -- `fundamentals_asof` macros below. Those macros require `filed <= signal_date`
--- and `period_end <= signal_date`. The factor library queries them at the signal
--- date minus the factor's declared filing lag, and assert_read_path_respected
--- checks the logged reads against it.
+-- and `period_end <= signal_date`. The factor library's helpers query them at the
+-- signal date minus 2 days. That is a default in the helpers; it matches every
+-- factor's current filing_lag_days declaration but is not passed from it.
+-- assert_read_path_respected checks the logged reads against the declared lag.
 --
 -- That guarantee covers this read path, not the data layer as a whole. The
 -- schema also defines `fundamentals_restated`, which has no `filed` cutoff. It
 -- serves the diagnostic comparison arm in compare_vintages, which bypasses the
--- cutoff on purpose; Store counts every read of it. Price-based factors read the
+-- cutoff on purpose. Store records each call to its fundamentals_restated()
+-- method. The arm's later per-date reads of the loaded frame happen in memory
+-- and do not enter Store's point-in-time read log. Price-based factors read the
 -- `prices` table, not these macros. The `shares_out` embedded there is attached
 -- at ingest on `filed <= trade_date` with no filing lag (see
 -- attach_shares_outstanding). A factor's declared filing lag is therefore not
--- applied to it, and the read-path check has no fundamentals read to test.
+-- applied to it. The read-path check still covers the fundamentals numerator
+-- reads of B/M and E/P, but cannot verify how shares_out was attached to price
+-- rows.
 -- Whether a same-day attachment ever precedes public availability is not
 -- established; no leak is asserted here.
 --

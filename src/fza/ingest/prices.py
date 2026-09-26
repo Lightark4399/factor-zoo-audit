@@ -369,7 +369,8 @@ def attach_shares_outstanding(
     for one is the filings. The join is as-of on ``filed``: a trade date carries
     the most recent share count with ``filed <= trade_date``. This mirrors the
     filing-date cutoff of the fundamentals read path but not its reporting lag.
-    Fundamentals reads are made at the signal date minus the factor's declared
+    Fundamentals reads are made at the signal date minus the factor library's
+    2-day helper default, which currently matches each factor's declared
     ``filing_lag_days``; this join uses no lag, and the stored date has no time
     of day. Whether a same-day attachment precedes public availability is not
     established here.
