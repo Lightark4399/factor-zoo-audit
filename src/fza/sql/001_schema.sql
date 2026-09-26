@@ -2,13 +2,23 @@
 --
 -- The design decision that matters is in the `fundamentals` table: it stores
 -- both the accounting period the number describes AND the date the filing
--- appeared. Every factor reads through a view that enforces `filed <=
--- signal_date`, so a factor physically cannot see a restatement that had not
--- been published yet.
+-- appeared. Fundamentals-based factors read through Store.fundamentals_asof and
+-- fundamentals_history_asof, which use the `latest_fundamental_asof` and
+-- `fundamentals_asof` macros below. Those macros require `filed <= signal_date`
+-- and `period_end <= signal_date`. The factor library queries them at the signal
+-- date minus the factor's declared filing lag, and assert_read_path_respected
+-- checks the logged reads against it.
 --
--- That is a stronger guarantee than testing for look-ahead afterwards. An
--- after-the-fact check can only find leakage the author thought to look for; a
--- data layer that cannot express the leaking query removes the possibility.
+-- That guarantee covers this read path, not the data layer as a whole. The
+-- schema also defines `fundamentals_restated`, which has no `filed` cutoff. It
+-- serves the diagnostic comparison arm in compare_vintages, which bypasses the
+-- cutoff on purpose; Store counts every read of it. Price-based factors read the
+-- `prices` table, not these macros. The `shares_out` embedded there is attached
+-- at ingest on `filed <= trade_date` with no filing lag (see
+-- attach_shares_outstanding). A factor's declared filing lag is therefore not
+-- applied to it, and the read-path check has no fundamentals read to test.
+-- Whether a same-day attachment ever precedes public availability is not
+-- established; no leak is asserted here.
 --
 -- Prices are stored without a knowledge dimension, deliberately. Daily OHLCV is
 -- revised rarely and unsystematically, while fundamentals are revised routinely
