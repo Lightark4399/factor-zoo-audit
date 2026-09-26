@@ -10,7 +10,7 @@ identify tested code. Commit anchors below retain the roles stated in the record
 
 | Record | Source anchor / scope | Historical status and limits |
 |---|---|---|
-| [Selection evidence, 2026-09-23](VALIDATION_SELECTION_EVIDENCE_20260923.md) | Base `bb92bc1` plus uncommitted branch work | Read-only probe and known-gap strict xfails; evidence and options, not a correction or stage pass |
+| [Selection evidence, 2026-09-23](VALIDATION_SELECTION_EVIDENCE_20260923.md) | Base `bb92bc1`; evidence `9f6dfe6`; "By consumer" extension `2fa8f52` | Read-only probe and known-gap strict xfails; evidence and options, not a correction or stage pass |
 | [Disclosure metrics, 2026-09-14](VALIDATION_DISCLOSURE_20260914.md) | Base `f9f5638` | New counting and rendering contract; focused checks, not a real-data rerun |
 | [2026-09-05](VALIDATION_20260905.md) | Review baseline `0a2dde0`; implementation `052d696`, `82b2e55` | Local validation and test-count reconciliation; not research qualification |
 | [2026-09-06](VALIDATION_20260906.md) | Baseline `2bf5aa0`; AS-03 fix `36071e9` | Interrupted; replaced by the September 7 run, not a completed full run |

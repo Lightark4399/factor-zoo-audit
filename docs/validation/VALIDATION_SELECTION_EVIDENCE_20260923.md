@@ -374,3 +374,45 @@ BRK-B.
 - The carry-adjusted loss under B was not simulated, and `turnover` exposure was
   not counted.
 - The minimum environment and the full suite were not run.
+
+## Follow-up, 2026-09-26: whole-row selection in `leaking_asof`
+
+The sections above record the state as of 2026-09-23/24, including three strict
+xfails. They are kept as written. On 2026-09-26 one of the three gaps was fixed
+on this branch; "this fix" below means that change. The pre-fix code is commit
+`3970567`, verified to contain the `groupby().last()` selection.
+
+- **Fix.** `src/fza/pipeline/run.py::compare_vintages`, inner `leaking_asof`, now
+  returns one whole stored row per `(cik, tag)`. It uses
+  `drop_duplicates(keep="last")` after the same sort, in place of
+  `groupby().last()`, which took the last non-null value per column and could
+  splice two rows. The sort and its tie order are unchanged.
+- **Tests.** `test_restated_arm_returns_a_whole_stored_row` is now an ordinary
+  test. It is parametrized over null position and insertion order and compares
+  every returned column with a stored row. A new test,
+  `test_restated_arm_does_not_splice_nulls_in_other_columns`, covers a null
+  outside `value`. Against the pre-fix code, the four cases where the last row
+  holds a null fail; the four other cases pass under both versions.
+- **Two strict xfails remain known gaps:**
+  - `test_attached_share_count_does_not_depend_on_input_row_order`, share-count
+    row order;
+  - `test_both_arms_select_the_same_row_when_filing_visibility_is_equal`,
+    interval tie between arms.
+- **Bounded old/new comparison on the real store.** The store was opened
+  read-only with DuckDB `memory_limit=256MB` and `threads=1`; its SHA-256 was
+  unchanged. The comparison captured the restated arm's `fundamentals_asof`
+  output under `compare_vintages` from the pre-fix commit `3970567` and with
+  this fix. It
+  covered **24 signal dates**, every eighth of 185 month ends, each read at
+  signal date − 2 days:
+  - **3,227** consumer-scope rows (`StockholdersEquity`): no cell differed;
+  - **13,561** diagnostic rows (four tags): no cell differed;
+  - neither version returned a row absent from the store.
+- **Positive control.** The same harness, run on a small store with a known
+  splice, reported 2 spliced rows under the old code and 0 under the new code,
+  so it can detect a splice.
+- **Limits.** The comparison script and the old-version copy exist only in a
+  scratchpad and are not archived with the repository. The real-store comparison
+  ran no factor and compared read outputs only, not factor outputs. No demo or
+  full regression was run for it. Dates outside the 24 were not compared. That
+  factor results are unchanged is an inference, not an observation.

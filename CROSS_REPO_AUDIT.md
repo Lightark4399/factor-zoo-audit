@@ -132,6 +132,10 @@ Follow-ups, deliberately not changed here:
   `.last()`; keys sharing a period end with different `period_start` have no
   stated interval choice (compare the naive-trap limitation in
   `docs/DISCLOSURE_METRICS.md`).
+  *Status 2026-09-26:* the per-column `.last()` splice present in `3970567` was
+  fixed on this branch on that date (whole stored rows). The interval tie between
+  the PIT and restated arms is unresolved; its strict xfail remains. See the follow-up in
+  [VALIDATION_SELECTION_EVIDENCE_20260923](docs/validation/VALIDATION_SELECTION_EVIDENCE_20260923.md).
 - `fama_macbeth` HAC failure: how NaN `tstat`/`pvalue` are displayed.
 - Share-count candidates and interval ties: evidence, counts and options in
   [VALIDATION_SELECTION_EVIDENCE_20260923](docs/validation/VALIDATION_SELECTION_EVIDENCE_20260923.md);

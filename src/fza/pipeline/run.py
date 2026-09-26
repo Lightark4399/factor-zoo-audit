@@ -642,10 +642,13 @@ def compare_vintages(
         out = out.loc[out["period_end"] <= pd.Timestamp(signal_date)]
         if out.empty:
             return out
+        # One whole stored row per (cik, tag). groupby().last() took the last
+        # non-null value per column and could splice two rows together. The sort
+        # and its tie order are unchanged; only the splicing is removed.
         return (
             out.sort_values(["cik", "tag", "period_end"])
-            .groupby(["cik", "tag"], as_index=False)
-            .last()
+            .drop_duplicates(["cik", "tag"], keep="last")
+            .reset_index(drop=True)
         )
 
     def leaking_history_asof(signal_date, tags=None, intended_signal_date=None):

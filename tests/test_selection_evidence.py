@@ -128,16 +128,18 @@ def test_attached_share_count_does_not_depend_on_input_row_order():
     assert forward == backward
 
 
-def arm_reads(monkeypatch, rows):
+def arm_reads(monkeypatch, rows, store=None):
     """Rows each vintage arm's latest read returns, through compare_vintages."""
-    store = Store()
-    for i, (start, value) in enumerate(rows):
-        fact(store, "NetIncomeLoss", start, "2020-09-30", "2020-11-01", value, str(i),
-             fact_type="duration")
+    if store is None:
+        store = Store()
+        for i, (start, value) in enumerate(rows):
+            fact(store, "NetIncomeLoss", start, "2020-09-30", "2020-11-01", value, str(i),
+                 fact_type="duration")
     seen = {}
 
     def compute(factor, store, dates, **kwargs):
         got = store.fundamentals_asof(pd.Timestamp("2020-12-31"), tags=["NetIncomeLoss"])
+        seen[kwargs["vintage"] + "_frame"] = got
         seen[kwargs["vintage"]] = [
             (str(pd.Timestamp(r.period_start).date()),
              None if pd.isna(r.value) else float(r.value), r.accession)
@@ -154,8 +156,15 @@ def arm_reads(monkeypatch, rows):
     stored = {(str(pd.Timestamp(s).date()), None if pd.isna(v) else float(v), a)
               for s, v, a in store.con.execute(
                   "SELECT period_start, value, accession FROM fundamentals").fetchall()}
+    seen["stored_frame"] = store.con.execute("SELECT * FROM fundamentals").df()
     store.close()
     return seen, stored
+
+
+def as_rows(frame, columns):
+    """Rows as comparable tuples; missing values of any kind become None."""
+    return {tuple(None if pd.isna(v) else str(v) for v in row)
+            for row in frame[columns].itertuples(index=False)}
 
 
 @pytest.mark.xfail(**KNOWN_GAP, reason="KNOWN GAP: on a (period_end, filed) tie across "
@@ -167,8 +176,35 @@ def test_both_arms_select_the_same_row_when_filing_visibility_is_equal(monkeypat
     assert seen["pit"] == seen["restated"]
 
 
-@pytest.mark.xfail(**KNOWN_GAP, reason="KNOWN GAP: leaking_asof uses groupby().last(), "
-                   "which takes the last non-null value per column, not a whole row")
-def test_restated_arm_returns_a_whole_stored_row(monkeypatch):
-    seen, stored = arm_reads(monkeypatch, [("2020-01-01", 90.0), ("2020-07-01", None)])
+@pytest.mark.parametrize("rows", [
+    [("2020-01-01", 90.0), ("2020-07-01", None)],
+    [("2020-07-01", None), ("2020-01-01", 90.0)],
+    [("2020-01-01", None), ("2020-07-01", 30.0)],
+    [("2020-07-01", 30.0), ("2020-01-01", None)],
+    [("2020-01-01", 90.0), ("2020-07-01", 30.0)],
+    [("2020-07-01", 30.0), ("2020-01-01", 90.0)],
+])
+def test_restated_arm_returns_a_whole_stored_row(monkeypatch, rows):
+    # Null value in either row, in either insertion order. Which row wins a tie
+    # is a separate, unchanged policy; the returned row must be a stored one.
+    seen, stored = arm_reads(monkeypatch, rows)
+    assert len(seen["restated"]) == 1
     assert set(seen["restated"]) <= stored
+    columns = list(seen["restated_frame"].columns)
+    assert as_rows(seen["restated_frame"], columns) <= as_rows(seen["stored_frame"], columns)
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_restated_arm_does_not_splice_nulls_in_other_columns(monkeypatch, reverse):
+    rows = [("2020-01-01", 2020, "a"), ("2020-07-01", None, "b")]
+    store = Store()
+    for start, fiscal_year, accession in rows[::-1] if reverse else rows:
+        store.con.execute(
+            "INSERT INTO fundamentals (cik, tag, period_start, period_end, filed, value, "
+            "unit, form, accession, fiscal_year, fact_type) VALUES ('1', 'NetIncomeLoss', "
+            "?, '2020-09-30', '2020-11-01', 5, 'USD', '10-Q', ?, ?, 'duration')",
+            [start, accession, fiscal_year])
+    seen, _ = arm_reads(monkeypatch, None, store=store)
+    columns = list(seen["restated_frame"].columns)
+    assert len(seen["restated_frame"]) == 1
+    assert as_rows(seen["restated_frame"], columns) <= as_rows(seen["stored_frame"], columns)
