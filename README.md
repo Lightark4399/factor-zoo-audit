@@ -226,6 +226,51 @@ not complete. See the delivery guide for reproducibility and evidence limits.
 See [B_DELIVERY.md](B_DELIVERY.md) for delivery scope and [SPEC.md](SPEC.md) for
 the active acceptance criteria and the historical research-extension design.
 
+### Known selection gaps
+
+Two selection rules are known to be incomplete. Each is recorded as a strict
+xfail in `tests/test_selection_evidence.py` and is not fixed in this release.
+Evidence and counts are in the
+[selection evidence](docs/validation/VALIDATION_SELECTION_EVIDENCE_20260923.md).
+
+**Share count on price rows.**
+
+- *Mechanism.* `attach_shares_outstanding` selects a share count by `(cik,
+  filed)` only. When candidates filed on the same date differ, the stored count
+  follows input row order. The candidates include DEI cover-page counts and
+  us-gaap current and comparative counts, and the Store keeps no share class.
+- *Checked scope (diagnostic 200-company store).* 4,334 of 8,622 same-date
+  share groups hold more than one value. At 12,173 of the 25,654 universe signal
+  keys with a market cap, the row used came from such a group. These are exposed
+  keys, not errors. Filing text was checked only for single cases:
+  - for AAPL and CAT, the stored count matches a prior-period comparative;
+  - for BRK-B, it is the Class A count beside a Class B price.
+
+  AAPL, CAT and BRK-B are disclosure groups chosen on purpose for categories
+  preset in the committed probe (`scripts/probe_share_candidates.py
+  --samples`): DEI and us-gaap values differ, the latest period still conflicts,
+  and a multi-class issuer. Why those tickers were named is not recorded. They
+  were not drawn at random from the 12,173 exposed signal keys, so they cannot be
+  used to estimate an error rate. Each match above is by value and date against
+  the filing text; no XBRL context mapping was verified.
+- *Unknown.* How many exposed keys carry an unsuitable count; the effect on
+  `log_mktcap`, B/M, E/P and turnover results; turnover's own exposure; and
+  class-correct counts, which the Store cannot identify.
+
+**Interval tie on the latest fundamentals read.**
+
+- *Mechanism.* `latest_fundamental_asof` and the restated arm's `leaking_asof`
+  keep one row per `(cik, tag)`. Rows equal on period end and filing date fall to
+  storage or frame order, so the two arms can pick different intervals from the
+  same data. The separate row-splicing defect in `leaking_asof` was fixed in
+  `0ce7911`.
+- *Checked scope (diagnostic store).* The only tag on this path,
+  `StockholdersEquity`, has no groups with several intervals. It has 19
+  same-date groups with several rows out of 21,861, and none of them differ in
+  value. Current factor inputs there are therefore not affected.
+- *Unknown.* Other stores and tags. A factor reading a duration tag through this
+  path would meet the tie.
+
 ---
 
 ## First real ingest
