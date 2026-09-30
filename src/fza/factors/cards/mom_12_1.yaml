@@ -21,8 +21,11 @@ persistence_conditions: >
   rather than compensation for a risk that investors genuinely bear.
 
 definition: >
-  Cumulative return from t-12 months to t-1 month, computed from adjusted close
-  prices after the close on the last trading day of the formation month.
+  P(s-1) / P(s-12) - 1 at the signal month end s: lags 2-12, eleven monthly
+  returns, skipping the most recent month s. s-k is the k-th calendar month end
+  before s, and P(m) is the last adjusted close on or before m, carried at most
+  ten days. Computed after the close on the last trading day of the formation
+  month; the value at s does not depend on which other dates are requested.
 
 timing:
   signal_computed: month_end_close

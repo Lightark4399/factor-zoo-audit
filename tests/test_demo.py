@@ -207,6 +207,22 @@ def fast_fixture_report():
     return _capture_demo(_FAST)
 
 
+@pytest.fixture(scope="module")
+def short_history_report():
+    """The first six month ends of the price history, where momentum cannot exist.
+
+    mom_12_1 needs a price at s-12 and mom_6_1 at s-7. Six month ends at the very
+    start of the fixture's prices have neither, so both produce nothing because
+    the history is genuinely too short, not because of how dates were sampled.
+    """
+    def first_six(store, **kwargs):
+        return signal_dates_for(store, min_history_months=0)[:6]
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr("fza.demo.signal_dates_for", first_six)
+        return _capture_demo(_FAST)
+
+
 def test_a_factor_that_fails_its_magnitude_check_stays_in_the_table(failed_fixture_report):
     """Catching the error must not be the same as hiding it.
 
@@ -245,18 +261,21 @@ def test_the_other_factors_still_run_when_one_fails(failed_fixture_report):
     assert protocol.count("  OK") >= 7
 
 
-def test_the_status_column_reports_an_empty_factor_as_its_own_outcome(fast_fixture_report):
+def test_the_status_column_reports_an_empty_factor_as_its_own_outcome(short_history_report):
     """'FAILED: empty' and 'FAILED: magnitude' are different things.
 
-    Six subsampled signal dates leave the momentum factors without a formation
-    window, so they legitimately produce nothing. Collapsing that into the same
-    label as a rejected magnitude would tell a reader to go looking in the wrong
-    place -- which is the failure mode of incident 11, where the message named
-    the factor and the fault was in a column.
+    Signal dates at the start of the price history leave the momentum factors
+    without their calendar anchors, so they legitimately produce nothing.
+    Collapsing that into the same label as a rejected magnitude would tell a
+    reader to go looking in the wrong place -- which is the failure mode of
+    incident 11, where the message named the factor and the fault was in a column.
     """
-    _, out = fast_fixture_report
+    _, out = short_history_report
     protocol = out.split("STANDARD PROTOCOL")[1].split("THE TRAP")[0]
 
+    for factor_id in ("mom_12_1", "mom_6_1"):
+        row = next(ln for ln in protocol.splitlines() if ln.strip().startswith(factor_id + " "))
+        assert "FAILED: empty" in row, factor_id
     assert "FAILED: empty" in protocol
     assert "produced no values at all" in protocol
     assert "FAILED: magnitude" not in protocol

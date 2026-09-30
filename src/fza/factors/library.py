@@ -347,57 +347,53 @@ def _market_cap(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
 # ----------------------------------------------------------------------
 # Momentum and reversal
 # ----------------------------------------------------------------------
-def _momentum(
-    store: Store, signal_dates: pd.DatetimeIndex, formation: int, skip: int
+def _calendar_return(
+    store: Store, signal_dates: pd.DatetimeIndex, end_lag: int, start_lag: int
 ) -> pd.DataFrame:
+    """P(s - end_lag) / P(s - start_lag) - 1, lags in calendar month ends before s.
+
+    Lag 0 is the signal date s; lag k is the k-th calendar month end before s.
+    Each anchor price is read from the full price history with the same rule as
+    any signal date: the last close on or before the anchor, carried at most
+    MAX_CARRY_DAYS. Anchors never come from the other requested dates, so a value
+    at s does not depend on which other dates were requested. v0.1.0 shifted rows
+    of the requested grid instead, which made the window depend on its spacing.
+    """
+    dates = pd.DatetimeIndex(signal_dates)
     prices = store.prices()
     if prices.empty:
-        return pd.DataFrame(columns=["ticker", "signal_date", "value"])
+        return pd.DataFrame(index=dates, dtype=float)
+    wide = _wide(prices, "close_adj")
 
-    closes = _at_signal_dates(
-        _wide(prices, "close_adj"),
-        signal_dates,
-        max_staleness_days=MAX_CARRY_DAYS,
-    )
-    # One row is one signal period. Windows are in rows, not trading days -- an
-    # earlier version shifted by 21 rows to mean a month on a month-end frame and
-    # silently produced nothing.
-    end = closes.shift(skip)
-    start = closes.shift(formation + skip)
+    def closes_at(lag: int) -> pd.DataFrame:
+        anchors = dates if lag == 0 else dates - pd.offsets.MonthEnd(lag)
+        unique = _at_signal_dates(wide, anchors.unique(), max_staleness_days=MAX_CARRY_DAYS)
+        return unique.reindex(anchors).set_axis(dates)
+
     with np.errstate(divide="ignore", invalid="ignore"):
-        value = (end / start) - 1.0
-    return _long(value.replace([np.inf, -np.inf], np.nan))
+        value = (closes_at(end_lag) / closes_at(start_lag)) - 1.0
+    return value.replace([np.inf, -np.inf], np.nan)
 
 
 @register("mom_12_1")
 def momentum_12_1(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
-    """Cumulative return from t-12 to t-1 months."""
-    return _momentum(store, signal_dates, formation=12, skip=1)
+    """P(s-1) / P(s-12) - 1: lags 2-12, eleven monthly returns (the MOM2-12 window)."""
+    return _long(_calendar_return(store, signal_dates, end_lag=1, start_lag=12))
 
 
 @register("mom_6_1")
 def momentum_6_1(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
-    """The same effect over a shorter window, as a check on window sensitivity."""
-    return _momentum(store, signal_dates, formation=6, skip=1)
+    """P(s-1) / P(s-7) - 1: lags 2-7, six monthly returns; a window-sensitivity check."""
+    return _long(_calendar_return(store, signal_dates, end_lag=1, start_lag=7))
 
 
 @register("rev_1m")
 def reversal_1m(store: Store, signal_dates: pd.DatetimeIndex) -> pd.DataFrame:
-    """Negative of the most recent month's return.
+    """-[P(s) / P(s-1) - 1]: the negative of the most recent month's return.
 
     No skip, by construction: this factor *is* the month that momentum skips.
     """
-    prices = store.prices()
-    if prices.empty:
-        return pd.DataFrame(columns=["ticker", "signal_date", "value"])
-    closes = _at_signal_dates(
-        _wide(prices, "close_adj"),
-        signal_dates,
-        max_staleness_days=MAX_CARRY_DAYS,
-    )
-    with np.errstate(divide="ignore", invalid="ignore"):
-        ret = (closes / closes.shift(1)) - 1.0
-    return _long(-ret.replace([np.inf, -np.inf], np.nan))
+    return _long(-_calendar_return(store, signal_dates, end_lag=0, start_lag=1))
 
 
 # ----------------------------------------------------------------------

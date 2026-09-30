@@ -167,10 +167,11 @@ def signal_dates_for(
 ) -> pd.DatetimeIndex:
     """Month-end signal dates covered by the available price history.
 
-    The first ``min_history_months`` are skipped because the momentum factor
-    needs a twelve-month formation window plus a skip month before it can produce
-    anything. Generating dates the factors cannot serve would fill the report with
-    empty cross-sections and make the coverage look worse than it is.
+    The first ``min_history_months`` are skipped because mom_12_1 needs a price at
+    the twelfth calendar month end before each signal date (eleven return months
+    plus the skipped month) before it can produce anything. Generating dates the
+    factors cannot serve would fill the report with empty cross-sections and make
+    the coverage look worse than it is.
     """
     first, last = store.con.execute(
         "SELECT min(trade_date), max(trade_date) FROM prices"

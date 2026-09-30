@@ -28,11 +28,33 @@ The status vocabulary proposed for the registry is:
 | `ep_ratio` | positive PIT TTM net income / contemporaneous market cap | **AGREES.** | Basu sorts on P/E built from annual earnings available before portfolio formation and year-end market value (1977, method); Fama–French likewise test an annual E/P characteristic. | `DOCUMENTED_VARIANT`; TTM PIT refresh and loss exclusion are material departures, not an exact Basu replication. |
 | `total_vol_60d` | negative 60-session standard deviation of total daily returns | **AGREES.** The old `idio_vol` name has been removed. | Ang–Hodrick–Xing–Zhang estimate volatility of residuals from a Fama–French three-factor regression (2006, variable construction). Bali–Cakici–Whitelaw measure the maximum daily return in the prior month (2011, abstract/Section 2). Neither defines total volatility. | `UNSUPPORTED_LINEAGE`; visible as a diagnostic factor but excluded from the published-anomaly denominator. |
 | `log_mktcap` | `-log(close × shares)` at the signal date | **AGREES.** | The card identifies Banz as the intended definition origin and Fama–French as a comparator, but neither relationship yet has a checked primary-source locator. | `UNVERIFIED`; pending outside the headline denominator until the Banz definition relationship is verified. |
-| `mom_12_1` | adjusted-close cumulative return from *t−12* to *t−1*, negating neither side | **AGREES.** | Asness–Moskowitz–Pedersen explicitly use cumulative months 2–12 return (`MOM2–12`, data section). Jegadeesh–Titman test 3/6/9/12-month formation and holding grids, with either no lag or a one-week lag. | `DOCUMENTED_VARIANT`; signal matches AMP, while this repository's holding and portfolio protocol is its own. |
-| `mom_6_1` | adjusted-close cumulative return from *t−6* to *t−1* | **AGREES.** | Jegadeesh–Titman include six-month formation strategies but not this exact one-month skip convention. | `DOCUMENTED_VARIANT`. |
+| `mom_12_1` | *P(s−1)/P(s−12)−1* on calendar month-end anchors: lags 2–12, eleven monthly returns | **AGREES** after the 2026-09-29 correction below; v0.1.0 did not. | Asness–Moskowitz–Pedersen use the past 12-month cumulative return skipping the most recent month's return (`MOM2–12`, data section); read as lags 2–12, that is the window above. Jegadeesh–Titman test 3/6/9/12-month formation and holding grids, with either no lag or a one-week lag. | `DOCUMENTED_VARIANT`; the window targets AMP's `MOM2–12`, while this repository's holding and portfolio protocol is its own. Not a replication of the paper. |
+| `mom_6_1` | *P(s−1)/P(s−7)−1* on calendar month-end anchors: lags 2–7, six monthly returns | **AGREES.** | Jegadeesh–Titman include six-month formation strategies but not this exact one-month skip convention. | `DOCUMENTED_VARIANT`. |
 | `rev_1m` | negative prior-month adjusted-close return | **AGREES.** | Jegadeesh documents negative first-order serial correlation in monthly returns (1990, abstract and tests). Nagel supports the liquidity-provision interpretation, not the variable's origin. | `DOCUMENTED_VARIANT`; Jegadeesh is definition origin, Nagel is mechanism. |
 | `roe` | PIT TTM net income / latest available stockholders' equity, followed by an explicit `equity > 0` sample filter | **AGREES.** The filter reports its excluded `(date, ticker, equity)` keys separately from missing-data attrition. | Hou–Xue–Zhang define ROE as latest quarterly income before extraordinary items divided by one-quarter-lagged book equity. Novy-Marx and Fama–French measure competing profitability definitions. | `DOCUMENTED_VARIANT`; HXZ is the verified definition origin, with TTM, equity timing, and positive-equity sample selection recorded as three departures. |
 | `turnover` | negative 21-session mean daily share volume / PIT shares outstanding | **AGREES.** | Datar–Naik–Radcliffe define turnover as shares traded divided by shares outstanding (1998, abstract). Miller is a disagreement/short-sale mechanism source. | `DOCUMENTED_VARIANT`; Datar is definition origin, Miller is mechanism. |
+
+**Correction, 2026-09-29 (after v0.1.0).** The rows above for `mom_12_1` and
+`mom_6_1` previously read "cumulative return from *t−12* (*t−6*) to *t−1*",
+**AGREES**, and "signal matches AMP". That was too strong for v0.1.0. v0.1.0
+shifted rows of the requested signal dates rather than calendar months:
+`mom_12_1` used the requested date 1 row back over the date 13 rows back, which
+on a consecutive month-end grid is *P(s−1)/P(s−13)−1* — twelve monthly returns,
+lags 2–13, not `MOM2–12`. On a thinned or single-date request (for example demo
+`--max-dates`), all three price windows (`mom_12_1`, `mom_6_1`, `rev_1m`) spanned
+multiples of the grid spacing or produced nothing. The current code reads each
+anchor at a calendar month end from the full price history:
+
+- `mom_12_1` = *P(s−1)/P(s−12)−1*, lags 2–12;
+- `mom_6_1` = *P(s−1)/P(s−7)−1*, lags 2–7, which keeps six return months;
+- `rev_1m` = −[*P(s)/P(s−1)−1*].
+
+A value at *s* no longer depends on the requested date set. On a consecutive
+month-end grid, `mom_6_1` and `rev_1m` keep every value v0.1.0 computed. Their
+first rows, and `mom_12_1`'s, which v0.1.0 dropped mechanically, can now return
+where the anchors are valid. `mom_12_1` values change by design. The effect on
+real-store samples and statistics has not been measured. Outputs and archives
+produced by v0.1.0 used the old windows.
 
 No row is labelled `EXACT_REPLICATION`: even where the characteristic formula
 matches, the repository uses a common monthly PIT signal, cleaning and holding

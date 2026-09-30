@@ -16,8 +16,10 @@ persistence_conditions: >
   the two would indicate that the formation window is doing more work than the
   economic story allows, which is the definition of a fitted parameter.
 definition: >
-  Cumulative return from t-6 months to t-1 month, computed from adjusted closes
-  after the close on the last trading day of the formation month.
+  P(s-1) / P(s-7) - 1 at the signal month end s: lags 2-7, six monthly returns,
+  skipping the most recent month s. Month-end anchors and prices are defined as
+  for mom_12_1 (calendar month ends, last adjusted close on or before each,
+  carried at most ten days).
 timing:
   signal_computed: month_end_close
   earliest_execution: next_trading_day_close
