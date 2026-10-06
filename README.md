@@ -477,6 +477,22 @@ pip install -e ".[dev]"
 make test
 ```
 
+**Fixture bridge test (optional).** `tests/test_mom_bridge_fixture.py` feeds a
+synthetic `mom_12_1` panel into backtest-audit's `Panel` and its raw Pearson and
+Spearman cross-sectional IC. It needs the `bridge` extra, pinned to backtest-audit
+commit `e53ed6d`, and is skipped only when that dependency is not installed.
+The minimum constraints below are for Python 3.10, as in CI:
+
+```bash
+# Python 3.10
+pip install -c requirements/minimum.txt -e ".[dev,bridge]"
+python -m pytest tests/test_mom_bridge_fixture.py -rs
+```
+
+This is a fixture check of dates, keys and the two descriptive ICs. It is not a
+connected audit: no baselines, demeaning, Newey-West, PnL or survivorship run,
+it says nothing about real data, and qualification status is unchanged.
+
 For a numerical research run, install the exact runtime rather than the broad
 library-compatible ranges. The demo prints Python, pandas, NumPy, SciPy and
 statsmodels versions plus the SHA-256 of this shipped lock in every report:

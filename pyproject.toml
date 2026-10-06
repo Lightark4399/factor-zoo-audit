@@ -25,6 +25,11 @@ dependencies = [
 # ImportError, which was then swallowed as a per-ticker failure.
 ingest = ["requests>=2.31", "yfinance>=0.2"]
 dev = ["pytest>=7.4", "ruff>=0.4"]
+# Fixture-only bridge test (tests/test_mom_bridge_fixture.py). Pinned to a full
+# commit; the distribution is backtest-credibility-audit, imported as `audit`.
+bridge = [
+    "backtest-credibility-audit @ git+https://github.com/Lightark4399/backtest-audit.git@e53ed6d601ea77da7d35b52c31cde93954297f8f",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

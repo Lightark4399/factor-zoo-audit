@@ -24,14 +24,46 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ matrix.python-version }}
+      # Installation needs network: PyPI for packages and GitHub for the pinned
+      # backtest-audit commit in the bridge extra.
       - name: install ${{ matrix.environment }} environment
-        run: pip install -c "${{ matrix.constraints }}" -e ".[dev]" build
+        run: pip install -c "${{ matrix.constraints }}" -e ".[dev,bridge]" build
+      # The bridge test skips only when its dependency is absent, so CI must
+      # prove the dependency is present and came from the pinned commit.
+      - name: bridge dependency source check
+        run: |
+          python - <<'PY'
+          import json
+          from importlib import metadata
+
+          dist = metadata.distribution("backtest-credibility-audit")
+          assert dist.version == "0.2.1", dist.version
+          url = json.loads(dist.read_text("direct_url.json"))
+          assert url["vcs_info"]["commit_id"] == "e53ed6d601ea77da7d35b52c31cde93954297f8f", url
+          print(dist.version, url)
+          PY
+          pip check
       - name: lint
         run: ruff check src tests
-      # The suite runs on fixtures, so CI needs no credentials and no network
-      # beyond PyPI. The point-in-time guarantee is verified here, not asserted.
+      # Once installed, the suite, including the bridge test, runs on fixtures and
+      # needs no credentials or external data. The point-in-time guarantee is
+      # verified here, not asserted.
       - name: unit tests
         run: python -m pytest
+      # Green only if the bridge module was collected and every test executed.
+      - name: bridge fixture test executed, not skipped
+        run: |
+          python -m pytest tests/test_mom_bridge_fixture.py -rs --junitxml=/tmp/bridge.xml
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse("/tmp/bridge.xml").getroot()
+          suite = root if root.tag == "testsuite" else root.find("testsuite")
+          counts = {k: int(suite.get(k)) for k in ("tests", "skipped", "failures", "errors")}
+          print(counts)
+          assert counts["tests"] > 0 and counts["skipped"] == 0, counts
+          assert counts["failures"] == 0 and counts["errors"] == 0, counts
+          PY
       # The demo runs in fixture mode here, which exercises the whole pipeline
       # end to end. A regression the unit tests miss still fails the build.
       - name: demo smoke test
