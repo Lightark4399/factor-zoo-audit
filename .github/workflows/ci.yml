@@ -21,6 +21,10 @@ jobs:
       # Verified Node 24 action runtimes; pin immutable revisions separately
       # from numerical dependency changes (hosted ubuntu-latest runner).
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        # Full history and tags: the calendar-window diagnostic tests export the
+        # v0.1.0 and v0.2.0 commits from local git objects and check the tags.
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ matrix.python-version }}
