@@ -1,4 +1,4 @@
-"""Calendar-window correction impact diagnostic -- synthetic verification only.
+"""Calendar-window correction impact diagnostic.
 
 Purpose
 -------
@@ -22,22 +22,34 @@ S4  version relations on common/new-only/old-only keys;
 S5  labels on common scoring keys are exactly equal.
 
 Descriptive Spearman IC per version (the version's own
-``information_coefficient``) is reported with a request-date accounting.
+``information_coefficient``) is reported with a request-date accounting. It
+runs only after S2-S5 all PASS.
 
 Run
 ---
     python scripts/diagnose_calendar_window_impact.py synthetic --workdir DIR
         [--scenario positive|zero_latest|overflow] [--reference-sha256 HEX]
 
-DIR must not exist; it should be a git-ignored location. This entry point only
-creates and reads its own synthetic database. It has no real-database mode.
+creates and reads its own synthetic database on a short request grid.
+
+    python scripts/diagnose_calendar_window_impact.py readonly --db FILE
+        --expected-sha256 HEX --outdir DIR
+
+compares an existing database on the fixed 185-month-end grid. Nothing has a
+default: no database path is assumed or searched for. Before any connection
+the inputs are validated (regular file, 64-hex hash, no ``.wal`` beside it,
+new output directory not overlapping the file) and the file's SHA-256 must
+equal HEX. The file is then only opened read-only, never built, migrated or
+written; its hash is re-checked after each stage and a change stops all
+downstream work. Errors stop the run without retry. DIR must not exist; it
+should be a git-ignored location. Exit code 0 only if every check PASSes.
 
 Evidence boundary
 -----------------
-A PASS here is evidence about the synthetic database only. It says nothing
-about real-store values or coverage. ``compute_factor`` also runs the upstream
-protocol; those results are not used. IC is descriptive: no baseline,
-incremental signal, qualification or alpha claim.
+A PASS is evidence about the database that was compared, nothing more.
+``compute_factor`` also runs the upstream protocol; those results are not
+used. IC is descriptive: no baseline, incremental signal, qualification or
+alpha claim.
 """
 
 from __future__ import annotations
@@ -48,6 +60,7 @@ import io
 import json
 import math
 import os
+import re
 import subprocess
 import sys
 import tarfile
@@ -72,7 +85,10 @@ WINDOWS = {
 }
 OLD_WARMUP = {"mom_12_1": 13, "mom_6_1": 7, "rev_1m": 1}  # zero-based request row
 STALE_DAYS = 10
-PIPELINE = {"horizon_sessions": 21, "execution_lag_sessions": 1, "n_quantiles": 5}
+PIPELINE = {"groups": None, "horizon_sessions": 21, "execution_lag_sessions": 1,
+            "n_quantiles": 5}
+# The readonly entry's fixed request list: 185 consecutive month ends.
+READONLY_DATES = list(pd.date_range("2011-04-30", "2026-08-31", freq=pd.offsets.MonthEnd()))
 IC_MIN_ROWS = 5
 PASS, FAIL, NOT_RUN, EMPTY = "PASS", "FAIL", "NOT_RUN", "NO_COMPARABLE_SAMPLE"
 CHECKS = ("S0", "S1", "S2", "S3", "S4", "S5", "IC")  # all must PASS for exit code 0
@@ -86,9 +102,17 @@ def request_dates() -> list[pd.Timestamp]:
     return list(pd.date_range("2019-01-31", "2021-06-30", freq=pd.offsets.MonthEnd()))
 
 
-def synthetic_tables(scenario: str = "positive"):
-    """Securities and prices. Deterministic; prices are daily business days."""
-    days = pd.bdate_range("2017-10-02", "2021-08-31")
+GRIDS = {"synthetic": request_dates, "readonly": lambda: READONLY_DATES}
+
+
+def synthetic_tables(scenario: str = "positive", dates=None):
+    """Securities and prices. Deterministic; prices are daily business days.
+
+    Prices cover 16 month ends of history before the first request date and 2
+    after the last (labels); for request_dates() that is 2017-10-02..2021-08-31.
+    """
+    dates = request_dates() if dates is None else dates
+    days = pd.bdate_range(dates[0] - pd.offsets.MonthEnd(16), dates[-1] + pd.offsets.MonthEnd(2))
     rng = np.random.default_rng(20261007)
 
     def path():
@@ -123,8 +147,9 @@ def synthetic_tables(scenario: str = "positive"):
     securities = pd.DataFrame({
         "cik": [f"{i:010d}" for i in range(len(frames))],
         "ticker": list(frames),
-        "first_filing": pd.Timestamp("2017-01-01"),
-        "last_filing": pd.Timestamp("2022-12-31"),
+        # Filing window spans the price range, so membership keeps every request date.
+        "first_filing": min(pd.Timestamp("2017-01-01"), days[0]),
+        "last_filing": max(pd.Timestamp("2022-12-31"), days[-1]),
     })
     return securities, prices
 
@@ -448,6 +473,21 @@ def worker(mode: str, src: Path, args: list[str], log: Path) -> None:
         raise RuntimeError(f"{mode} worker failed (exit {proc.returncode}); see {log}")
 
 
+def _new_obs(mode: str, workdir: Path, dates, **extra) -> dict:
+    return {"mode": mode, **extra, "workdir": str(workdir), "interpreter": sys.executable,
+            "python": sys.version.split()[0], "dates": dates, "versions": {}, "timings_s": {}}
+
+
+def _export_versions(obs: dict, workdir: Path) -> dict:
+    tags = {}
+    for label, sha in VERSIONS.items():
+        tags[label] = git_commit(label)
+        if tags[label] != sha:
+            raise RuntimeError(f"{label} resolves to {tags[label]}, expected {sha}")
+    obs["tag_commits"] = tags
+    return {label: export_source(sha, workdir / f"src-{label}") for label, sha in VERSIONS.items()}
+
+
 def collect(workdir: Path, scenario: str, reference: str | None = None) -> dict:
     """Prepare the synthetic database, run both versions, return observations."""
     # Absolute, because workers run with the work directory as cwd: a relative
@@ -455,60 +495,111 @@ def collect(workdir: Path, scenario: str, reference: str | None = None) -> dict:
     workdir = Path(workdir).resolve()
     workdir.mkdir(parents=True, exist_ok=False)
     t0 = time.perf_counter()
-    obs = {"scenario": scenario, "workdir": str(workdir), "interpreter": sys.executable,
-           "python": sys.version.split()[0], "versions": {}, "timings_s": {}}
-    tags = {}
-    for label, sha in VERSIONS.items():
-        tags[label] = git_commit(label)
-        if tags[label] != sha:
-            raise RuntimeError(f"{label} resolves to {tags[label]}, expected {sha}")
-    obs["tag_commits"] = tags
-    srcs = {label: export_source(sha, workdir / f"src-{label}") for label, sha in VERSIONS.items()}
+    obs = _new_obs("synthetic", workdir, request_dates(), scenario=scenario, builder=BUILDER)
+    srcs = _export_versions(obs, workdir)
     db = workdir / "synthetic.duckdb"
     worker("worker-build", srcs[BUILDER], ["--db", str(db), "--scenario", scenario],
            workdir / "build.log")
     if Path(str(db) + ".wal").exists():
         raise RuntimeError("write-ahead log left after build; database not closed cleanly")
-    hashes = {"after_build": sha256(db)}
-    import duckdb  # the orchestrator reads the synthetic file read-only, without fza
+    obs["hashes"], obs["reference"] = {"after_build": sha256(db)}, reference
+    return _compare(obs, workdir, srcs, db, t0)
 
+
+HEX64 = re.compile(r"[0-9a-fA-F]{64}")
+
+
+def validate_readonly_inputs(db, expected: str, outdir) -> tuple[Path, str, Path]:
+    """Checks needing no database connection. Raises ValueError; creates nothing."""
+    if not isinstance(expected, str) or not HEX64.fullmatch(expected):
+        raise ValueError("expected SHA-256 must be exactly 64 hexadecimal characters")
+    db = Path(db)
+    if db.is_symlink() or not db.is_file():
+        raise ValueError(f"input database must be an existing regular file: {db}")
+    db = db.resolve()
+    if Path(str(db) + ".wal").exists():
+        raise ValueError(f"write-ahead log beside {db}; left untouched, not checkpointed")
+    outdir = Path(outdir).resolve()
+    if outdir.exists() or outdir.is_symlink():
+        raise ValueError(f"output directory already exists: {outdir}")
+    if db.is_relative_to(outdir) or outdir.is_relative_to(db):
+        raise ValueError(f"output directory {outdir} overlaps the input database {db}")
+    return db, expected.lower(), outdir
+
+
+def collect_readonly(obs: dict, db: Path, expected: str, outdir: Path) -> dict:
+    """Hash gate before any connection, then the shared read-only comparison."""
+    t0 = time.perf_counter()
+    obs["stage"] = "pre_connect"
+    obs["hashes"], obs["reference"] = {"pre_connect": sha256(db)}, expected
+    if obs["hashes"]["pre_connect"] != expected:
+        obs["s1_gate"] = "failed_pre_connect"
+        return obs  # no connection, no export, no worker
+    srcs = _export_versions(obs, outdir)
+    return _compare(obs, outdir, srcs, db, t0)
+
+
+def _compare(obs: dict, workdir: Path, srcs: dict, db: Path, t0: float) -> dict:
+    """Shared by both entry points: read prices read-only, S0/S1 gates, both
+    versions, S2-S5 gate, descriptive IC. Each stage re-hashes the file and
+    looks for a write-ahead log beside it; either finding stops everything
+    downstream. These are discrete checks: a write between two of them that
+    leaves the bytes unchanged is not detected."""
+    hashes, reference, dates = obs["hashes"], obs["reference"], obs["dates"]
+
+    def identity_holds(stage: str) -> bool:
+        obs["stage"] = stage
+        hashes[stage] = sha256(db)
+        if Path(str(db) + ".wal").exists():  # left untouched: no removal or checkpoint
+            obs["wal_detected"] = stage
+        elif check_s1(hashes, reference)["verdict"] == PASS:
+            return True
+        obs["s1_gate"] = f"failed_{stage}"
+        return False
+
+    import duckdb  # the orchestrator reads the file read-only, without fza
+
+    obs["stage"] = "read_prices"
     con = duckdb.connect(str(db), read_only=True)
     try:
+        obs["access_mode"] = {
+            "orchestrator": con.execute("SELECT current_setting('access_mode')").fetchone()[0]}
         prices = con.execute("SELECT ticker, trade_date, close_adj FROM prices").df()
     finally:
         con.close()
-    dates = request_dates()
     expect = expectations(prices, dates)
-    obs.update(expect=expect, dates=dates, builder=BUILDER)
-    hashes["before_compare"] = sha256(db)
+    obs["expect"] = expect
+    identical = identity_holds("before_compare")
     obs["timings_s"]["prepare"] = round(time.perf_counter() - t0, 2)
-    obs["hashes"], obs["reference"] = hashes, reference
-    if expect["s0_violations"]:
-        return obs
-    # S1 gate: no compute worker runs against a file whose identity is in doubt.
-    if check_s1(hashes, reference)["verdict"] != PASS:
-        obs["s1_gate"] = "failed_before_compare"
+    if expect["s0_violations"] or not identical:
         return obs
     dates_file = workdir / "request_dates.json"
     dates_file.write_text(json.dumps([str(s.date()) for s in dates]))
     raw, panels = {}, {}
     for label, src in srcs.items():
         t1 = time.perf_counter()
+        obs["stage"] = f"compute_{label}"
         out = workdir / f"compute-{label}.json"
         worker("worker-compute", src, ["--db", str(db), "--dates", str(dates_file),
                                        "--out", str(out)], workdir / f"compute-{label}.log")
         result = json.loads(out.read_text())
         obs["versions"][label] = {"sha": VERSIONS[label], **result["provenance"]}
+        obs["access_mode"][label] = result["access_mode"]
         raw[label], panels[label] = result["raw"], result["panel"]
         obs["timings_s"][f"compute_{label}"] = round(time.perf_counter() - t1, 2)
-    hashes["after_compare"] = sha256(db)
+        if not identity_holds("after_compare" if label == NEW else f"after_compute_{label}"):
+            return obs  # no further version, check or IC on a file that changed
     obs.update(raw=raw, panels=panels)
-    if check_s1(hashes, reference)["verdict"] != PASS:
-        obs["s1_gate"] = "failed_after_compare"
-        return obs  # no IC on outputs from a file that changed
+    # Raw factor and label checks must PASS before any IC is computed.
+    pre = evaluate(obs)
+    raw_checks = combine(pre[k]["verdict"] for k in ("S2", "S3", "S4", "S5"))
+    if raw_checks != PASS:
+        obs["ic_gate"] = f"S2-S5 combined {raw_checks}; descriptive IC not run"
+        return obs
     # Descriptive IC with each version's own function: own panel and common keys.
     ic = {}
     for label, src in srcs.items():
+        obs["stage"] = f"ic_{label}"
         payload = {}
         for factor in FACTORS:
             other = NEW if label == OLD else OLD
@@ -522,30 +613,49 @@ def collect(workdir: Path, scenario: str, reference: str | None = None) -> dict:
                workdir / f"ic-{label}.log")
         ic[label] = json.loads(out.read_text())
     obs["ic"] = ic
+    identity_holds("final")
     obs["timings_s"]["total"] = round(time.perf_counter() - t0, 2)
     return obs
 
 
 def evaluate(obs: dict) -> dict:
     """Verdicts S0-S5 and the IC accounting, from (copies of) observations."""
-    expect, dates = obs["expect"], obs["dates"]
-    report = {"S0": check_s0(expect), "S1": check_s1(obs["hashes"], obs.get("reference"))}
-    if report["S0"]["verdict"] != PASS:
-        blocked = "S0 failed; expectations undefined"
-    elif report["S1"]["verdict"] != PASS:
-        blocked = "S1 failed; database identity not established"
-    elif "raw" not in obs or "ic" not in obs:
-        blocked = "outputs not collected"
+    report = {"S1": check_s1(obs["hashes"], obs.get("reference"))}
+    # A WAL or a run error means identity was not verified through the end.
+    if obs.get("wal_detected"):
+        report["S1"].update(verdict=FAIL, reason=f"write-ahead log at {obs['wal_detected']}")
+    elif obs.get("error"):
+        report["S1"].update(verdict=FAIL,
+                            reason=f"run stopped by error at {obs.get('error_stage')}")
+    if "expect" not in obs:
+        report["S0"] = {"verdict": NOT_RUN, "reason": "database not opened"}
+        blocked = "database not opened"
     else:
-        blocked = None
+        report["S0"] = check_s0(obs["expect"])
+        if report["S0"]["verdict"] != PASS:
+            blocked = "S0 failed; expectations undefined"
+        elif report["S1"]["verdict"] != PASS:
+            blocked = "S1 failed; database identity not established"
+        elif "raw" not in obs:
+            blocked = "outputs not collected"
+        else:
+            blocked = None
     if blocked:
         for name in ("S2", "S3", "S4", "S5", "IC"):
             report[name] = {"verdict": NOT_RUN, "reason": blocked}
         return report
+    expect, dates = obs["expect"], obs["dates"]
     report["S2"] = check_s2(expect, obs["raw"])
     report["S3"] = check_s3(expect, obs["raw"])
     report["S4"] = check_s4(expect, obs["raw"], dates)
     report["S5"] = check_s5(obs["panels"])
+    raw_checks = combine(report[k]["verdict"] for k in ("S2", "S3", "S4", "S5"))
+    if raw_checks != PASS:
+        report["IC"] = {"verdict": NOT_RUN, "reason": f"S2-S5 combined {raw_checks}"}
+        return report
+    if "ic" not in obs:
+        report["IC"] = {"verdict": NOT_RUN, "reason": "IC not collected"}
+        return report
     ic = {}
     for label in (OLD, NEW):
         ic[label] = {}
@@ -578,19 +688,44 @@ def evaluate(obs: dict) -> dict:
     return report
 
 
+def write_report(workdir: Path, obs: dict, report: dict) -> None:
+    summary = {
+        "mode": obs["mode"], "scenario": obs.get("scenario"),
+        "verdicts": {k: report[k]["verdict"] for k in CHECKS},
+        "s1_gate": obs.get("s1_gate"), "ic_gate": obs.get("ic_gate"), "error": obs.get("error"),
+        "error_stage": obs.get("error_stage"), "wal_detected": obs.get("wal_detected"),
+        "input_db": obs.get("input_db"), "expected_sha256": obs.get("reference"),
+        "hashes": obs.get("hashes"), "access_mode": obs.get("access_mode"),
+        "config": PIPELINE, "request_dates": [str(s.date()) for s in obs["dates"]],
+        "versions": obs["versions"], "tag_commits": obs.get("tag_commits"),
+        "interpreter": obs["interpreter"], "python": obs["python"], "builder": obs.get("builder"),
+        "timings_s": obs["timings_s"],
+        "protocol_note": "compute_factor also ran run_protocol; its results are not used",
+        "report": report, "ic_by_date": obs.get("ic"),
+    }
+    (workdir / "report.json").write_text(json.dumps(summary, indent=2, default=str))
+
+
 def run_synthetic(workdir: Path, scenario: str = "positive", reference: str | None = None):
     obs = collect(workdir, scenario, reference)
     report = evaluate(obs)
-    summary = {
-        "scenario": scenario, "verdicts": {k: report[k]["verdict"] for k in CHECKS},
-        "s1_gate": obs.get("s1_gate"),
-        "versions": obs["versions"], "tag_commits": obs["tag_commits"],
-        "interpreter": obs["interpreter"], "python": obs["python"], "builder": obs["builder"],
-        "hashes": obs["hashes"], "timings_s": obs["timings_s"],
-        "protocol_note": "compute_factor also ran run_protocol; its results are not used",
-        "report": report,
-    }
-    (workdir / "report.json").write_text(json.dumps(summary, indent=2, default=str))
+    write_report(Path(obs["workdir"]), obs, report)
+    return obs, report
+
+
+def run_readonly(db, expected: str, outdir):
+    """Validate, then compare; any error stops the run and is recorded, not retried."""
+    db, expected, outdir = validate_readonly_inputs(db, expected, outdir)
+    outdir.mkdir(parents=True, exist_ok=False)
+    obs = _new_obs("readonly", outdir, READONLY_DATES, input_db=str(db))
+    obs["hashes"] = {}
+    try:
+        collect_readonly(obs, db, expected, outdir)
+    except Exception as exc:  # lock conflict, open failure, worker error: stop here
+        obs["error"] = f"{type(exc).__name__}: {exc}"
+        obs["error_stage"] = obs.get("stage")
+    report = evaluate(obs)
+    write_report(outdir, obs, report)
     return obs, report
 
 
@@ -620,11 +755,11 @@ def _provenance(fza) -> dict:
             "python": sys.version.split()[0], "dependencies": deps}
 
 
-def worker_build(db: str, scenario: str) -> None:
+def worker_build(db: str, scenario: str, grid: str = "synthetic") -> None:
     _import_fza()
     from fza.store import Store
 
-    securities, prices = synthetic_tables(scenario)
+    securities, prices = synthetic_tables(scenario, GRIDS[grid]())
     with Store(db) as store:
         store.con.register("sec_df", securities)
         store.con.execute("INSERT INTO securities (cik, ticker, first_filing, last_filing) "
@@ -645,6 +780,8 @@ def worker_compute(db: str, dates_file: str, out: str) -> None:
     result = {"provenance": _provenance(fza), "raw": {}, "panel": {}}
     store = Store(db, read_only=True)
     try:
+        result["access_mode"] = store.con.execute(
+            "SELECT current_setting('access_mode')").fetchone()[0]
         for factor in FACTORS:
             raw = registry[factor].compute(store, dates)
             result["raw"][factor] = [[t, str(pd.Timestamp(d).date()), float(v)] for t, d, v in
@@ -685,9 +822,14 @@ def main(argv=None) -> int:
     s.add_argument("--scenario", default="positive",
                    choices=("positive", "zero_latest", "overflow"))
     s.add_argument("--reference-sha256", default=None)
+    r = sub.add_parser("readonly", help="compare an existing database, opened read-only")
+    r.add_argument("--db", type=Path, required=True)
+    r.add_argument("--expected-sha256", required=True)
+    r.add_argument("--outdir", type=Path, required=True)
     b = sub.add_parser("worker-build")
     b.add_argument("--db", required=True)
     b.add_argument("--scenario", required=True)
+    b.add_argument("--grid", default="synthetic", choices=tuple(GRIDS))
     c = sub.add_parser("worker-compute")
     c.add_argument("--db", required=True)
     c.add_argument("--dates", required=True)
@@ -697,13 +839,20 @@ def main(argv=None) -> int:
     i.add_argument("--out", required=True)
     args = ap.parse_args(argv)
     if args.mode == "worker-build":
-        worker_build(args.db, args.scenario)
+        worker_build(args.db, args.scenario, args.grid)
     elif args.mode == "worker-compute":
         worker_compute(args.db, args.dates, args.out)
     elif args.mode == "worker-ic":
         worker_ic(args.panels, args.out)
     else:
-        _, report = run_synthetic(args.workdir, args.scenario, args.reference_sha256)
+        if args.mode == "readonly":
+            try:
+                _, report = run_readonly(args.db, args.expected_sha256, args.outdir)
+            except ValueError as exc:
+                print(f"input rejected, nothing created: {exc}", file=sys.stderr)
+                return 2
+        else:
+            _, report = run_synthetic(args.workdir, args.scenario, args.reference_sha256)
         verdicts = {k: report[k]["verdict"] for k in CHECKS}
         print(json.dumps(verdicts))
         return 0 if all(v == PASS for v in verdicts.values()) else 1

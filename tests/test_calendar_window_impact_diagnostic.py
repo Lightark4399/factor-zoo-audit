@@ -4,13 +4,20 @@ Unit tests give every checker a case it must reject. End-to-end tests run the
 two real source trees (exported from local git objects) on the script's own
 synthetic database; missing objects make them fail, never skip. Negative
 end-to-end cases change the synthetic input (S0), the file or hash evidence
-(S1), or a copy of the collected results (S2-S5).
+(S1), or a copy of the collected results (S2-S5). The readonly entry is driven
+only with synthetic databases built here for its fixed 185-date grid.
 """
 
+import calendar
 import copy
 import importlib.util
+import json
+import stat
+import subprocess
+import sys
 from pathlib import Path
 
+import duckdb
 import numpy as np
 import pandas as pd
 import pytest
@@ -428,3 +435,264 @@ def test_main_exit_code_requires_every_check_including_ic(tmp_path, monkeypatch,
     report["IC"] = {"verdict": ic}
     monkeypatch.setattr(diag, "run_synthetic", lambda workdir, scenario, reference: (None, report))
     assert diag.main(["synthetic", "--workdir", str(tmp_path / "unused")]) == code
+
+
+# ----------------------------------------------------------------------
+# Readonly entry: synthetic databases on the fixed 185-month-end grid
+# ----------------------------------------------------------------------
+def month_end_grid():
+    """Independent of the script: every month end 2011-04 .. 2026-08, in order."""
+    out, (y, m) = [], (2011, 4)
+    while (y, m) <= (2026, 8):
+        out.append(f"{y:04d}-{m:02d}-{calendar.monthrange(y, m)[1]:02d}")
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+    return out
+
+
+@pytest.fixture(scope="module")
+def grid_db(tmp_path_factory):
+    """A synthetic database covering the readonly grid, written and closed here."""
+    root = tmp_path_factory.mktemp("grid")
+    src = diag.export_source(diag.VERSIONS[diag.BUILDER], root / "builder")
+    db = root / "input.duckdb"
+    diag.worker("worker-build", src, ["--db", str(db), "--scenario", "positive",
+                                      "--grid", "readonly"], root / "build.log")
+    assert not Path(str(db) + ".wal").exists()
+    return db, diag.sha256(db)
+
+
+def recording_connect(monkeypatch):
+    """Record every duckdb.connect made in this process (the orchestrator)."""
+    calls, real = [], duckdb.connect
+
+    def wrapper(*args, **kwargs):
+        calls.append(kwargs)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(duckdb, "connect", wrapper)
+    return calls
+
+
+def run_cli(db, expected, outdir):
+    code = diag.main(["readonly", "--db", str(db), "--expected-sha256", expected,
+                      "--outdir", str(outdir)])
+    path = outdir / "report.json"
+    return code, (json.loads(path.read_text()) if path.is_file() else None)
+
+
+def snapshot(root):
+    return {p.relative_to(root): (p.read_bytes() if p.is_file() else None)
+            for p in root.rglob("*")}
+
+
+@pytest.fixture(scope="module")
+def readonly_positive(grid_db, tmp_path_factory):
+    db, digest = grid_db
+    outdir = tmp_path_factory.mktemp("readonly") / "positive"
+    with pytest.MonkeyPatch.context() as mp:
+        connects, calls = recording_connect(mp), recording_worker(mp)
+        db.chmod(stat.S_IREAD)  # the OS refuses any writing open during the run
+        try:
+            code, report = run_cli(db, digest, outdir)
+            writer = subprocess.run(
+                [sys.executable, "-c", "import duckdb, sys; duckdb.connect(sys.argv[1])", str(db)],
+                capture_output=True)
+        finally:
+            db.chmod(stat.S_IREAD | stat.S_IWRITE)
+    return {"code": code, "report": report, "calls": calls, "connects": connects,
+            "writer_exit": writer.returncode, "hash_after": diag.sha256(db),
+            "outdir": outdir.resolve()}
+
+
+def test_readonly_positive_control_on_the_fixed_185_month_grid(grid_db, readonly_positive):
+    db, digest = grid_db
+    r = readonly_positive
+    report, outdir = r["report"], r["outdir"]
+    assert r["code"] == 0 and report["verdicts"] == {k: PASS for k in diag.CHECKS}
+    grid = month_end_grid()
+    assert len(grid) == 185
+    assert report["request_dates"] == grid  # the whole ordered list, not the endpoints
+    assert json.loads((outdir / "request_dates.json").read_text()) == grid
+    assert report["config"] == {"groups": None, "horizon_sessions": 21,
+                                "execution_lag_sessions": 1, "n_quantiles": 5}
+    assert list(report["hashes"]) == ["pre_connect", "before_compare", "after_compute_v0.1.0",
+                                      "after_compare", "final"]
+    assert set(report["hashes"].values()) == {digest} and r["hash_after"] == digest
+    assert report["expected_sha256"] == digest and report["input_db"] == str(db.resolve())
+    assert report["tag_commits"] == diag.VERSIONS
+    old, new = report["versions"][diag.OLD], report["versions"][diag.NEW]
+    assert Path(old["fza_file"]).is_relative_to(outdir / "src-v0.1.0" / "src")
+    assert Path(new["fza_file"]).is_relative_to(outdir / "src-v0.2.0" / "src")
+    assert old["executable"] == new["executable"] and old["dependencies"] == new["dependencies"]
+    for v in (diag.OLD, diag.NEW):
+        for f in diag.FACTORS:
+            for sample in ("own_sample", "common_scoring_keys"):
+                c = report["report"]["IC"][v][f][sample]
+                assert c["verdict"] == PASS and list(c["n_per_date"]) == grid
+            # Data and membership cover the whole grid: only old warm-up rows lack an IC.
+            warmup = diag.OLD_WARMUP[f] if v == diag.OLD else 0
+            own = report["report"]["IC"][v][f]["own_sample"]
+            assert own["valid_dates"] == grid[warmup:]
+            assert set(report["ic_by_date"][v][f]["own"]) == set(grid[warmup:])
+
+
+def test_readonly_entry_opens_read_only_and_never_builds(readonly_positive):
+    r = readonly_positive
+    assert r["calls"] == ["worker-compute", "worker-compute", "worker-ic", "worker-ic"]
+    assert r["connects"] and all(kw.get("read_only") is True for kw in r["connects"])
+    assert r["report"]["access_mode"] == {"orchestrator": "read_only", diag.OLD: "read_only",
+                                          diag.NEW: "read_only"}
+    # The file was read-only to the OS throughout, and a writing open of it failed.
+    assert r["writer_exit"] != 0
+
+
+def test_readonly_wrong_reference_stops_before_any_connection_or_worker(
+        grid_db, tmp_path, monkeypatch):
+    db, digest = grid_db
+    connects, calls = recording_connect(monkeypatch), recording_worker(monkeypatch)
+    exports = []
+    monkeypatch.setattr(diag, "export_source", lambda *a: exports.append(a))
+    wrong = ("1" if digest[0] == "0" else "0") + digest[1:]
+    code, report = run_cli(db, wrong, tmp_path / "out")
+    assert code == 1 and connects == [] and calls == [] and exports == []
+    assert report["s1_gate"] == "failed_pre_connect"
+    assert report["hashes"] == {"pre_connect": digest} and report["expected_sha256"] == wrong
+    assert report["verdicts"]["S1"] == FAIL
+    assert all(report["verdicts"][k] == NOT_RUN for k in ("S0", "S2", "S3", "S4", "S5", "IC"))
+    assert diag.sha256(db) == digest
+
+
+@pytest.mark.parametrize("case", ["missing_db", "db_is_directory", "short_hash", "non_hex_hash",
+                                  "wal_sidecar", "outdir_exists", "outdir_is_db",
+                                  "outdir_under_db"])
+def test_readonly_rejects_invalid_inputs_without_creating_or_changing_anything(
+        case, grid_db, tmp_path, monkeypatch):
+    db, digest = grid_db
+    (tmp_path / "in").mkdir()
+    target = tmp_path / "in" / "input.duckdb"
+    target.write_bytes(db.read_bytes())
+    expected, outdir = digest, tmp_path / "out"
+    if case == "missing_db":
+        target = tmp_path / "in" / "absent.duckdb"
+    elif case == "db_is_directory":
+        target = tmp_path / "in" / "dir.duckdb"
+        target.mkdir()
+    elif case == "short_hash":
+        expected = digest[:63]
+    elif case == "non_hex_hash":
+        expected = "g" + digest[1:]
+    elif case == "wal_sidecar":
+        Path(str(target) + ".wal").write_bytes(b"synthetic wal")
+    elif case == "outdir_exists":
+        outdir.mkdir()
+        (outdir / "old-record.json").write_text("{}")
+    elif case == "outdir_is_db":
+        outdir = target
+    elif case == "outdir_under_db":
+        outdir = target / "out"
+    before = snapshot(tmp_path)
+    connects, calls = recording_connect(monkeypatch), recording_worker(monkeypatch)
+    code = diag.main(["readonly", "--db", str(target), "--expected-sha256", expected,
+                      "--outdir", str(outdir)])
+    assert code == 2 and connects == [] and calls == []
+    assert snapshot(tmp_path) == before  # nothing created, changed or removed
+
+
+def test_readonly_open_failure_stops_without_retry(tmp_path, monkeypatch):
+    target = tmp_path / "not-a-database.duckdb"
+    target.write_bytes(b"synthetic bytes, not a DuckDB file\n" * 64)
+    digest = diag.sha256(target)
+    connects, calls = recording_connect(monkeypatch), recording_worker(monkeypatch)
+    code, report = run_cli(target, digest, tmp_path / "out")
+    assert code == 1 and len(connects) == 1 and calls == []
+    assert report["error"] and report["hashes"] == {"pre_connect": digest}
+    assert all(report["verdicts"][k] == NOT_RUN for k in ("S0", "S2", "S3", "S4", "S5", "IC"))
+    assert diag.sha256(target) == digest
+
+
+def test_readonly_input_change_between_stages_stops_downstream(grid_db, tmp_path, monkeypatch):
+    db, digest = grid_db
+    target = tmp_path / "input.duckdb"  # a dedicated copy; the shared fixture is untouched
+    target.write_bytes(db.read_bytes())
+
+    def tamper(mode, args):
+        if mode == "worker-compute" and args[args.index("--out") + 1].endswith("v0.1.0.json"):
+            target.write_bytes(target.read_bytes() + b"\0")
+
+    calls = recording_worker(monkeypatch, after=tamper)
+    code, report = run_cli(target, digest, tmp_path / "out")
+    assert code == 1 and calls == ["worker-compute"]  # v0.2.0 and IC never ran
+    assert report["s1_gate"] == "failed_after_compute_v0.1.0"
+    h = report["hashes"]
+    assert list(h) == ["pre_connect", "before_compare", "after_compute_v0.1.0"]
+    assert h["pre_connect"] == h["before_compare"] == digest != h["after_compute_v0.1.0"]
+    assert report["verdicts"]["S0"] == PASS and report["verdicts"]["S1"] == FAIL
+    assert all(report["verdicts"][k] == NOT_RUN for k in ("S2", "S3", "S4", "S5", "IC"))
+    assert report["ic_by_date"] is None
+
+
+def test_readonly_raw_check_failure_skips_ic_and_exits_nonzero(grid_db, tmp_path, monkeypatch):
+    db, digest = grid_db
+    real = diag.expectations
+
+    def one_expected_value_off(prices, dates):
+        out = real(prices, dates)
+        values = out["values"][(diag.NEW, "rev_1m")]
+        values[min(values)] += 1e-6
+        return out
+
+    monkeypatch.setattr(diag, "expectations", one_expected_value_off)
+    calls = recording_worker(monkeypatch)
+    code, report = run_cli(db, digest, tmp_path / "out")
+    assert code == 1 and calls == ["worker-compute", "worker-compute"]  # no worker-ic
+    assert report["verdicts"]["S3"] == FAIL and report["verdicts"]["IC"] == NOT_RUN
+    assert report["report"]["S3"]["detail"][f"{diag.NEW}:rev_1m"]["n_bad"] == 1
+    assert report["ic_gate"] == "S2-S5 combined FAIL; descriptive IC not run"
+    assert report["report"]["IC"]["reason"] == "S2-S5 combined FAIL"
+    assert report["ic_by_date"] is None and set(report["hashes"].values()) == {digest}
+
+
+def test_readonly_wal_appearing_after_entry_checks_stops_downstream(
+        grid_db, tmp_path, monkeypatch):
+    db, digest = grid_db
+    target = tmp_path / "input.duckdb"  # a dedicated copy; the shared fixture is untouched
+    target.write_bytes(db.read_bytes())
+    wal = Path(str(target) + ".wal")
+
+    def add_wal(mode, args):
+        if mode == "worker-compute" and args[args.index("--out") + 1].endswith("v0.1.0.json"):
+            wal.write_bytes(b"synthetic wal")
+
+    calls = recording_worker(monkeypatch, after=add_wal)
+    code, report = run_cli(target, digest, tmp_path / "out")
+    assert code == 1 and calls == ["worker-compute"]  # v0.2.0 and IC never ran
+    assert report["wal_detected"] == "after_compute_v0.1.0"
+    assert report["s1_gate"] == "failed_after_compute_v0.1.0"
+    assert set(report["hashes"].values()) == {digest}  # the bytes alone would have passed
+    assert report["verdicts"]["S1"] == FAIL
+    assert all(report["verdicts"][k] == NOT_RUN for k in ("S2", "S3", "S4", "S5", "IC"))
+    assert wal.read_bytes() == b"synthetic wal" and diag.sha256(target) == digest  # left as is
+
+
+def test_readonly_error_in_final_hash_read_fails_the_run(grid_db, tmp_path, monkeypatch):
+    db, digest = grid_db
+    calls = recording_worker(monkeypatch)
+    real = diag.sha256
+
+    def final_read_fails(path):
+        if calls.count("worker-ic") == 2:  # only the final identity read
+            raise OSError("synthetic read failure")
+        return real(path)
+
+    monkeypatch.setattr(diag, "sha256", final_read_fails)
+    code, report = run_cli(db, digest, tmp_path / "out")
+    assert code == 1
+    assert calls == ["worker-compute", "worker-compute", "worker-ic", "worker-ic"]
+    assert report["error"] == "OSError: synthetic read failure"
+    assert report["error_stage"] == "final" and "final" not in report["hashes"]
+    assert set(report["hashes"].values()) == {digest}  # every earlier stage did match
+    assert report["verdicts"]["S1"] == FAIL
+    assert report["report"]["S1"]["reason"] == "run stopped by error at final"
+    assert all(report["verdicts"][k] == NOT_RUN for k in ("S2", "S3", "S4", "S5", "IC"))
+    assert report["ic_by_date"] is not None  # collected outputs stay in the record
+    assert real(db) == digest
