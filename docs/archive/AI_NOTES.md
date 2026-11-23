@@ -330,7 +330,7 @@ ingest was looking in the wrong place. The data had never been missing.
 > taxonomy; `dei:EntityCommonStockSharesOutstanding` is the cover-page count. In the
 > selected-200 store, 116 of 178 companies with a share count have us-gaap rows.
 > Both are now stored under one tag name, and price rows choose among them by row
-> order. See [the selection evidence](docs/validation/VALIDATION_SELECTION_EVIDENCE_20260923.md).
+> order. See [the selection evidence](../validation/VALIDATION_SELECTION_EVIDENCE_20260923.md).
 
 **What the fix did to the results.** `bm_ratio` went from +0.0365 to **-0.0336**.
 `ep_ratio` went from +0.0169 to **-0.0382**. Both value factors changed sign. The
@@ -450,7 +450,7 @@ a change to make in passing.
 > 2011-05-06 filing cover lists Class A 941,481 and Class B 1,061,009,224, so the
 > stored 941,481 is a Class A count. It is not consolidated. The stored rows
 > carry no class dimension. See incident 13's correction and
-> [the selection evidence](docs/validation/VALIDATION_SELECTION_EVIDENCE_20260923.md).
+> [the selection evidence](../validation/VALIDATION_SELECTION_EVIDENCE_20260923.md).
 
 **What holds until then.** The magnitude check refuses to score the affected
 factors rather than reporting a plausible number from them. That is the intended
@@ -908,7 +908,7 @@ counts, and removes the misleading percentage from newly rendered reports.
 Synthetic histories include same-value repetition, a change subsequently
 reversed, conflicting same-day observations, nulls and unit changes. Passing
 those controls does not establish provider completeness or accounting causality.
-See [the metric contract](docs/DISCLOSURE_METRICS.md), including the separate
+See [the metric contract](../DISCLOSURE_METRICS.md), including the separate
 scope review of the naive-query date-exposure diagnostic.
 
 Constraint: review the numerator's event definition, counting unit, denominator

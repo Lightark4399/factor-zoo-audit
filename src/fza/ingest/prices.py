@@ -220,7 +220,7 @@ def fetch_yfinance(
     # THIS IS A NEW SINGLE POINT OF DEPENDENCE. Every unadjusted price now rests
     # on that column being complete: a split yfinance failed to record would
     # leave the prices before it silently short by that factor, and nothing
-    # downstream could tell. Recorded in the README's limitations section.
+    # downstream could tell. Recorded in docs/DESIGN_AND_DATA_NOTES.md.
     data = yf.Ticker(ticker).history(
         start=start, end=end, auto_adjust=False, actions=True
     )

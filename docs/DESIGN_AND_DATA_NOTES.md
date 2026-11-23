@@ -1,0 +1,377 @@
+# Design and data notes
+
+These sections moved from the 0.2.0 README. The text is retained except for
+relative links, which now resolve from `docs/`, and one reworded sentence in the
+hypothesis-card section. The "First real ingest" section was removed.
+
+## Report links and evidence status
+
+Read the [full-grid diagnostic report, re-rendered without recomputation](../examples/outputs/b_selected_200_presentation_20260912_final/demo_report.txt)
+and its [render/source manifest](../examples/outputs/b_selected_200_presentation_20260912_final/render_manifest.json).
+Computed results come from the [unaltered de1e836 run](../examples/outputs/b_selected_200_rerun_20260909/demo_run.json);
+missing presentation inputs were recovered from its companion text, with source
+hashes and extraction limits recorded separately. This is not a new numerical run.
+See [scoped verification and remaining gates](validation/VALIDATION_20260912.md).
+The [historical validation index](validation/README.md) separates dated
+checkpoints from current acceptance; old pending items are not a live task list.
+The [earlier 0bd03bf snapshot and interpretation corrections](../examples/outputs/b_selected_200_20260907/README.md#interpretation-correction--2026-09-08)
+remain available; shared dates are not shared securities, and the vintage
+threshold is not a significance test.
+
+Current evidence status: the available 200-company store is **diagnostic only**.
+Historical security membership and terminal outcomes are not yet sufficient for
+a published-anomaly survival headline. The demo propagates diagnostic status
+to stdout, saved text and structured evidence, even if a sidecar claims otherwise.
+See the [assertion audit](archive/ASSERTION_SCOPE_AUDIT.md),
+[validation record](validation/VALIDATION_20260907.md), [B delivery guide](B_DELIVERY.md), and
+[optional data/exit policy, not implemented](archive/DATA_EXIT_POLICY_DRAFT.md).
+
+B is the current delivery route; licensed-data acquisition is not a waiting
+dependency. No longer waiting for resolution does not mean the historical-member
+and terminal-outcome gaps are resolved.
+
+---
+
+## Why this framing
+
+The project separates implementation checks from investment claims. A test can
+demonstrate that a future filing was excluded without demonstrating that an
+anomaly survives. A real-data diagnostic can show missing labels without
+establishing how much a never-observed delisted security would change IC.
+
+The planned research deliverable will carry an audit report from
+[backtest-audit](https://github.com/Lightark4399/backtest-audit), built for this
+purpose; this bridge is not implemented yet. The deliverable is not "trust me"
+but "here is what happened when I attacked my own numbers".
+
+---
+
+## The design decision that matters
+
+Accounting data is revised. A company files an earnings figure, then amends it
+months later — and the amended figure is systematically different from the
+original in ways correlated with what happened next. A backtest reading a
+fundamentals database sees the amended value for every historical date, and has
+therefore been handed information nobody had.
+
+**This is handled in the data layer, not by an after-the-fact check.** The
+`fundamentals` table stores both the accounting period and the filing date:
+
+```sql
+CREATE TABLE fundamentals (
+    cik         VARCHAR,
+    tag         VARCHAR,
+    period_end  DATE,      -- the accounting period
+    filed       DATE,      -- when the filing became public
+    value       DOUBLE,
+    ...
+    PRIMARY KEY (cik, tag, period_end, filed, form),
+    CHECK (filed >= period_end)
+);
+```
+
+A revision is a **new row**, never an update. Factor code reads through
+`fundamentals_asof(signal_date)`, which enforces `filed <= signal_date`, so a
+factor physically cannot see an amendment that had not been published yet.
+
+The fixture makes this checkable. One company's equity is filed, then revised to
+60% of the original 180 days later:
+
+```
+  restatement lands on 2019-08-13, revision -40%
+
+  as-of 2019-08-12   →  $1,026,000,000    (the original filing)
+  as-of 2019-08-14   →    $615,600,000    (after the amendment)
+  restated view      →    $615,600,000    (always, at every date)
+```
+
+Comparing the two views is a conditional vintage diagnostic. Its sign and size
+depend on the selected data and label samples; a shared defect need not cancel.
+
+**Both a guard and a check.** The view makes a leaking query hard to write;
+`assert_read_path_respected()` inspects what the reads actually returned and
+confirms none was filed after its signal date, and runs in CI. Neither alone is enough: in a
+repository meant to be read and extended, someone will eventually open a
+connection and write their own SQL.
+
+---
+
+## Every factor carries a hypothesis card
+
+Registration fails without one. The card is written **before** the
+implementation, because falsification criteria composed with the results already
+in view are not criteria.
+
+```yaml
+factor_id: mom_12_1
+category: momentum
+published_anomaly_eligibility:
+  claim_id: published_anomaly_survival_v1
+  status: INCLUDED
+  reason: Verified definition origin; common holding protocol is disclosed.
+
+economic_rationale: >
+  Investors underreact to news, and information diffuses gradually, so past
+  winners continue to outperform over intermediate horizons. The most recent
+  month is skipped because short-horizon reversal is a distinct and opposite
+  effect; including it contaminates the signal with a mechanism that works the
+  other way.
+
+persistence_conditions: >
+  Expected to weaken in high-volatility regimes and to reverse sharply after
+  crashes. Expected to decay post-publication if the effect is behavioural
+  rather than compensation for risk.
+
+falsification:
+  - Decile returns show no monotonic pattern
+  - The effect is concentrated in a single sub-period
+  - The effect disappears after industry neutralisation
+  - Performance at execution lag 1 is indistinguishable from zero
+
+references:
+  - citation: Asness, Moskowitz and Pedersen (2013), Value and Momentum Everywhere
+    role: definition_origin
+    locator: "Data section: MOM2-12"
+    verification: VERIFIED
+```
+
+The two prose fields answer the questions a factor hypothesis should answer
+before any test: why the idea should work, what mechanism supports it, and
+under what conditions it persists. They are what separates research from search.
+
+---
+
+## Status
+
+The diagnostic pipeline is implemented. The market-wide research extension is
+not complete. See the delivery guide for reproducibility and evidence limits.
+
+```
+✓ SPEC.md — research question, six acceptance criteria, falsification standard
+✓ Point-in-time schema with restatement history
+✓ Store with enforced as-of access, access logging, look-ahead assertion
+✓ Filing-activity universe proxy gated before diagnostics (not verified listing/exit dates)
+✓ Factor registry requiring a hypothesis card to register
+✓ Synthetic fixtures with a known restatement and a delisting
+✓ Cross-sectional pipeline: winsorise, neutralise, standardise, forward returns
+✓ Standard protocol: quantiles, long-short, IC, monotonicity, Fama-MacBeth, sub-periods
+✓ Point-in-time vs restated vintage comparison
+✓ SEC XBRL and price ingestion, parsers tested against recorded payloads
+✓ Demo entry point: real store when present, fixtures otherwise
+✓ Read-path verification distinct from hazard measurement
+✓ Factor library: ten factors across eight categories, each with a hypothesis card
+✓ Citation role/locator/verification is structured; unchecked relationships are UNVERIFIED
+✓ Published-anomaly denominator is versioned: 8 included, 1 pending, 1 excluded
+✓ Column coverage reported at load — an entirely null column names itself
+✓ Magnitude assertions on raw factor values, before any cleaning can hide them
+✓ Share counts bounded at 400 days; failed factors keep a labelled row in the report
+✓ Market observations bounded at 10 days; rolling statistics require fresh inputs
+✓ Formation, entry and exit are explicit; lag and horizon count market sessions
+✓ Duration facts retain start/end context; E/P and ROE use point-in-time TTM income
+✓ Asset growth uses consecutive annual FY contexts; ROE reports its positive-equity filter
+✓ Wheel contains its SQL schema and ten hypothesis cards; clean-install smoke tested
+✓ Prior baseline validated on 2026-09-05; current acceptance is recorded in the linked validation log
+✓ Real-store diagnostic qualification reaches all current demo outputs (AS-03)
+○ Historical membership and terminal outcomes remain unresolved; access is not a delivery dependency
+○ Evidence-eligible real baseline refresh (the available 200-company store is diagnostic)
+○ Audit layer wired to backtest-audit
+○ Style orthogonalisation, factor structure (PCA), costs
+```
+
+See [B_DELIVERY.md](B_DELIVERY.md) for delivery scope and [SPEC.md](SPEC.md) for
+the active acceptance criteria and the historical research-extension design.
+
+### Known selection gaps
+
+Two selection rules are known to be incomplete. Each is recorded as a strict
+xfail in `tests/test_selection_evidence.py` and is not fixed in this release.
+Evidence and counts are in the
+[selection evidence](validation/VALIDATION_SELECTION_EVIDENCE_20260923.md).
+
+**Share count on price rows.**
+
+- *Mechanism.* `attach_shares_outstanding` selects a share count by `(cik,
+  filed)` only. When candidates filed on the same date differ, the stored count
+  follows input row order. The candidates include DEI cover-page counts and
+  us-gaap current and comparative counts, and the Store keeps no share class.
+- *Checked scope (diagnostic 200-company store).* 4,334 of 8,622 same-date
+  share groups hold more than one value. At 12,173 of the 25,654 universe signal
+  keys with a market cap, the row used came from such a group. These are exposed
+  keys, not errors. Filing text was checked only for single cases:
+  - for AAPL and CAT, the stored count matches a prior-period comparative;
+  - for BRK-B, it is the Class A count beside a Class B price.
+
+  AAPL, CAT and BRK-B are disclosure groups chosen on purpose for categories
+  preset in the committed probe (`scripts/probe_share_candidates.py
+  --samples`): DEI and us-gaap values differ, the latest period still conflicts,
+  and a multi-class issuer. Why those tickers were named is not recorded. They
+  were not drawn at random from the 12,173 exposed signal keys, so they cannot be
+  used to estimate an error rate. Each match above is by value and date against
+  the filing text; no XBRL context mapping was verified.
+- *Unknown.* How many exposed keys carry an unsuitable count; the effect on
+  `log_mktcap`, B/M, E/P and turnover results; turnover's own exposure; and
+  class-correct counts, which the Store cannot identify.
+
+**Interval tie on the latest fundamentals read.**
+
+- *Mechanism.* `latest_fundamental_asof` and the restated arm's `leaking_asof`
+  keep one row per `(cik, tag)`. Rows equal on period end and filing date fall to
+  storage or frame order, so the two arms can pick different intervals from the
+  same data. The separate row-splicing defect in `leaking_asof` was fixed in
+  `0ce7911`.
+- *Checked scope (diagnostic store).* The only tag on this path,
+  `StockholdersEquity`, has no groups with several intervals. It has 19
+  same-date groups with several rows out of 21,861, and none of them differ in
+  value. Current factor inputs there are therefore not affected.
+- *Unknown.* Other stores and tags. A factor reading a duration tag through this
+  path would meet the tie.
+
+---
+
+## Known limitations of the price data
+
+**Unadjusted prices are reconstructed, not downloaded.** yfinance 1.6.0 returns a
+split-adjusted `Close` no matter what is asked of it — `auto_adjust=False`
+restores the `Adj Close` column but does not restore the raw series, and all
+three call shapes were probed to confirm it. Market capitalisation needs the
+price as it was actually quoted, so `fetch_yfinance` rebuilds it by multiplying
+each row by the product of every split that took effect after it, using the
+`Stock Splits` column that `Ticker().history()` carries.
+
+That makes the split history a **single point of dependence**: a split the
+provider failed to record would leave every price before it short by exactly that
+factor, and every market-cap factor wrong in the same proportion, with nothing
+downstream able to detect it. The reconstruction is verified against two known
+splits (Apple 4:1 in 2020, NVIDIA 10:1 in 2024) and its arithmetic is unit-tested
+offline, but neither check can find a split that was never reported. Before this
+was noticed, `close` held the adjusted series and market capitalisation was wrong
+by the cumulative split factor — Apple's 2014 book-to-market came out four times
+too high.
+
+**Volume is rescaled the same way, in the other direction.** A split-adjusted
+volume counts today's smaller shares, so it is divided by the same factor;
+`turnover` divides volume by a point-in-time share count and the two must be in
+the same share terms.
+
+**Share counts come from two taxonomies under one name.**
+`dei:EntityCommonStockSharesOutstanding` is the cover-page count in SEC's DEI
+taxonomy; `us-gaap:CommonStockSharesOutstanding` is common shares outstanding in
+the FASB's US GAAP taxonomy. Stored rows of the two can share a date or differ, as
+can their values; stored us-gaap rows include current and earlier comparative
+dates. Which XBRL context a stored row came from is not recorded. The ingest reads
+both and writes the DEI fact under the `us-gaap` name the rest of the codebase asks
+for; the `source_namespace` column records the origin. The DEI read was added after
+eleven of the first thirty companies had no share count. For example, Coca-Cola's
+`us-gaap` facts then carried 724 tags without this one. That observation is about
+those filers at the time, not evidence that the `us-gaap` tag does not exist.
+When a DEI and a `us-gaap` row share the same stored de-duplication key, the
+`us-gaap` row is kept. That key does not include XBRL class dimensions. Rows with
+different keys from one filing are all kept, and price rows currently choose among
+them by row order; see the [selection evidence](validation/VALIDATION_SELECTION_EVIDENCE_20260923.md).
+
+**A share count older than 400 days is dropped, and three companies lose most of
+their history to it.** In the ingested data, the DEI share count for **Visa,
+Mastercard and Berkshire Hathaway B — 3 of the 30 companies** ends in 2010 or 2011
+(V 2010-02-03, MA 2010-11-02, BRK-B 2011-05-06). That is an observation about
+these three filers in the Store, not a sourced SEC rule. Why the series ends is not
+established here; per-class reporting is one possible reason. Berkshire's last
+stored value, 941,481, is the Class A count on that filing's cover page, stored
+beside a Class B price. The as-of join used to carry those values
+forward to 2026. `attach_shares_outstanding` now writes a null instead once a
+count is more than 400 days old, which is a year plus enough slack for a late
+filer or a changed fiscal year end.
+
+The cost was measured on that historical sample. On the original 30-company
+ingest the bound nulls **11,166 of 113,216 price rows**, taking `shares_out`
+coverage from 85.5% to 75.6%. Every one of those rows belongs to V, MA or BRK-B:
+their last usable share count falls on 2011-03-10, 2011-12-07 and 2012-06-08
+respectively, so from those dates to 2026 they drop out of every factor that
+needs a market capitalisation — `log_mktcap`, `bm_ratio`, `ep_ratio`. They remain
+in the price-only factors throughout, and no other company loses a single row.
+The loss is in the width of each cross-section rather than the number of signal
+dates: the mean count of names carrying a market cap falls from 23.4 to 20.6, and
+all 184 dates still produce a cross-section.
+
+The bound has to be enforced twice. The ingest writes the null, and the factor
+library's forward fill would otherwise overwrite it: `_at_signal_dates` fills a
+panel to the end of its index, so the last defined market capitalisation was
+still being carried into 2026. `_market_cap` and `turnover` now cap that carry at
+10 days — enough for a month end on a holiday weekend, not enough to bridge a
+share count that stopped being filed.
+
+This is a mitigation and not a fix. The underlying fault is that the stored rows
+carry no share-class dimension: Berkshire's 941,481 is the **Class A** count on its
+filing's cover page, standing next to a **Class B** price, which was wrong on the
+day it was filed rather than wrong because it aged. Fixing that needs per-class
+share counts, which the stored rows do not provide. AI_NOTES incident 13 has the
+full account.
+
+## Who is in the universe, and who only half is
+
+Two counts, not one. `securities` holds every company the ingest selected;
+`fundamentals` holds only the ones this project can read. The demo prints both,
+and the `accounting_standard` column on `securities` says which is which.
+
+**IFRS filers are excluded from the fundamental universe, on purpose.** Seven of
+the first sixty companies — SHEL, NVS, BHP, AZN, HSBC, RY, SAP — publish under
+the `ifrs-full` taxonomy, whose tag names have no overlap with the ones read
+here. A mapping table would let them in, and is deliberately not built: IFRS and
+US GAAP do not define shareholders' equity identically, and a mapping would bury
+that difference in one line of code. They stay in `securities` and in `prices`,
+so the price-only factors (momentum, reversal, total volatility) still
+use them; the fundamental factors do not.
+
+**Foreign private issuers that file 20-F are included.** `ACCEPTED_FORMS` covers
+10-K, 10-Q, 20-F and their amendments. 20-F is an annual report with no
+quarterly counterpart, so these companies file about a quarter as often as US
+ones and appear on fewer signal dates for any factor needing two consecutive
+periods. 6-K is excluded: it is a current report, and its facts do not describe
+a completed accounting period.
+
+**Three coverage numbers are reported, and reading only one is how this was
+missed.** `request_success_rate` is the share of companyfacts requests that
+succeeded; `data_coverage_rate` is the share that produced any row at all;
+`accounting_coverage_rate` is the share that produced a row a fundamental factor
+can read. On a sixty-company run they are 98% / 95% / 80% — the first hid twelve
+empty companies, and the second hid seven more that supply a cover-page share
+count and no accounting series. When the request and accounting rates differ by
+more than 5% the ingest prints the gap and names the companies, saying which
+kind of empty each one is. AI_NOTES incident 14 has the full account.
+
+**Non-USD reporters lose their monetary facts.** ASML and MUFG file 20-F under
+us-gaap but report in EUR and JPY, and only USD and share counts are admitted.
+They contribute a share count and nothing else, which makes them usable by
+`log_mktcap` and `turnover` and by no value or profitability factor. Currency
+conversion is deliberately deferred: balance-sheet stocks and income-statement
+flows require different FX timing, and adding a rate without that contract would
+replace a visible exclusion with a hidden assumption.
+
+**Flow facts are trailing-twelve-month, not "the latest row".** SEC can publish
+a standalone quarter and a year-to-date number with the same end date. The store
+retains both starts; E/P and ROE difference cumulative Q2/Q3/FY contexts into
+discrete quarters and sum the latest four. Q4 is `FY - Q3 YTD`, so it is not
+counted once inside FY and again as a quarter. Annual-only 20-F filers retain the
+latest genuine annual TTM observation rather than receiving invented quarters.
+
+## Further run notes
+
+The 200-company expansion is a diagnostic scale run, not research evidence:
+
+```bash
+python -m fza.ingest.run --user-agent "Your Name you@example.com" \
+  --limit 200 --price-source yfinance,stooq
+```
+
+Its report is labelled `run_purpose: diagnostic_scale`. The demo reports
+names-per-quantile as average/min/p10/median/p90/max plus the number of dates
+dropped for a thin or tied cross-section; a healthy average is not allowed to
+hide a nearly empty month.
+
+SEC requires a User-Agent identifying you, with a contact address — it is a
+condition of the fair-access policy, and requests without one are refused. The
+run is throttled to ten requests per second for the same reason.
+
+Start small. Thirty companies makes a failure cheap and legible; scaling up is a
+flag change, not a different code path. The run writes a report alongside the
+database recording coverage, exclusion counts by reason, and what share of the
+prices came from a source that drops delisted tickers.

@@ -28,7 +28,7 @@ def test_documented_timing_fields_are_actual_label_output():
                            "close_adj": [10., 11., 12., 13.]})
     labels = forward_returns(prices, [dates[0]], horizon_sessions=1,
                              execution_lag_sessions=1)
-    fields = first_column((ROOT / "B_DELIVERY.md").read_text(encoding="utf-8"),
+    fields = first_column((ROOT / "docs" / "B_DELIVERY.md").read_text(encoding="utf-8"),
                           "| Current local timing field |")
     actual = {name for name in labels if pd.api.types.is_datetime64_any_dtype(labels[name])}
     assert set(fields) == actual
@@ -37,7 +37,7 @@ def test_documented_timing_fields_are_actual_label_output():
 
 
 def test_documented_layers_match_the_executable_registry():
-    layers = first_column((ROOT / "VINTAGE_COMPARISON.md").read_text(encoding="utf-8"),
+    layers = first_column((ROOT / "docs" / "VINTAGE_COMPARISON.md").read_text(encoding="utf-8"),
                           "| Layer |")
     assert set(layers) == set(SCOPES)
     assert len(layers) == len(SCOPES)

@@ -14,7 +14,7 @@ failure rate or a defect in the sibling's current release.
 the local runner and report. Outcome/timing and metric-date checks accompany
 the key checks; mismatch withholds dependent gaps. Synthetic controls and the
 actual pipeline/CLI were verified in both supported environments. See
-[validation](docs/validation/VALIDATION_20260909.md). This is not a new real-data comparison or
+[validation](../validation/VALIDATION_20260909.md). This is not a new real-data comparison or
 completion of the full regression / remaining delivery work.
 
 Keep the original incident narrative in its originating repository. Each local
@@ -70,7 +70,7 @@ and data differed by one column (`4968b1d`), and unordered SQL made naive-trap
 examples change across matching-environment runs (`e341991`). The latter altered
 example selection, not IC, LS Sharpe or counts. Both have synthetic/actual-CLI
 regressions and passed the 12-case focused suite in both environments. See
-`docs/validation/VALIDATION_20260907.md` for the failed reproductions, scope and pending full run.
+`../validation/VALIDATION_20260907.md` for the failed reproductions, scope and pending full run.
 The upstream default-branch tree was rechecked: still `bdb6250`; the generic
 docs-quote implementation/ref has not yet been received. That audit item stays
 pending, not checked-clean. No duplicate scanner or sibling edit was made.
@@ -135,10 +135,10 @@ Follow-ups, deliberately not changed here:
   *Status 2026-09-26:* the per-column `.last()` splice present in `3970567` was
   fixed on this branch on that date (whole stored rows). The interval tie between
   the PIT and restated arms is unresolved; its strict xfail remains. See the follow-up in
-  [VALIDATION_SELECTION_EVIDENCE_20260923](docs/validation/VALIDATION_SELECTION_EVIDENCE_20260923.md).
+  [VALIDATION_SELECTION_EVIDENCE_20260923](../validation/VALIDATION_SELECTION_EVIDENCE_20260923.md).
 - `fama_macbeth` HAC failure: how NaN `tstat`/`pvalue` are displayed.
 - Share-count candidates and interval ties: evidence, counts and options in
-  [VALIDATION_SELECTION_EVIDENCE_20260923](docs/validation/VALIDATION_SELECTION_EVIDENCE_20260923.md);
+  [VALIDATION_SELECTION_EVIDENCE_20260923](../validation/VALIDATION_SELECTION_EVIDENCE_20260923.md);
   no selection rule changed.
 
 ### Read-only disclosure reasons on the available store — 2026-09-23
