@@ -14,7 +14,7 @@ sensitivity disclaimer. Source consistency is not proof of economic correctness.
 
 The [scoped validation](../../../docs/validation/VALIDATION_20260912.md) distinguishes checked
 archive metrics, missing raw-panel evidence, presentation and performance.
-[Recovered runtime observations](../../../RUNTIME_OBSERVATIONS_20260912.json)
+[Recovered runtime observations](../../../docs/archive/RUNTIME_OBSERVATIONS_20260912.json)
 are explicitly later recovery, not original demo_run.json fields. No research
 gate is promoted. The original CRLF archives remain unmodified; this rendering
 uses LF and 84-column wrapping.

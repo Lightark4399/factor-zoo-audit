@@ -566,7 +566,7 @@ def test_a_missing_split_column_yields_a_factor_of_one():
 
     Stated as a test because the alternative -- treating a missing column as a
     reason to guess -- would put a fabricated price in the table. A factor of one
-    is the honest answer, and the README records that this makes the split
+    is the honest answer, and docs/DESIGN_AND_DATA_NOTES.md records that this makes the split
     history a single point of dependence.
     """
     idx = pd.date_range("2020-01-01", periods=3, freq="D")

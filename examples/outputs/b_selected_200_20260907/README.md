@@ -21,5 +21,5 @@ cleaned; the gap is not an isolated amendment-value effect or a paired-sample
 finding. Its PASS/FAIL threshold was not calibrated as a significance test.
 For log_mktcap and turnover, embedded price-table shares were not changed by the
 substituted fundamental reads; their zero gaps do not test share-count revisions.
-See [incident 18](../../../AI_NOTES.md#incident-18--a-repairs-shape-displaced-its-broader-constraint).
+See [incident 18](../../../docs/archive/AI_NOTES.md#incident-18--a-repairs-shape-displaced-its-broader-constraint).
 These corrections qualify the old artifacts without rewriting their bytes.

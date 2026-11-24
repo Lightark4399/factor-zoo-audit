@@ -581,7 +581,7 @@ def derive_filing_history(fundamentals: pd.DataFrame) -> pd.DataFrame:
     securities that no longer exist.
 
     It is an inference, not a fact, and it has a known failure mode: a company
-    that goes private continues to exist while ceasing to file. The README states
+    that goes private continues to exist while ceasing to file. docs/DESIGN_AND_DATA_NOTES.md states
     this rather than leaving the reader to assume the universe is exact.
     """
     if fundamentals.empty:

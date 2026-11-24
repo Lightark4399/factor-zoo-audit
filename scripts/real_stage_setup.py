@@ -61,7 +61,7 @@ def main():
         roster=roster[["ticker", "cik"]].to_dict("records"), counts=counts, anchors=anchors,
         selection="first 20 us-gaap ordered ticker,cik; all stored history",
         plan_sha256=hashlib.sha256(
-            (ROOT / "PERFORMANCE_REAL_INPUT_PLAN.md").read_bytes()).hexdigest(),
+            (ROOT / "docs" / "PERFORMANCE_REAL_INPUT_PLAN.md").read_bytes()).hexdigest(),
     )
     with (destination / "inputs.json").open("x", encoding="utf-8", newline="\n") as out:
         json.dump(manifest, out, indent=2)

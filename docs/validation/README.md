@@ -25,7 +25,7 @@ identify tested code. Commit anchors below retain the roles stated in the record
 
 ## Navigation and provenance
 
-Start with the [project README](../../README.md) and [delivery guide](../../B_DELIVERY.md)
+Start with the [project README](../../README.md) and [delivery guide](../B_DELIVERY.md)
 for the deliverable's evidence limits. Use the [output archive index](../../examples/outputs/README.md)
 for saved reports. CI results must be matched to their commit, not inferred from
 one of these older records.

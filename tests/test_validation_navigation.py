@@ -22,6 +22,8 @@ def test_validation_navigation_targets_exist():
     # not interpret archived output JSON/text or arbitrary prose as interfaces.
     surfaces = [*ROOT.glob("*.md"), *RECORDS.glob("*.md")]
     surfaces.extend((ROOT / "examples" / "outputs").rglob("README.md"))
+    # Documents moved under docs/ (current and archived) stay in scope.
+    surfaces.extend((ROOT / "docs").rglob("*.md"))
     for source in surfaces:
         text = source.read_text(encoding="utf-8")
         targets = re.findall(r"\]\(([^)]+)\)", text)
