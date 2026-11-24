@@ -355,6 +355,15 @@ latest genuine annual TTM observation rather than receiving invented quarters.
 
 ## Further run notes
 
+For a numerical research run, install the exact runtime rather than the broad
+library-compatible ranges. The demo prints Python, pandas, NumPy, SciPy and
+statsmodels versions plus the SHA-256 of this shipped lock in every report:
+
+```bash
+make research-install
+python -m fza.demo --outdir examples/outputs
+```
+
 The 200-company expansion is a diagnostic scale run, not research evidence:
 
 ```bash

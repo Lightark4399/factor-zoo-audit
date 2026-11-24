@@ -74,8 +74,9 @@ windows and were not recomputed with the corrected windows. See
 ## How to run
 
 Once installed, the test suite runs on fixtures and needs no credentials or
-external data. The demo runs on an ingested store when one exists, and on
-fixtures otherwise.
+external data. The demo reads the store at `data/fza.duckdb` by default; pass
+`--db PATH` for a store saved elsewhere (for example with the ingest's `--out`).
+If no store exists at that path, the demo uses synthetic fixtures.
 
 ```bash
 pip install -e ".[dev]"
