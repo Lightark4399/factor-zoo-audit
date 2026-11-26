@@ -10,7 +10,8 @@ by [docs/RESEARCH_NOTE.md](../../../docs/RESEARCH_NOTE.md).
 ## Identity
 
 - **Code.** Commit `c4840f19bfb3ec420577c42898f547cf8cbe7684` (branch
-  `docs/research-note`; `src/` identical to `main` at `b3d6c35`). Each log
+  `docs/research-note`; `src/` identical to `main` at `b3d6c35`). Each of the
+  four original run logs
   records `git status --porcelain -- src` as clean and `fza` imported from this
   checkout's `src/`.
 - **Store.** The local `fza_200.duckdb` (not in the repository), SHA-256
@@ -130,6 +131,49 @@ and `stage_seconds`) and exits 1 on any difference:
 python -I scripts/research_note/compare_series.py <old>_series.json <new>_series.json
 ```
 
+## Reproduction with the committed scripts
+
+A check that the committed scripts reproduce the runs above. Only `bm_ratio`
+was rerun; `ep_ratio`, `roe` and `asset_growth` were not, because each takes
+about an hour.
+
+- **Rerun.** The committed `run_vintage_series.py`, run on 2026-11-26 with the
+  locked environment and the same store, writing to a temporary directory (the
+  log's final `wrote` line records the path).
+  [`bm_ratio_rerun_run.log`](bm_ratio_rerun_run.log) records `git rev-parse
+  HEAD` as `28b1d18b8a3825254a2bb25667f7c6787bbfa52a`,
+  `git status --porcelain -- src` as clean, `fza` imported from this checkout's
+  `src/`, and the store's SHA-256 as
+  `66c60785d1c085d4883f49796a33f20ad2bdf418072086fbfd938100666312d9` both
+  before and after (`UNCHANGED`). `compare_vintages` took 62.1 s, and the peak
+  working set was 476 MiB. Its output is
+  [`bm_ratio_rerun_series.json`](bm_ratio_rerun_series.json).
+- **Comparison.** The committed `compare_series.py`, with
+  `bm_ratio_series.json` as the old file and `bm_ratio_rerun_series.json` as the
+  new one, exited 0. Its output is
+  [`compare_bm_ratio_rerun.txt`](compare_bm_ratio_rerun.txt):
+
+```text
+  SAME     db
+  SAME     db_sha256_after
+  SAME     db_sha256_before
+  SAME     duckdb
+  SAME     factor
+  SAME     fza_file
+  skip     generated_at (volatile)
+  SAME     layer_ic_gap
+  SAME     series.common-observation/pit (183 per-date IC values)
+  SAME     series.common-observation/restated (183 per-date IC values)
+  SAME     series.common-support/pit (183 per-date IC values)
+  SAME     series.common-support/restated (183 per-date IC values)
+  SAME     series.original-process/pit (183 per-date IC values)
+  SAME     series.original-process/restated (183 per-date IC values)
+  SAME     signal_dates
+  skip     stage_seconds (volatile)
+
+ALL COMPARED FIELDS IDENTICAL
+```
+
 ## Files
 
 Bytes are preserved as generated (CRLF line endings; `-text` in
@@ -140,12 +184,15 @@ imported `fza`) exactly as written at run time.
 |---|---|---|
 | `asset_growth_run.log` | 5419 | `0cb40d6ebdc11f1783dec746a697af1fbbb7667b41fec0ffd71c1aa94a8e41a1` |
 | `asset_growth_series.json` | 51871 | `cef0bc35bfe49cf115ed25e4de397ae2a61f8d1c7e46ef8b90956c4e904525b1` |
+| `bm_ratio_rerun_run.log` | 5409 | `bc813d37aea1c935a981897997346c5eb71d14bc81512f225d0b17854762063f` |
+| `bm_ratio_rerun_series.json` | 52014 | `c66adc5dba53f71fc2b851280866fdb22d14a1dfc061d7c064bfb0f3d44b4c19` |
 | `bm_ratio_run.log` | 5399 | `36b230339c0cb50c780706b1768c613cd336f599fb731c2d647dce135c33c0ff` |
 | `bm_ratio_series.json` | 52020 | `0a323fdc6aaad0a2ee4c5dc368d96265b9a40f62e54afd0c8d0cc1632ecd0835` |
 | `check_asset_growth.txt` | 1996 | `7bae8a0f5a38e0d31d51ccb5b6f92cc3f844d42c96cf8d817d9be264e239c1b7` |
 | `check_bm_ratio.txt` | 1988 | `2b7c8adaccf53e1e8ea844df24036d50dad923e518d4ef7f0be4d307f599a1d9` |
 | `check_ep_ratio.txt` | 1988 | `1401133b59c20d4de9a40dee6f46f9b239765254756af10e19bdbdae09999cc6` |
 | `check_roe.txt` | 1978 | `270ed5ec29a8f7dce4d6fb2a31abcbbd46031035a1dc7f59bf268cdc9da44b4a` |
+| `compare_bm_ratio_rerun.txt` | 692 | `4e23cc42c9e6312170d87b37710730cee809e9db908b22dbb47bd691f3f99418` |
 | `ep_ratio_run.log` | 5430 | `060b07562f82f1869ba13c63f3705d89f4327b9966bf2df6705bf13b513e3fcb` |
 | `ep_ratio_series.json` | 51987 | `4b2857ad3da82333c21616aae54c55210803eda590ebf449414408bb7ca56e4f` |
 | `roe_run.log` | 5410 | `63a5cca59d8f5da54e2fac27c0e8b799832c5d063e4438f1938d57d91831a0d5` |
