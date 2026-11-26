@@ -39,12 +39,47 @@ One factor per process, sequentially. Times are from the logs (UTC offset
 
 ## Commands
 
-The runs used a pre-commit copy of the driver (SHA-256 `90e49eba15f332832da8e199103b11a1a6195496069198f8368530f84ac3ff7b`) that
-hard-coded the repository path and the expected store hash. The committed
+### As run
+
+The runs used pre-commit copies of the two scripts in a temporary directory:
+the driver (SHA-256
+`90e49eba15f332832da8e199103b11a1a6195496069198f8368530f84ac3ff7b`), which
+hard-coded the repository path and the expected store hash, and the checker
+(SHA-256 `ade8bec7c32735c09ef0cdc432fb098ab047b5dfd3ce8690d3870c80af2fc2e7`),
+which did not yet print MDE. Each factor was run in a new PowerShell window
+with the following command, unmodified apart from the factor name:
+`bm_ratio` first as a trial, then `ep_ratio`, `roe` and `asset_growth`, with
+`bm_ratio` replaced by the factor name in `--factor`, `--out` and `--log`.
+Each log's final `wrote` line records the output path.
+
+```powershell
+& {
+  $py    = 'C:\Users\86181\OneDrive\文档\ChatGPT\github\factor-zoo-audit\.diagnostic-envs\locked\Scripts\python.exe'
+  $db    = 'C:\Users\86181\OneDrive\文档\ChatGPT\github\factor-zoo-audit\data\fza_200.duckdb'
+  $pilot = 'C:\Users\86181\AppData\Local\Temp\claude\562be76720cb0d3a\ea88ccde-087f-45f7-9714-86ffee5a1e2a\scratchpad\vintage_pilot'
+  if (-not (Test-Path $py) -or -not (Test-Path $db)) { Write-Error 'python or DB path not found'; return }
+  & $py -I -u "$pilot\run_vintage_series.py" --db $db --factor bm_ratio --out "$pilot\out\bm_ratio_series.json" --log "$pilot\out\bm_ratio_run.log"
+}
+```
+
+After each run, the pre-commit checker, with the factor name substituted the
+same way:
+
+```powershell
+& 'C:\Users\86181\OneDrive\文档\ChatGPT\github\factor-zoo-audit\.diagnostic-envs\locked\Scripts\python.exe' -I 'C:\Users\86181\AppData\Local\Temp\claude\562be76720cb0d3a\ea88ccde-087f-45f7-9714-86ffee5a1e2a\scratchpad\vintage_pilot\check_vintage_series.py' 'C:\Users\86181\AppData\Local\Temp\claude\562be76720cb0d3a\ea88ccde-087f-45f7-9714-86ffee5a1e2a\scratchpad\vintage_pilot\out\bm_ratio_series.json'
+```
+
+Its console output was not saved; the `check_<factor>.txt` files here come
+from the committed checker (below).
+
+### With the committed scripts
+
+The committed
 [`scripts/research_note/run_vintage_series.py`](../../../scripts/research_note/run_vintage_series.py)
-differs only by taking those two values as `--repo` (default: this checkout)
-and `--expected-sha256`, by splitting one import line, and by its docstring.
-The equivalent command, from the repository root, per factor:
+differs from the driver as run only by taking the repository path and the
+expected hash as `--repo` (default: this checkout) and `--expected-sha256`,
+by splitting one import line, and by its docstring. The equivalent command,
+from the repository root, per factor:
 
 ```powershell
 python -I -u scripts/research_note/run_vintage_series.py --db <path>\fza_200.duckdb `
