@@ -2,8 +2,14 @@
 
 DIAGNOSTIC_ONLY. Summary numbers are read from the 2026-09-09 archived run.
 Per-date statistics come from a 2026-11-25 recomputation that reproduces that
-archive bit for bit (see Data and settings). The archive labels its statistics
+archive bit for bit (Appendix A). The archive labels its statistics
 "NOT findings".
+
+## Key results
+
+- Original-process IC gap (restated − PIT): bm_ratio −0.00092, ep_ratio +0.00235, roe +0.00360, asset_growth +0.00815; only asset_growth exceeds the preconfigured 0.005 trigger, and its `diagnostic_verdict` begins `FAIL`.
+- Common-observation IC gap: asset_growth −0.00187 (opposite sign to its original-process gap); bm_ratio −0.00035, ep_ratio +0.00165, roe +0.00265 (same sign as original-process).
+- Of the 8 per-date gap tests, two-sided NW(5) p ranges from 0.068 (roe, common-observation) to 0.872 (asset_growth, common-observation), none below 0.05; asset_growth's MDE is 0.0339 and 0.0324, against 0.0017–0.0077 for the other six.
 
 ## Question and answer
 
@@ -11,13 +17,9 @@ TODO (author).
 
 ## Data and settings
 
-- **Source run.** [`examples/outputs/b_selected_200_rerun_20260909/demo_run.json`](../examples/outputs/b_selected_200_rerun_20260909/demo_run.json)
-  (SHA-256 `4bcefb56…4c4f34`), `generated_at_utc` 2026-09-11T10:51:10Z. The
-  presentation replay
-  [`b_selected_200_presentation_20260912_final/replay_input.json`](../examples/outputs/b_selected_200_presentation_20260912_final/replay_input.json)
-  carries an identical `vintage_comparisons` object (checked 2026-11-24).
-- **Store.** `data/fza_200.duckdb`, SHA-256 `66c60785…12d9`
-  (`database_sha256_after_run`; `database_bytes_unchanged` is `true`).
+- **Source run.** [`examples/outputs/b_selected_200_rerun_20260909/demo_run.json`](../examples/outputs/b_selected_200_rerun_20260909/demo_run.json),
+  `generated_at_utc` 2026-09-11T10:51:10Z.
+- **Store.** `data/fza_200.duckdb` (`database_bytes_unchanged` is `true`).
 - **Companies.** 200 stored securities (`selected_roster`, 200 rows; 161
   `us-gaap` in `data_summary.securities_usgaap`). `roster_scope` is
   `stored_selection_not_verified_historical_membership`.
@@ -48,18 +50,9 @@ TODO (author).
 - **Cleaning setting.** The common-support cleaning reports record
   `neutralised: false` for both arms of all four factors
   (`…layers.common-support.cleaning[0..1].neutralised`).
-- **Recomputation.** On 2026-11-25 the current code (commit `c4840f1`; `src/`
-  identical to `main` at `b3d6c35`) recomputed `compare_vintages` for the four
-  factors on the same store (same SHA-256, unchanged by the runs), one factor
-  per process
-  ([research_note_20261125](../examples/outputs/research_note_20261125/README.md)).
-  The current code reproduces the archive bit for bit for all four factors,
-  all three layers and both arms: each arm's `ic_mean`, `n_dates`,
-  `n_observations` and IC date list, and each layer's `ic_gap`, differ from
-  the archived values by exactly zero (`check_<f>.txt`, part 1, produced by
-  [`scripts/research_note/check_vintage_series.py`](../scripts/research_note/check_vintage_series.py)).
-  The 0.2.0 window correction applies to `mom_12_1`, `mom_6_1` and `rev_1m`
-  only ([CHANGELOG.md](../CHANGELOG.md)).
+- **Recomputation.** The per-date IC series come from a 2026-11-25
+  recomputation on the same store, which reproduces the archive bit for bit
+  (Appendix A).
 
 ## Four-factor table
 
@@ -101,26 +94,56 @@ Observation counts (`sample_comparison`):
 ## Per-date statistics
 
 d_t = restated IC − PIT IC on date t, over the 183 IC dates shared by both
-arms. Simple t = mean / (sd / √n), with sd using n − 1. NW(5) t uses
-Newey-West Bartlett weights, lag 5, autocovariances divided by n. MDE is an
-approximate minimum detectable difference at 80% power and two-sided 5%:
-2.8 × sd / √n (2.8 ≈ 1.96 + 0.84). It ignores autocorrelation and is only an
-approximation. The mean of d_t equals the layer's `ic_gap` to within 4 × 10⁻¹⁸.
+arms. The mean of d_t equals the layer's `ic_gap` to within 4 × 10⁻¹⁸.
 
-| factor | layer | n | mean d | sd d | simple t | NW(5) t | MDE |
-|---|---|---|---|---|---|---|---|
-| bm_ratio | original-process | 183 | −0.000925 | 0.016596 | −0.754 | −0.841 | 0.00344 |
-| bm_ratio | common-observation | 183 | −0.000351 | 0.009484 | −0.500 | −0.580 | 0.00196 |
-| ep_ratio | original-process | 183 | +0.002349 | 0.034611 | +0.918 | +0.859 | 0.00716 |
-| ep_ratio | common-observation | 183 | +0.001645 | 0.027677 | +0.804 | +0.820 | 0.00573 |
-| roe | original-process | 183 | +0.003597 | 0.033474 | +1.454 | +1.421 | 0.00693 |
-| roe | common-observation | 183 | +0.002650 | 0.024319 | +1.474 | +1.823 | 0.00503 |
-| asset_growth | original-process | 183 | +0.008153 | 0.169595 | +0.650 | +0.673 | 0.03510 |
-| asset_growth | common-observation | 183 | −0.001866 | 0.170322 | −0.148 | −0.161 | 0.03525 |
+- **Main test: two-sided**, on NW(5) t. A restatement can make IC better or
+  worse, and there was no prior reason to rule out a negative gap. The
+  one-sided p (H1: restated − PIT > 0) is given for reference only.
+- **t-statistics.** Simple t = mean / (sd / √n), with sd using n − 1. NW(L) t
+  uses Newey-West Bartlett weights with lag L and autocovariances divided by
+  n; lag 5 is the main lag. NW(0) t differs from simple t only by dividing the
+  variance by n instead of n − 1.
+- **p-values.** From NW(5) t under a standard normal approximation.
+- **Multiple tests.** Eight tests (four factors × two layers). Bonferroni
+  threshold: p < 0.05 / 8 = 0.00625, i.e. |NW(5) t| > 2.734 two-sided or
+  NW(5) t > 2.498 one-sided. The p-values below are not adjusted.
+- **MDE.** Approximate minimum detectable difference at two-sided 5% and 80%
+  power, normal approximation: MDE = 2.8 × SE_NW, with SE_NW = |mean| /
+  |NW(5) t| (the Newey-West standard error at lag 5) and 2.8 ≈ 1.96 + 0.84.
+
+| factor | layer | n | sign | mean d | sd d | simple t | NW(5) t | SE_NW | MDE | p two-sided | p one-sided |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| bm_ratio | original-process | 183 | − | −0.000925 | 0.016596 | −0.754 | −0.841 | 0.001099 | 0.00308 | 0.400 | 0.800 |
+| bm_ratio | common-observation | 183 | − | −0.000351 | 0.009484 | −0.500 | −0.580 | 0.000605 | 0.00169 | 0.562 | 0.719 |
+| ep_ratio | original-process | 183 | + | +0.002349 | 0.034611 | +0.918 | +0.859 | 0.002734 | 0.00765 | 0.390 | 0.195 |
+| ep_ratio | common-observation | 183 | + | +0.001645 | 0.027677 | +0.804 | +0.820 | 0.002007 | 0.00562 | 0.412 | 0.206 |
+| roe | original-process | 183 | + | +0.003597 | 0.033474 | +1.454 | +1.421 | 0.002532 | 0.00709 | 0.155 | 0.078 |
+| roe | common-observation | 183 | + | +0.002650 | 0.024319 | +1.474 | +1.823 | 0.001454 | 0.00407 | 0.068 | 0.034 |
+| asset_growth | original-process | 183 | + | +0.008153 | 0.169595 | +0.650 | +0.673 | 0.012122 | 0.03394 | 0.501 | 0.251 |
+| asset_growth | common-observation | 183 | − | −0.001866 | 0.170322 | −0.148 | −0.161 | 0.011567 | 0.03239 | 0.872 | 0.564 |
+
+Newey-West t by lag:
+
+| factor | layer | NW(0) t | NW(3) t | NW(5) t | NW(12) t |
+|---|---|---|---|---|---|
+| bm_ratio | original-process | −0.756 | −0.830 | −0.841 | −0.803 |
+| bm_ratio | common-observation | −0.501 | −0.556 | −0.580 | −0.541 |
+| ep_ratio | original-process | +0.921 | +0.875 | +0.859 | +0.888 |
+| ep_ratio | common-observation | +0.806 | +0.798 | +0.820 | +0.839 |
+| roe | original-process | +1.458 | +1.414 | +1.421 | +1.419 |
+| roe | common-observation | +1.478 | +1.645 | +1.823 | +1.901 |
+| asset_growth | original-process | +0.652 | +0.653 | +0.673 | +0.725 |
+| asset_growth | common-observation | −0.149 | −0.155 | −0.161 | −0.154 |
+
+![Mean per-date IC gap with ±2 × SE_NW(5) error bars, by factor and layer](research_note_ic_gaps.png)
+
+Mean of d_t for each factor and layer, with error bars of ±2 × SE_NW(5)
+(OP = original-process, CO = common-observation).
 
 Source: `examples/outputs/research_note_20261125/check_<f>.txt`, part 2,
 computed from `<f>_series.json` fields `series.<layer>/pit.{dates,ic}` and
-`series.<layer>/restated.{dates,ic}`.
+`series.<layer>/restated.{dates,ic}`; the figure from the same fields
+(Appendix A).
 
 ## asset_growth
 
@@ -170,11 +193,12 @@ TODO (author).
   above come from the recomputation. The 0.005 threshold is a preconfigured
   diagnostic trigger, not a test.
 - **Multiple-testing control.** The per-date statistics are eight tests (four
-  factors × two layers). No multiple-testing correction is applied.
+  factors × two layers). The reported p-values are not adjusted; the
+  Bonferroni threshold for eight tests (0.00625) is stated alongside them.
 - **Absence of an effect.** A t-statistic that is not significant does not
   show that the gap is zero.
-- **Power for asset_growth.** Its approximate MDE is 0.0351 (original-process)
-  and 0.0353 (common-observation), against 0.0020–0.0072 for the other three
+- **Power for asset_growth.** Its approximate MDE is 0.0339 (original-process)
+  and 0.0324 (common-observation), against 0.0017–0.0077 for the other three
   factors; the asset_growth tests have low power.
 - **A decomposition.** Layer gaps are not value and sample parts and are not
   added or subtracted ([VINTAGE_COMPARISON.md](VINTAGE_COMPARISON.md)).
@@ -191,9 +215,33 @@ TODO (author).
 - **Generality across factors.** There are four fundamental factors; the other
   six are `NOT_APPLICABLE` on every layer.
 
-## Reproduction fields
+## Appendix A: reproduction
 
-Source run: `examples/outputs/b_selected_200_rerun_20260909/demo_run.json`.
+Commands, run logs, file hashes and the committed-script reproduction check
+are in [research_note_20261125/README.md](../examples/outputs/research_note_20261125/README.md).
+
+- **Identities.** Source run SHA-256 `4bcefb56…4c4f34`. The presentation replay
+  [`b_selected_200_presentation_20260912_final/replay_input.json`](../examples/outputs/b_selected_200_presentation_20260912_final/replay_input.json)
+  carries an identical `vintage_comparisons` object (checked 2026-11-24).
+  Store SHA-256 `66c60785…12d9` (`database_sha256_after_run`).
+- **Recomputation.** On 2026-11-25 the current code (commit `c4840f1`; `src/`
+  identical to `main` at `b3d6c35`) recomputed `compare_vintages` for the four
+  factors on the same store (same SHA-256, unchanged by the runs), one factor
+  per process. The current code reproduces the archive bit for bit for all
+  four factors, all three layers and both arms: each arm's `ic_mean`,
+  `n_dates`, `n_observations` and IC date list, and each layer's `ic_gap`,
+  differ from the archived values by exactly zero (`check_<f>.txt`, part 1,
+  produced by
+  [`scripts/research_note/check_vintage_series.py`](../scripts/research_note/check_vintage_series.py)).
+  The 0.2.0 window correction applies to `mom_12_1`, `mom_6_1` and `rev_1m`
+  only ([CHANGELOG.md](../CHANGELOG.md)).
+- **Figure.** `research_note_ic_gaps.png` is written by
+  [`scripts/research_note/plot_ic_gaps.py`](../scripts/research_note/plot_ic_gaps.py),
+  which takes its statistics from the same checker, run with matplotlib
+  3.11.2 (Python 3.12.10; matplotlib is not in the locked environment):
+  `python -I scripts/research_note/plot_ic_gaps.py examples/outputs/research_note_20261125 docs/research_note_ic_gaps.png`.
+
+Source run fields: `examples/outputs/b_selected_200_rerun_20260909/demo_run.json`.
 
 | item | field path |
 |---|---|
@@ -212,7 +260,7 @@ Source run: `examples/outputs/b_selected_200_rerun_20260909/demo_run.json`.
 | environment | `environment.*` |
 | research gates | `research_gates.*` |
 
-Recomputation: `examples/outputs/research_note_20261125/`.
+Recomputation fields: `examples/outputs/research_note_20261125/`.
 
 | item | file and field path |
 |---|---|

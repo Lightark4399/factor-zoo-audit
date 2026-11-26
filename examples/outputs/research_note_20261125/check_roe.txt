@@ -13,6 +13,7 @@ archive b_selected_200_rerun_20260909/demo_run.json
   common-support      restated archived -0.0020432170 recomputed -0.0020432170 diff +0.000e+00 exact | n_dates 183->183 | n_obs 20910->20910 | IC dates identical to archive: True
   common-support      ic_gap   archived +0.0026533902 recomputed +0.0026533902 diff +0.000e+00 exact
 
-2. Per-date IC gap d_t = IC_restated - IC_pit; NW lag 5
-  original-process    n 183 | mean +0.003597 | sd 0.033474 | simple t +1.454 | NW(5) t +1.421 | MDE 0.006928 | mean vs recomputed ic_gap diff +1.7e-18
-  common-observation  n 183 | mean +0.002650 | sd 0.024319 | simple t +1.474 | NW(5) t +1.823 | MDE 0.005034 | mean vs recomputed ic_gap diff +3.9e-18
+2. Per-date IC gap d_t = IC_restated - IC_pit; main lag 5; p from NW(5) t, normal approximation; one-sided H1: mean > 0
+   Bonferroni over 8 tests: p < 0.00625; |t| > 2.734 two-sided, t > 2.498 one-sided
+  original-process    n 183 | mean +0.003597 | sign + | sd 0.033474 | simple t +1.454 | NW(0) t +1.458 | NW(3) t +1.414 | NW(5) t +1.421 | NW(12) t +1.419 | SE_NW(5) 0.002532 | MDE 0.007089 | p two-sided 0.1554 | p one-sided 0.0777 | mean vs recomputed ic_gap diff +1.7e-18
+  common-observation  n 183 | mean +0.002650 | sign + | sd 0.024319 | simple t +1.474 | NW(0) t +1.478 | NW(3) t +1.645 | NW(5) t +1.823 | NW(12) t +1.901 | SE_NW(5) 0.001454 | MDE 0.004071 | p two-sided 0.0683 | p one-sided 0.0342 | mean vs recomputed ic_gap diff +3.9e-18

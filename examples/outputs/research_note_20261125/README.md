@@ -121,7 +121,11 @@ python -I scripts/research_note/check_vintage_series.py `
 ```
 
 Part 1 of each check output compares every layer and arm with the source
-archive; part 2 gives the per-date gap statistics.
+archive; part 2 gives the per-date gap statistics. The `check_<factor>.txt`
+files were regenerated on 2026-11-26, after the checker changed MDE to
+2.8 × the Newey-West standard error and added the sign, two-sided and
+one-sided p-values, NW t at lags 0, 3, 5 and 12, and the Bonferroni
+threshold. Part 1 is byte-identical to the previous version.
 
 [`scripts/research_note/compare_series.py`](../../../scripts/research_note/compare_series.py)
 compares two driver outputs field by field (all fields except `generated_at`
@@ -188,10 +192,10 @@ imported `fza`) exactly as written at run time.
 | `bm_ratio_rerun_series.json` | 52014 | `c66adc5dba53f71fc2b851280866fdb22d14a1dfc061d7c064bfb0f3d44b4c19` |
 | `bm_ratio_run.log` | 5399 | `36b230339c0cb50c780706b1768c613cd336f599fb731c2d647dce135c33c0ff` |
 | `bm_ratio_series.json` | 52020 | `0a323fdc6aaad0a2ee4c5dc368d96265b9a40f62e54afd0c8d0cc1632ecd0835` |
-| `check_asset_growth.txt` | 1996 | `7bae8a0f5a38e0d31d51ccb5b6f92cc3f844d42c96cf8d817d9be264e239c1b7` |
-| `check_bm_ratio.txt` | 1988 | `2b7c8adaccf53e1e8ea844df24036d50dad923e518d4ef7f0be4d307f599a1d9` |
-| `check_ep_ratio.txt` | 1988 | `1401133b59c20d4de9a40dee6f46f9b239765254756af10e19bdbdae09999cc6` |
-| `check_roe.txt` | 1978 | `270ed5ec29a8f7dce4d6fb2a31abcbbd46031035a1dc7f59bf268cdc9da44b4a` |
+| `check_asset_growth.txt` | 2391 | `c8d7a842a77dcb540b70dd6e4ffae0395de973c8e97276fb995dc7e4c9bc2aad` |
+| `check_bm_ratio.txt` | 2383 | `c4dbcc173bdc33853bd0712f81d4646435611f1969dd9c3e6bd84aa0191e3418` |
+| `check_ep_ratio.txt` | 2383 | `8aca2665ee4bd1892eeaf11f41c8990a840a21fa0b2ae3c78c5aa06303e7cabb` |
+| `check_roe.txt` | 2373 | `890d403583e3892313c46b483b3e60765c8470df4eba5f1b2a7426226bb6d1f4` |
 | `compare_bm_ratio_rerun.txt` | 692 | `4e23cc42c9e6312170d87b37710730cee809e9db908b22dbb47bd691f3f99418` |
 | `ep_ratio_run.log` | 5430 | `060b07562f82f1869ba13c63f3705d89f4327b9966bf2df6705bf13b513e3fcb` |
 | `ep_ratio_series.json` | 51987 | `4b2857ad3da82333c21616aae54c55210803eda590ebf449414408bb7ca56e4f` |

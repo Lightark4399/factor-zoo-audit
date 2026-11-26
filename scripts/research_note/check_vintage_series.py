@@ -8,25 +8,34 @@ Stdlib only; reads two JSON files and writes nothing.
     .metrics.ic.{pit,restated}_dates), and recomputed ic_gap vs archived ic_gap.
 2. For original-process and common-observation: per-date d_t = IC_restated - IC_pit
    on identical dates; simple t = mean / (s / sqrt(n)) with s using n-1;
-   Newey-West t with Bartlett weights, lag 5, autocovariances divided by n;
-   approximate minimum detectable difference MDE = 2.8 * s / sqrt(n)
-   (two-sided 5%, 80% power; 2.8 ~ 1.96 + 0.84; ignores autocorrelation).
+   Newey-West t with Bartlett weights, autocovariances divided by n, at lags
+   0, 3, 5 and 12 (main lag 5); SE_NW = sqrt(long-run variance / n) at lag 5
+   (= |mean| / |NW(5) t|); p-values from NW(5) t under a standard normal
+   approximation, two-sided and one-sided (H1: mean > 0); approximate minimum
+   detectable difference MDE = 2.8 * SE_NW (two-sided 5%, 80% power;
+   2.8 ~ 1.96 + 0.84; normal approximation).
 
     python -I scripts/research_note/check_vintage_series.py <factor>_series.json
-        [--archive <demo_run.json>] [--lag 5]
+        [--archive <demo_run.json>]
 """
 
 import argparse
 import json
 import math
 from pathlib import Path
+from statistics import NormalDist
 
 ARCHIVE = (Path(__file__).resolve().parents[2] / "examples" / "outputs"
            / "b_selected_200_rerun_20260909" / "demo_run.json")
 MDE_Z = 2.8
+LAGS = (0, 3, 5, 12)
+MAIN_LAG = 5
+N_TESTS = 8  # four factors x two layers (original-process, common-observation)
+ALPHA = 0.05
 LAYERS = ("original-process", "common-observation", "common-support")
 T_LAYERS = ("original-process", "common-observation")
 EXACT = 1e-12
+Z = NormalDist()
 
 
 def simple_t(x):
@@ -36,20 +45,56 @@ def simple_t(x):
     return m / (s / math.sqrt(n))
 
 
-def newey_west_t(x, lag):
+def newey_west_se(x, lag):
     n = len(x)
     m = sum(x) / n
     e = [v - m for v in x]
     gamma = [sum(e[t] * e[t - k] for t in range(k, n)) / n for k in range(lag + 1)]
     lrv = gamma[0] + 2 * sum((1 - k / (lag + 1)) * gamma[k] for k in range(1, lag + 1))
-    return m / math.sqrt(lrv / n)
+    return math.sqrt(lrv / n)
+
+
+def newey_west_t(x, lag):
+    return (sum(x) / len(x)) / newey_west_se(x, lag)
+
+
+def p_two_sided(t):
+    return 2 * (1 - Z.cdf(abs(t)))
+
+
+def p_one_sided_positive(t):
+    return 1 - Z.cdf(t)
+
+
+def gap_stats(series, layer):
+    """Per-date gap statistics for one layer, or None if the date lists differ."""
+    p, r = series[f"{layer}/pit"], series[f"{layer}/restated"]
+    if p["dates"] != r["dates"]:
+        return None
+    d = [b - a for a, b in zip(p["ic"], r["ic"], strict=True)]
+    n = len(d)
+    mean = sum(d) / n
+    se = newey_west_se(d, MAIN_LAG)
+    t = mean / se
+    return {
+        "n": n, "mean": mean,
+        "sd": math.sqrt(sum((v - mean) ** 2 for v in d) / (n - 1)),
+        "simple_t": simple_t(d),
+        "nw_t": {lag: newey_west_t(d, lag) for lag in LAGS},
+        "se_nw": se, "mde": MDE_Z * se,
+        "p_two": p_two_sided(t), "p_one": p_one_sided_positive(t),
+    }
 
 
 def selftest():
     x = [1.0, 2.0, 3.0, 4.0]  # hand-computed: gamma0 = 1.25, gamma1 = 0.3125
     assert abs(newey_west_t(x, 0) - 2.5 / math.sqrt(1.25 / 4)) < 1e-12
     assert abs(newey_west_t(x, 1) - 4.0) < 1e-12           # lrv = 1.5625
+    assert abs(newey_west_se(x, 1) - 0.625) < 1e-12        # sqrt(1.5625 / 4)
     assert abs(simple_t(x) - 2.5 / math.sqrt((5 / 3) / 4)) < 1e-12
+    assert abs(p_two_sided(-1.959963984540054) - 0.05) < 1e-12
+    assert abs(p_one_sided_positive(1.6448536269514722) - 0.05) < 1e-12
+    assert abs(p_one_sided_positive(-1.6448536269514722) - 0.95) < 1e-12
 
 
 def main():
@@ -57,7 +102,6 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("run_json", type=Path)
     ap.add_argument("--archive", type=Path, default=ARCHIVE)
-    ap.add_argument("--lag", type=int, default=5)
     args = ap.parse_args()
 
     run = json.load(open(args.run_json, encoding="utf-8"))
@@ -89,21 +133,23 @@ def main():
               f"{run['layer_ic_gap'][layer]:+.10f} diff {gap_diff:+.3e} "
               f"{'exact' if abs(gap_diff) <= EXACT else 'DIFFERS'}")
 
-    print(f"\n2. Per-date IC gap d_t = IC_restated - IC_pit; NW lag {args.lag}")
+    a_b = ALPHA / N_TESTS
+    print(f"\n2. Per-date IC gap d_t = IC_restated - IC_pit; main lag {MAIN_LAG}; "
+          "p from NW(5) t, normal approximation; one-sided H1: mean > 0")
+    print(f"   Bonferroni over {N_TESTS} tests: p < {a_b:g}; "
+          f"|t| > {Z.inv_cdf(1 - a_b / 2):.3f} two-sided, t > {Z.inv_cdf(1 - a_b):.3f} one-sided")
     for layer in T_LAYERS:
-        p, r = series[f"{layer}/pit"], series[f"{layer}/restated"]
-        if p["dates"] != r["dates"]:
-            print(f"  {layer}: PIT and restated IC dates differ "
-                  f"({len(p['dates'])} vs {len(r['dates'])}); t-statistics withheld")
+        s = gap_stats(series, layer)
+        if s is None:
+            print(f"  {layer}: PIT and restated IC dates differ; t-statistics withheld")
             continue
-        d = [b - a for a, b in zip(p["ic"], r["ic"], strict=True)]
-        n = len(d)
-        mean = sum(d) / n
-        sd = math.sqrt(sum((v - mean) ** 2 for v in d) / (n - 1))
-        print(f"  {layer:19s} n {n} | mean {mean:+.6f} | sd {sd:.6f} | "
-              f"simple t {simple_t(d):+.3f} | NW({args.lag}) t "
-              f"{newey_west_t(d, args.lag):+.3f} | MDE {MDE_Z * sd / math.sqrt(n):.6f} | "
-              f"mean vs recomputed ic_gap diff {mean - run['layer_ic_gap'][layer]:+.1e}")
+        nw = " ".join(f"NW({lag}) t {s['nw_t'][lag]:+.3f} |" for lag in LAGS)
+        print(f"  {layer:19s} n {s['n']} | mean {s['mean']:+.6f} | sign "
+              f"{'+' if s['mean'] > 0 else '-' if s['mean'] < 0 else '0'} | sd {s['sd']:.6f} | "
+              f"simple t {s['simple_t']:+.3f} | {nw} SE_NW(5) {s['se_nw']:.6f} | "
+              f"MDE {s['mde']:.6f} | p two-sided {s['p_two']:.4f} | "
+              f"p one-sided {s['p_one']:.4f} | mean vs recomputed ic_gap diff "
+              f"{s['mean'] - run['layer_ic_gap'][layer]:+.1e}")
 
 
 if __name__ == "__main__":
