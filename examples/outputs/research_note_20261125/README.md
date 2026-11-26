@@ -46,11 +46,10 @@ the driver (SHA-256
 `90e49eba15f332832da8e199103b11a1a6195496069198f8368530f84ac3ff7b`), which
 hard-coded the repository path and the expected store hash, and the checker
 (SHA-256 `ade8bec7c32735c09ef0cdc432fb098ab047b5dfd3ce8690d3870c80af2fc2e7`),
-which did not yet print MDE. Each factor was run in a new PowerShell window
-with the following command, unmodified apart from the factor name:
-`bm_ratio` first as a trial, then `ep_ratio`, `roe` and `asset_growth`, with
-`bm_ratio` replaced by the factor name in `--factor`, `--out` and `--log`.
+which did not yet print MDE. Two PowerShell commands were run, unmodified.
 Each log's final `wrote` line records the output path.
+
+`bm_ratio`, as a trial run:
 
 ```powershell
 & {
@@ -62,15 +61,35 @@ Each log's final `wrote` line records the output path.
 }
 ```
 
-After each run, the pre-commit checker, with the factor name substituted the
-same way:
+followed by the pre-commit checker on its output, as a separate command:
 
 ```powershell
 & 'C:\Users\86181\OneDrive\文档\ChatGPT\github\factor-zoo-audit\.diagnostic-envs\locked\Scripts\python.exe' -I 'C:\Users\86181\AppData\Local\Temp\claude\562be76720cb0d3a\ea88ccde-087f-45f7-9714-86ffee5a1e2a\scratchpad\vintage_pilot\check_vintage_series.py' 'C:\Users\86181\AppData\Local\Temp\claude\562be76720cb0d3a\ea88ccde-087f-45f7-9714-86ffee5a1e2a\scratchpad\vintage_pilot\out\bm_ratio_series.json'
 ```
 
-Its console output was not saved; the `check_<factor>.txt` files here come
-from the committed checker (below).
+`ep_ratio`, `roe` and `asset_growth`, one process at a time in a single loop,
+then the pre-commit checker on each, then a copy of all outputs to a backup
+directory:
+
+```powershell
+& {
+  $py    = 'C:\Users\86181\OneDrive\文档\ChatGPT\github\factor-zoo-audit\.diagnostic-envs\locked\Scripts\python.exe'
+  $db    = 'C:\Users\86181\OneDrive\文档\ChatGPT\github\factor-zoo-audit\data\fza_200.duckdb'
+  $pilot = 'C:\Users\86181\AppData\Local\Temp\claude\562be76720cb0d3a\ea88ccde-087f-45f7-9714-86ffee5a1e2a\scratchpad\vintage_pilot'
+  foreach ($f in 'ep_ratio','roe','asset_growth') {
+    & $py -I -u "$pilot\run_vintage_series.py" --db $db --factor $f --out "$pilot\out\${f}_series.json" --log "$pilot\out\${f}_run.log"
+    if ($LASTEXITCODE -ne 0) { Write-Error "$f failed"; break }
+  }
+  foreach ($f in 'ep_ratio','roe','asset_growth') {
+    & $py -I "$pilot\check_vintage_series.py" "$pilot\out\${f}_series.json"
+  }
+  Copy-Item -Force "$pilot\out\*" "$HOME\vintage_pilot\vintage_pilot\out\"
+}
+```
+
+The checker's console output was not saved; the `check_<factor>.txt` files
+here come from the committed checker (below). The files committed here are
+byte-identical in the run directory and the backup directory.
 
 ### With the committed scripts
 
@@ -102,6 +121,14 @@ python -I scripts/research_note/check_vintage_series.py `
 
 Part 1 of each check output compares every layer and arm with the source
 archive; part 2 gives the per-date gap statistics.
+
+[`scripts/research_note/compare_series.py`](../../../scripts/research_note/compare_series.py)
+compares two driver outputs field by field (all fields except `generated_at`
+and `stage_seconds`) and exits 1 on any difference:
+
+```powershell
+python -I scripts/research_note/compare_series.py <old>_series.json <new>_series.json
+```
 
 ## Files
 
