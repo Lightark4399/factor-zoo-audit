@@ -1,0 +1,18 @@
+factor roe; run roe_series.json
+db sha256 before/after: 66c60785d1c0 / 66c60785d1c0
+archive b_selected_200_rerun_20260909/demo_run.json
+
+1. Recomputed vs archive (diff = recomputed - archived; 'exact' means |diff| <= 1e-12)
+  original-process    pit      archived -0.0047139572 recomputed -0.0047139572 diff +0.000e+00 exact | n_dates 183->183 | n_obs 20970->20970 | IC dates identical to archive: True
+  original-process    restated archived -0.0011171685 recomputed -0.0011171685 diff +0.000e+00 exact | n_dates 183->183 | n_obs 21463->21463 | IC dates identical to archive: True
+  original-process    ic_gap   archived +0.0035967887 recomputed +0.0035967887 diff +0.000e+00 exact
+  common-observation  pit      archived -0.0046970513 recomputed -0.0046970513 diff +0.000e+00 exact | n_dates 183->183 | n_obs 20910->20910 | IC dates identical to archive: True
+  common-observation  restated archived -0.0020467801 recomputed -0.0020467801 diff +0.000e+00 exact | n_dates 183->183 | n_obs 20910->20910 | IC dates identical to archive: True
+  common-observation  ic_gap   archived +0.0026502712 recomputed +0.0026502712 diff +0.000e+00 exact
+  common-support      pit      archived -0.0046966071 recomputed -0.0046966071 diff +0.000e+00 exact | n_dates 183->183 | n_obs 20910->20910 | IC dates identical to archive: True
+  common-support      restated archived -0.0020432170 recomputed -0.0020432170 diff +0.000e+00 exact | n_dates 183->183 | n_obs 20910->20910 | IC dates identical to archive: True
+  common-support      ic_gap   archived +0.0026533902 recomputed +0.0026533902 diff +0.000e+00 exact
+
+2. Per-date IC gap d_t = IC_restated - IC_pit; NW lag 5
+  original-process    n 183 | mean +0.003597 | sd 0.033474 | simple t +1.454 | NW(5) t +1.421 | MDE 0.006928 | mean vs recomputed ic_gap diff +1.7e-18
+  common-observation  n 183 | mean +0.002650 | sd 0.024319 | simple t +1.474 | NW(5) t +1.823 | MDE 0.005034 | mean vs recomputed ic_gap diff +3.9e-18

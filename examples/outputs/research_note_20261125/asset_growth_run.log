@@ -1,0 +1,75 @@
+2026-11-25T23:59:15+00:00 python 3.12.14 at C:\Users\86181\OneDrive\文档\ChatGPT\github\factor-zoo-audit\.diagnostic-envs\locked\Scripts\python.exe
+git rev-parse HEAD: c4840f19bfb3ec420577c42898f547cf8cbe7684
+git status --porcelain -- src: (clean)
+2026-11-25T23:59:15+00:00 START sha256 before
+2026-11-25T23:59:15+00:00 END   sha256 before (0.1s) | WS 19 MiB, peak 21 MiB
+sha256 before: 66c60785d1c085d4883f49796a33f20ad2bdf418072086fbfd938100666312d9
+2026-11-25T23:59:15+00:00 START load
+fza imported from C:\Users\86181\factor-zoo-audit\src\fza\__init__.py
+pandas 3.0.5 numpy 2.5.2 scipy 1.18.1 duckdb 1.5.5
+duckdb settings: [('memory_limit', '953.6 MiB'), ('threads', '1')]
+signal dates: 185 (2011-04-30 .. 2026-08-31); factor asset_growth, uses_fundamentals=True
+2026-11-25T23:59:22+00:00 END   load (6.9s) | WS 137 MiB, peak 137 MiB
+2026-11-25T23:59:22+00:00 START compare_vintages asset_growth
+2026-11-25T23:59:22+00:00   START historical membership
+2026-11-25T23:59:23+00:00   END   historical membership (0.7s) | WS 143 MiB, peak 144 MiB
+2026-11-25T23:59:23+00:00   START compute_factor PIT
+2026-11-26T00:02:18+00:00     START run_protocol (run.py)
+2026-11-26T00:02:20+00:00     END   run_protocol (run.py) (2.2s) | WS 355 MiB, peak 825 MiB
+2026-11-26T00:02:20+00:00   END   compute_factor PIT (177.1s) | WS 355 MiB, peak 825 MiB
+2026-11-26T00:02:20+00:00   START restated read (fundamentals_restated)
+2026-11-26T00:02:20+00:00   END   restated read (fundamentals_restated) (0.3s) | WS 371 MiB, peak 825 MiB
+2026-11-26T00:02:20+00:00   START compute_factor RESTATED
+2026-11-26T00:05:28+00:00     START run_protocol (run.py)
+2026-11-26T00:05:30+00:00     END   run_protocol (run.py) (1.5s) | WS 222 MiB, peak 825 MiB
+2026-11-26T00:05:30+00:00   END   compute_factor RESTATED (189.4s) | WS 222 MiB, peak 825 MiB
+2026-11-26T00:05:30+00:00   START run_protocol (run.py)
+2026-11-26T00:05:31+00:00   END   run_protocol (run.py) (1.2s) | WS 226 MiB, peak 825 MiB
+2026-11-26T00:05:31+00:00   START run_protocol (run.py)
+2026-11-26T00:05:33+00:00   END   run_protocol (run.py) (1.2s) | WS 226 MiB, peak 825 MiB
+2026-11-26T00:05:33+00:00   START diagnostic_layers
+2026-11-26T00:05:33+00:00     START outcome_identity #1
+2026-11-26T00:05:33+00:00     END   outcome_identity #1 (0.3s) | WS 229 MiB, peak 825 MiB
+2026-11-26T00:05:33+00:00     START layer run_protocol original-process/pit
+2026-11-26T00:05:34+00:00     END   layer run_protocol original-process/pit (0.9s) | WS 229 MiB, peak 825 MiB
+2026-11-26T00:05:34+00:00     START layer run_protocol original-process/restated
+2026-11-26T00:05:35+00:00     END   layer run_protocol original-process/restated (0.7s) | WS 229 MiB, peak 825 MiB
+2026-11-26T00:05:35+00:00     START outcome_identity #2
+2026-11-26T00:05:35+00:00     END   outcome_identity #2 (0.2s) | WS 230 MiB, peak 825 MiB
+2026-11-26T00:05:35+00:00     START layer run_protocol common-observation/pit
+2026-11-26T00:05:36+00:00     END   layer run_protocol common-observation/pit (0.8s) | WS 230 MiB, peak 825 MiB
+2026-11-26T00:05:36+00:00     START layer run_protocol common-observation/restated
+2026-11-26T00:05:37+00:00     END   layer run_protocol common-observation/restated (0.8s) | WS 230 MiB, peak 825 MiB
+2026-11-26T00:05:37+00:00     START common-support cleaning #1
+2026-11-26T00:05:38+00:00     END   common-support cleaning #1 (0.7s) | WS 231 MiB, peak 825 MiB
+2026-11-26T00:05:38+00:00     START common-support labels #1
+2026-11-26T00:05:40+00:00     END   common-support labels #1 (1.9s) | WS 281 MiB, peak 825 MiB
+2026-11-26T00:05:40+00:00     START common-support cleaning #2
+2026-11-26T00:05:40+00:00     END   common-support cleaning #2 (0.6s) | WS 281 MiB, peak 825 MiB
+2026-11-26T00:05:40+00:00     START common-support labels #2
+2026-11-26T00:05:41+00:00     END   common-support labels #2 (1.2s) | WS 282 MiB, peak 825 MiB
+2026-11-26T00:05:41+00:00     START outcome_identity #3
+2026-11-26T00:05:41+00:00     END   outcome_identity #3 (0.2s) | WS 282 MiB, peak 825 MiB
+2026-11-26T00:05:42+00:00     START layer run_protocol common-support/pit
+2026-11-26T00:05:42+00:00     END   layer run_protocol common-support/pit (0.7s) | WS 283 MiB, peak 825 MiB
+2026-11-26T00:05:42+00:00     START layer run_protocol common-support/restated
+2026-11-26T00:05:43+00:00     END   layer run_protocol common-support/restated (0.7s) | WS 283 MiB, peak 825 MiB
+2026-11-26T00:05:43+00:00   END   diagnostic_layers (10.3s) | WS 283 MiB, peak 825 MiB
+2026-11-26T00:05:43+00:00 END   compare_vintages asset_growth (380.8s) | WS 245 MiB, peak 825 MiB
+2026-11-26T00:05:43+00:00 START sha256 after
+2026-11-26T00:05:43+00:00 END   sha256 after (0.2s) | WS 211 MiB, peak 825 MiB
+sha256 after:  66c60785d1c085d4883f49796a33f20ad2bdf418072086fbfd938100666312d9 (UNCHANGED)
+
+SUMMARY (seconds)
+  load                              6.9
+  historical membership             0.7
+  PIT compute_factor              177.1
+  restated read                     0.3
+  restated compute_factor         189.4
+  layer original-process            2.2
+  layer common-observation          2.1
+  layer common-support              6.0
+  compare_vintages total          380.8
+  peak working set: 825 MiB
+
+wrote C:\Users\86181\AppData\Local\Temp\claude\562be76720cb0d3a\ea88ccde-087f-45f7-9714-86ffee5a1e2a\scratchpad\vintage_pilot\out\asset_growth_series.json

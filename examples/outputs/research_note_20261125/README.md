@@ -1,0 +1,95 @@
+# Research-note recomputation, 2026-11-25
+
+DIAGNOSTIC_ONLY, the same scope as the source archive
+[`b_selected_200_rerun_20260909/`](../b_selected_200_rerun_20260909/demo_run.json).
+These files recompute `compare_vintages` for the four fundamental factors
+(`bm_ratio`, `ep_ratio`, `roe`, `asset_growth`) and keep the per-date IC series
+of every layer and arm, which the source archive does not store. They are used
+by [docs/RESEARCH_NOTE.md](../../../docs/RESEARCH_NOTE.md).
+
+## Identity
+
+- **Code.** Commit `c4840f19bfb3ec420577c42898f547cf8cbe7684` (branch
+  `docs/research-note`; `src/` identical to `main` at `b3d6c35`). Each log
+  records `git status --porcelain -- src` as clean and `fza` imported from this
+  checkout's `src/`.
+- **Store.** The local `fza_200.duckdb` (not in the repository), SHA-256
+  `66c60785d1c085d4883f49796a33f20ad2bdf418072086fbfd938100666312d9`, the
+  source archive's `database_sha256_after_run`. Opened `read_only`; each log
+  records the same hash before and after its run.
+- **Environment.** Windows; Python 3.12.14, pandas 3.0.5, numpy 2.5.2,
+  scipy 1.18.1, duckdb 1.5.5, as printed in each log. Python, pandas, numpy and
+  scipy match the source archive's `environment` block. DuckDB
+  `memory_limit='1GB'` (reported as 953.6 MiB) and `threads=1`.
+- **Grid and protocol.** 185 month-end signal dates, 2011-04-30 to 2026-08-31;
+  `horizon_sessions=21`, `execution_lag_sessions=1`, `n_quantiles=5`, as in the
+  source archive's `configuration`.
+
+## Runs
+
+One factor per process, sequentially. Times are from the logs (UTC offset
++00:00).
+
+| factor | `compare_vintages` start | seconds | peak working set |
+|---|---|---|---|
+| bm_ratio | 2026-11-25T21:36:52 | 41.8 | 511 MiB |
+| ep_ratio | 2026-11-25T21:54:20 | 3515.0 | 1248 MiB |
+| roe | 2026-11-25T22:53:02 | 3972.0 | 1209 MiB |
+| asset_growth | 2026-11-25T23:59:22 | 380.8 | 825 MiB |
+
+## Commands
+
+The runs used a pre-commit copy of the driver (SHA-256 `90e49eba15f332832da8e199103b11a1a6195496069198f8368530f84ac3ff7b`) that
+hard-coded the repository path and the expected store hash. The committed
+[`scripts/research_note/run_vintage_series.py`](../../../scripts/research_note/run_vintage_series.py)
+differs only by taking those two values as `--repo` (default: this checkout)
+and `--expected-sha256`, by splitting one import line, and by its docstring.
+The equivalent command, from the repository root, per factor:
+
+```powershell
+python -I -u scripts/research_note/run_vintage_series.py --db <path>\fza_200.duckdb `
+  --factor bm_ratio `
+  --out examples/outputs/research_note_20261125/bm_ratio_series.json `
+  --log examples/outputs/research_note_20261125/bm_ratio_run.log `
+  --expected-sha256 66c60785d1c085d4883f49796a33f20ad2bdf418072086fbfd938100666312d9
+```
+
+`python` must be an environment with this project's dependencies; the runs used
+the locked environment listed above. The `check_<factor>.txt` files were
+produced afterwards by the committed
+[`scripts/research_note/check_vintage_series.py`](../../../scripts/research_note/check_vintage_series.py)
+(standard library only; run with Python 3.12.10):
+
+```powershell
+python -I scripts/research_note/check_vintage_series.py `
+  examples/outputs/research_note_20261125/bm_ratio_series.json > check_bm_ratio.txt
+```
+
+Part 1 of each check output compares every layer and arm with the source
+archive; part 2 gives the per-date gap statistics.
+
+## Files
+
+Bytes are preserved as generated (CRLF line endings; `-text` in
+`.gitattributes`). The logs and JSON record local paths (interpreter, store,
+imported `fza`) exactly as written at run time.
+
+| file | bytes | SHA-256 |
+|---|---|---|
+| `asset_growth_run.log` | 5419 | `0cb40d6ebdc11f1783dec746a697af1fbbb7667b41fec0ffd71c1aa94a8e41a1` |
+| `asset_growth_series.json` | 51871 | `cef0bc35bfe49cf115ed25e4de397ae2a61f8d1c7e46ef8b90956c4e904525b1` |
+| `bm_ratio_run.log` | 5399 | `36b230339c0cb50c780706b1768c613cd336f599fb731c2d647dce135c33c0ff` |
+| `bm_ratio_series.json` | 52020 | `0a323fdc6aaad0a2ee4c5dc368d96265b9a40f62e54afd0c8d0cc1632ecd0835` |
+| `check_asset_growth.txt` | 1996 | `7bae8a0f5a38e0d31d51ccb5b6f92cc3f844d42c96cf8d817d9be264e239c1b7` |
+| `check_bm_ratio.txt` | 1988 | `2b7c8adaccf53e1e8ea844df24036d50dad923e518d4ef7f0be4d307f599a1d9` |
+| `check_ep_ratio.txt` | 1988 | `1401133b59c20d4de9a40dee6f46f9b239765254756af10e19bdbdae09999cc6` |
+| `check_roe.txt` | 1978 | `270ed5ec29a8f7dce4d6fb2a31abcbbd46031035a1dc7f59bf268cdc9da44b4a` |
+| `ep_ratio_run.log` | 5430 | `060b07562f82f1869ba13c63f3705d89f4327b9966bf2df6705bf13b513e3fcb` |
+| `ep_ratio_series.json` | 51987 | `4b2857ad3da82333c21616aae54c55210803eda590ebf449414408bb7ca56e4f` |
+| `roe_run.log` | 5410 | `63a5cca59d8f5da54e2fac27c0e8b799832c5d063e4438f1938d57d91831a0d5` |
+| `roe_series.json` | 52023 | `2ab316b81ef3a1b7b00aab020ca7673ef0f1e0a2235706e844ac66069555e5e4` |
+
+Series fields: `series.<layer>/<arm>.{dates,ic,ic_mean,n_dates,n_observations}`,
+with `<layer>` one of `original-process`, `common-observation`,
+`common-support` and `<arm>` `pit` or `restated`; `layer_ic_gap.<layer>`;
+`db_sha256_before`, `db_sha256_after`; `stage_seconds`.
