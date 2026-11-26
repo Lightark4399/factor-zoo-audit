@@ -9,8 +9,9 @@ Stdlib only; reads two JSON files and writes nothing.
 2. For original-process and common-observation: per-date d_t = IC_restated - IC_pit
    on identical dates; simple t = mean / (s / sqrt(n)) with s using n-1;
    Newey-West t with Bartlett weights, autocovariances divided by n, at lags
-   0, 3, 5 and 12 (main lag 5); SE_NW = sqrt(long-run variance / n) at lag 5
-   (= |mean| / |NW(5) t|); p-values from NW(5) t under a standard normal
+   0, 3, 5 and 12 (main lag 5); SE_NW = sqrt(long-run variance / n) at lag 5,
+   returned directly by newey_west_se (NW t = mean / SE_NW, so SE_NW stays
+   defined when the mean is 0); p-values from NW(5) t under a standard normal
    approximation, two-sided and one-sided (H1: mean > 0); approximate minimum
    detectable difference MDE = 2.8 * SE_NW (two-sided 5%, 80% power;
    2.8 ~ 1.96 + 0.84; normal approximation).
@@ -92,6 +93,8 @@ def selftest():
     assert abs(newey_west_t(x, 1) - 4.0) < 1e-12           # lrv = 1.5625
     assert abs(newey_west_se(x, 1) - 0.625) < 1e-12        # sqrt(1.5625 / 4)
     assert abs(simple_t(x) - 2.5 / math.sqrt((5 / 3) / 4)) < 1e-12
+    z = [1.0, -1.0, 1.0, -1.0]  # mean 0: gamma0 = 1, gamma1 = -0.75, lrv(1) = 0.25
+    assert abs(newey_west_se(z, 1) - 0.25) < 1e-12 and newey_west_t(z, 1) == 0.0
     assert abs(p_two_sided(-1.959963984540054) - 0.05) < 1e-12
     assert abs(p_one_sided_positive(1.6448536269514722) - 0.05) < 1e-12
     assert abs(p_one_sided_positive(-1.6448536269514722) - 0.95) < 1e-12

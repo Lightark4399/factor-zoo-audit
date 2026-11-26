@@ -108,8 +108,10 @@ arms. The mean of d_t equals the layer's `ic_gap` to within 4 × 10⁻¹⁸.
   threshold: p < 0.05 / 8 = 0.00625, i.e. |NW(5) t| > 2.734 two-sided or
   NW(5) t > 2.498 one-sided. The p-values below are not adjusted.
 - **MDE.** Approximate minimum detectable difference at two-sided 5% and 80%
-  power, normal approximation: MDE = 2.8 × SE_NW, with SE_NW = |mean| /
-  |NW(5) t| (the Newey-West standard error at lag 5) and 2.8 ≈ 1.96 + 0.84.
+  power, normal approximation: MDE = 2.8 × SE_NW, with SE_NW = √(LRV / n),
+  the Newey-West standard error at lag 5 computed directly from the
+  Bartlett-weighted long-run variance LRV (NW(5) t = mean / SE_NW), and
+  2.8 ≈ 1.96 + 0.84.
 
 | factor | layer | n | sign | mean d | sd d | simple t | NW(5) t | SE_NW | MDE | p two-sided | p one-sided |
 |---|---|---|---|---|---|---|---|---|---|---|---|
