@@ -1,0 +1,18 @@
+  SAME     db
+  SAME     db_sha256_after
+  SAME     db_sha256_before
+  SAME     duckdb
+  SAME     factor
+  SAME     fza_file
+  skip     generated_at (volatile)
+  SAME     layer_ic_gap
+  SAME     series.common-observation/pit (183 per-date IC values)
+  SAME     series.common-observation/restated (183 per-date IC values)
+  SAME     series.common-support/pit (183 per-date IC values)
+  SAME     series.common-support/restated (183 per-date IC values)
+  SAME     series.original-process/pit (183 per-date IC values)
+  SAME     series.original-process/restated (183 per-date IC values)
+  SAME     signal_dates
+  skip     stage_seconds (volatile)
+
+ALL COMPARED FIELDS IDENTICAL

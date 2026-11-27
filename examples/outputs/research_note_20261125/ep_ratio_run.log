@@ -1,0 +1,75 @@
+2026-11-25T21:54:16+00:00 python 3.12.14 at C:\Users\86181\OneDrive\文档\ChatGPT\github\factor-zoo-audit\.diagnostic-envs\locked\Scripts\python.exe
+git rev-parse HEAD: c4840f19bfb3ec420577c42898f547cf8cbe7684
+git status --porcelain -- src: (clean)
+2026-11-25T21:54:16+00:00 START sha256 before
+2026-11-25T21:54:17+00:00 END   sha256 before (0.1s) | WS 20 MiB, peak 21 MiB
+sha256 before: 66c60785d1c085d4883f49796a33f20ad2bdf418072086fbfd938100666312d9
+2026-11-25T21:54:17+00:00 START load
+fza imported from C:\Users\86181\factor-zoo-audit\src\fza\__init__.py
+pandas 3.0.5 numpy 2.5.2 scipy 1.18.1 duckdb 1.5.5
+duckdb settings: [('memory_limit', '953.6 MiB'), ('threads', '1')]
+signal dates: 185 (2011-04-30 .. 2026-08-31); factor ep_ratio, uses_fundamentals=True
+2026-11-25T21:54:20+00:00 END   load (3.8s) | WS 137 MiB, peak 137 MiB
+2026-11-25T21:54:20+00:00 START compare_vintages ep_ratio
+2026-11-25T21:54:20+00:00   START historical membership
+2026-11-25T21:54:21+00:00   END   historical membership (0.4s) | WS 146 MiB, peak 146 MiB
+2026-11-25T21:54:21+00:00   START compute_factor PIT
+2026-11-25T22:22:58+00:00     START run_protocol (run.py)
+2026-11-25T22:23:01+00:00     END   run_protocol (run.py) (2.5s) | WS 354 MiB, peak 1248 MiB
+2026-11-25T22:23:01+00:00   END   compute_factor PIT (1719.8s) | WS 354 MiB, peak 1248 MiB
+2026-11-25T22:23:01+00:00   START restated read (fundamentals_restated)
+2026-11-25T22:23:01+00:00   END   restated read (fundamentals_restated) (0.3s) | WS 371 MiB, peak 1248 MiB
+2026-11-25T22:23:01+00:00   START compute_factor RESTATED
+2026-11-25T22:52:41+00:00     START run_protocol (run.py)
+2026-11-25T22:52:42+00:00     END   run_protocol (run.py) (0.8s) | WS 216 MiB, peak 1248 MiB
+2026-11-25T22:52:42+00:00   END   compute_factor RESTATED (1781.0s) | WS 216 MiB, peak 1248 MiB
+2026-11-25T22:52:42+00:00   START run_protocol (run.py)
+2026-11-25T22:52:43+00:00   END   run_protocol (run.py) (0.7s) | WS 221 MiB, peak 1248 MiB
+2026-11-25T22:52:43+00:00   START run_protocol (run.py)
+2026-11-25T22:52:43+00:00   END   run_protocol (run.py) (0.6s) | WS 221 MiB, peak 1248 MiB
+2026-11-25T22:52:43+00:00   START diagnostic_layers
+2026-11-25T22:52:43+00:00     START outcome_identity #1
+2026-11-25T22:52:44+00:00     END   outcome_identity #1 (0.2s) | WS 224 MiB, peak 1248 MiB
+2026-11-25T22:52:44+00:00     START layer run_protocol original-process/pit
+2026-11-25T22:52:44+00:00     END   layer run_protocol original-process/pit (0.8s) | WS 224 MiB, peak 1248 MiB
+2026-11-25T22:52:44+00:00     START layer run_protocol original-process/restated
+2026-11-25T22:52:45+00:00     END   layer run_protocol original-process/restated (1.1s) | WS 224 MiB, peak 1248 MiB
+2026-11-25T22:52:46+00:00     START outcome_identity #2
+2026-11-25T22:52:46+00:00     END   outcome_identity #2 (0.3s) | WS 227 MiB, peak 1248 MiB
+2026-11-25T22:52:46+00:00     START layer run_protocol common-observation/pit
+2026-11-25T22:52:47+00:00     END   layer run_protocol common-observation/pit (1.1s) | WS 228 MiB, peak 1248 MiB
+2026-11-25T22:52:47+00:00     START layer run_protocol common-observation/restated
+2026-11-25T22:52:48+00:00     END   layer run_protocol common-observation/restated (0.8s) | WS 228 MiB, peak 1248 MiB
+2026-11-25T22:52:48+00:00     START common-support cleaning #1
+2026-11-25T22:52:49+00:00     END   common-support cleaning #1 (0.8s) | WS 230 MiB, peak 1248 MiB
+2026-11-25T22:52:49+00:00     START common-support labels #1
+2026-11-25T22:52:52+00:00     END   common-support labels #1 (2.6s) | WS 288 MiB, peak 1248 MiB
+2026-11-25T22:52:52+00:00     START common-support cleaning #2
+2026-11-25T22:52:52+00:00     END   common-support cleaning #2 (0.8s) | WS 288 MiB, peak 1248 MiB
+2026-11-25T22:52:52+00:00     START common-support labels #2
+2026-11-25T22:52:54+00:00     END   common-support labels #2 (1.1s) | WS 290 MiB, peak 1248 MiB
+2026-11-25T22:52:54+00:00     START outcome_identity #3
+2026-11-25T22:52:54+00:00     END   outcome_identity #3 (0.3s) | WS 290 MiB, peak 1248 MiB
+2026-11-25T22:52:54+00:00     START layer run_protocol common-support/pit
+2026-11-25T22:52:55+00:00     END   layer run_protocol common-support/pit (0.8s) | WS 290 MiB, peak 1248 MiB
+2026-11-25T22:52:55+00:00     START layer run_protocol common-support/restated
+2026-11-25T22:52:55+00:00     END   layer run_protocol common-support/restated (0.6s) | WS 290 MiB, peak 1248 MiB
+2026-11-25T22:52:55+00:00   END   diagnostic_layers (11.9s) | WS 290 MiB, peak 1248 MiB
+2026-11-25T22:52:55+00:00 END   compare_vintages ep_ratio (3515.0s) | WS 245 MiB, peak 1248 MiB
+2026-11-25T22:52:55+00:00 START sha256 after
+2026-11-25T22:52:56+00:00 END   sha256 after (0.1s) | WS 211 MiB, peak 1248 MiB
+sha256 after:  66c60785d1c085d4883f49796a33f20ad2bdf418072086fbfd938100666312d9 (UNCHANGED)
+
+SUMMARY (seconds)
+  load                              3.8
+  historical membership             0.4
+  PIT compute_factor             1719.8
+  restated read                     0.3
+  restated compute_factor        1781.0
+  layer original-process            2.3
+  layer common-observation          2.6
+  layer common-support              7.1
+  compare_vintages total         3515.0
+  peak working set: 1248 MiB
+
+wrote C:\Users\86181\AppData\Local\Temp\claude\562be76720cb0d3a\ea88ccde-087f-45f7-9714-86ffee5a1e2a\scratchpad\vintage_pilot\out\ep_ratio_series.json

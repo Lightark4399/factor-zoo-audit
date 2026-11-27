@@ -9,6 +9,10 @@ numbers for those factors, and the samples behind them, are not a numerical
 check of the current implementation. See the 2026-09-29 correction in
 [DEFINITION_AUDIT.md](../../docs/DEFINITION_AUDIT.md).
 
+`research_note_20261125/` holds a 2026-11-25 recomputation of the four
+fundamental factors' vintage layers, with per-date IC series; see its
+[README](research_note_20261125/README.md).
+
 `demo_report.txt` is an earlier synthetic demonstration, not a freshness
 guarantee for the current code. It labels its numbers `NOT findings`. Fresh B
 acceptance and the full-grid selected-200 archive are tracked in

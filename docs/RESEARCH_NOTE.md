@@ -1,0 +1,337 @@
+# Research note: vintage layers for the four fundamental factors
+
+DIAGNOSTIC_ONLY. Summary numbers are read from the 2026-09-09 archived run.
+Per-date statistics come from a 2026-11-25 recomputation whose scalar results
+match that archive exactly: `ic_mean` and `ic_gap` have identical
+floating-point bit patterns, and `n_dates`, `n_observations` and the IC date
+lists are equal. The archive has no per-date IC, so the per-date series could
+not be compared with it (Appendix A). The archive labels its statistics
+"NOT findings".
+
+## Key results
+
+- Original-process IC gap (restated − PIT): bm_ratio −0.00092, ep_ratio +0.00235, roe +0.00360, asset_growth +0.00815; only asset_growth exceeds the preconfigured 0.005 trigger, and its `diagnostic_verdict` begins `FAIL`, but its per-date gap test gives NW(5) t = +0.67 (two-sided p = 0.50).
+- Common-observation IC gap: asset_growth −0.00187 (opposite sign to its original-process gap); bm_ratio −0.00035, ep_ratio +0.00165, roe +0.00265 (same sign as original-process).
+- Of the 8 per-date gap tests, two-sided NW(5) p ranges from 0.068 (roe, common-observation) to 0.872 (asset_growth, common-observation), none below 0.05; asset_growth's MDE is 0.0339 and 0.0324, against 0.0017–0.0077 for the other six.
+
+## Question and answer
+
+**Question.** In this 200-company diagnostic sample, do restated-fundamental
+ICs differ from point-in-time ICs by more than sampling noise, and does the
+`FAIL` flag raised on `asset_growth` reflect a statistically distinguishable
+restated-versus-PIT gap?
+
+**Answer.** No detectable difference. Across four fundamental factors and two layers (eight
+two-sided Newey–West tests at lag 5), no mean per-date IC gap is statistically distinguishable
+from zero (unadjusted two-sided p = 0.068 to 0.872). The flagged `asset_growth`
+original-process gap (+0.00815) has NW(5) t = +0.67 (p = 0.501), and on common observations
+the gap is −0.00187 (NW(5) t = −0.16, p = 0.872). Neither is distinguishable from zero, but the
+approximate 95% intervals are wide ([−0.0156, +0.0319] and [−0.0245, +0.0208]) and also
+include gaps larger than the 0.005 trigger, so the test cannot say where the observed gap
+comes from.
+
+## Data and settings
+
+- **Source run.** [`examples/outputs/b_selected_200_rerun_20260909/demo_run.json`](../examples/outputs/b_selected_200_rerun_20260909/demo_run.json),
+  `generated_at_utc` 2026-09-11T10:51:10Z.
+- **Store.** `data/fza_200.duckdb` (`database_bytes_unchanged` is `true`).
+- **Companies.** 200 stored securities (`selected_roster`, 200 rows; 161
+  `us-gaap` in `data_summary.securities_usgaap`). `roster_scope` is
+  `stored_selection_not_verified_historical_membership`.
+- **Dataset status.** `evidence.declared_run_purpose` = `diagnostic_scale`;
+  `evidence.declared_research_evidence` = `false`;
+  `evidence.declared_survivorship_prone_share` = `1.0`;
+  `evidence.statistics_status` = `DIAGNOSTIC_ONLY`.
+- **Grid and protocol** (`configuration`). 185 month-end signal dates,
+  2011-04-30 to 2026-08-31, not subsampled; 21-session labels; execution lag 1
+  session; 5 quantiles; `ls_sharpe_units` = `per_observation_not_annualised`.
+  IC is the per-date Spearman rank correlation between signal and forward
+  return (`src/fza/pipeline/protocol.py`, `information_coefficient`);
+  `ic_mean` is its mean over dates. For each of the four factors and each layer
+  below, PIT and restated IC are computed on 183 dates, and the two date lists
+  are identical (`…metrics.ic.identical_metric_dates` = `true`).
+- **Environment** (`environment`). Python 3.12.14, pandas 3.0.5, numpy 2.5.2,
+  scipy 1.18.1; `lock_status` = `MATCHED`.
+- **Arms.** Both arms run the same factor code, which reads fundamentals as of
+  asof = signal date − 2 calendar days (`lag_days = 2` in `_fundamental_panel`
+  and `_fundamental_history`, `src/fza/factors/library.py`; none of the four
+  factors overrides it). PIT reads go through the store's point-in-time
+  macros, which keep rows with `filed <= asof` and `period_end <= asof`
+  (`latest_fundamental_asof`, `fundamentals_asof`,
+  `src/fza/sql/001_schema.sql`). The restated arm replaces both reads with
+  reads of the `fundamentals_restated` view (the latest-filed value per
+  company, tag and period) that keep `period_end <= asof` and drop the
+  `filed <= asof` constraint (`src/fza/pipeline/run.py`, `compare_vintages`).
+  IC gap = restated IC − PIT IC.
+- **Layers.** Defined in [VINTAGE_COMPARISON.md](VINTAGE_COMPARISON.md):
+  original-process (shared dates, arm-specific observations and cleaning
+  inputs), common-observation (intersection of the cleaned scoring keys),
+  common-support (intersection of finite, post-membership, pre-cleaning keys,
+  re-cleaned per arm). All three are diagnostic; differences between layers are
+  sensitivities, not a value/sample decomposition.
+- **Cleaning setting.** The common-support cleaning reports record
+  `neutralised: false` for both arms of all four factors
+  (`…layers.common-support.cleaning[0..1].neutralised`).
+- **Recomputation.** The per-date IC series come from a 2026-11-25
+  recomputation on the same store. Its `ic_mean` and `ic_gap` values have the
+  same floating-point bit patterns as the archive's, and its `n_dates`,
+  `n_observations` and IC date lists are equal to the archive's. The archive
+  has no per-date IC, so the per-date series themselves cannot be compared
+  with it (Appendix A).
+
+## Four-factor table
+
+All rows: status `DIAGNOSTIC_ONLY`, label/holding-period identity `MATCHED`.
+
+| factor | layer | PIT IC | restated IC | IC gap | restated-only share |
+|---|---|---|---|---|---|
+| bm_ratio | original-process | −0.01400 | −0.01493 | −0.00092 | 0.96% (195 / 20,346) |
+| bm_ratio | common-observation | −0.01430 | −0.01465 | −0.00035 | — |
+| ep_ratio | original-process | −0.01058 | −0.00823 | +0.00235 | 2.17% (439 / 20,215) |
+| ep_ratio | common-observation | −0.00880 | −0.00715 | +0.00165 | — |
+| roe | original-process | −0.00471 | −0.00112 | +0.00360 | 2.58% (553 / 21,463) |
+| roe | common-observation | −0.00470 | −0.00205 | +0.00265 | — |
+| asset_growth | original-process | −0.01166 | −0.00351 | +0.00815 | 42.59% (9,643 / 22,642) |
+| asset_growth | common-observation | −0.01120 | −0.01306 | −0.00187 | — |
+
+Field paths, with `<f>` the row's factor and `<layer>` the row's layer, all
+under `vintage_comparisons.<f>.detail` in the source run:
+
+| column | field path |
+|---|---|
+| PIT IC | `layers.<layer>.pit.ic_mean` |
+| restated IC | `layers.<layer>.restated.ic_mean` |
+| IC gap | `layers.<layer>.ic_gap` |
+| restated-only share | `sample_comparison.restated_only_observations` / `sample_comparison.restated_observations` |
+
+Common-observation scores only the shared keys, so it has no restated-only
+observations by construction.
+
+Observation counts (`sample_comparison`):
+
+| factor | PIT | restated | shared | PIT-only | restated-only |
+|---|---|---|---|---|---|
+| bm_ratio | 20,186 | 20,346 | 20,151 | 35 | 195 |
+| ep_ratio | 19,908 | 20,215 | 19,776 | 132 | 439 |
+| roe | 20,970 | 21,463 | 20,910 | 60 | 553 |
+| asset_growth | 13,404 | 22,642 | 12,999 | 405 | 9,643 |
+
+## Per-date statistics
+
+d_t = restated IC − PIT IC on date t, over the 183 IC dates shared by both
+arms. The mean of d_t equals the layer's `ic_gap` to within 4 × 10⁻¹⁸.
+
+- **Main test: two-sided**, on NW(5) t. A restatement can make IC better or
+  worse, and there was no prior reason to rule out a negative gap. The
+  one-sided p (H1: restated − PIT > 0) is given for reference only.
+- **t-statistics.** Simple t = mean / (sd / √n), with sd using n − 1. NW(L) t
+  uses Newey-West Bartlett weights with lag L and autocovariances divided by
+  n; lag 5 is the main lag. NW(0) t differs from simple t only by dividing the
+  variance by n instead of n − 1.
+- **p-values.** From NW(5) t under a standard normal approximation.
+- **Multiple tests.** Eight tests (four factors × two layers). Bonferroni
+  threshold: p < 0.05 / 8 = 0.00625, i.e. |NW(5) t| > 2.734 two-sided or
+  NW(5) t > 2.498 one-sided. The p-values below are not adjusted.
+- **MDE.** Approximate minimum detectable difference at two-sided 5% and 80%
+  power, normal approximation: MDE = 2.8 × SE_NW, with SE_NW = √(LRV / n),
+  the Newey-West standard error at lag 5 computed directly from the
+  Bartlett-weighted long-run variance LRV (NW(5) t = mean / SE_NW), and
+  2.8 ≈ 1.96 + 0.84.
+- **95% interval.** Approximate, normal approximation: mean ± 1.96 × SE_NW,
+  with SE_NW at lag 5 as above.
+
+| factor | layer | n | sign | mean d | sd d | simple t | NW(5) t | SE_NW | MDE | 95% low | 95% high | p two-sided | p one-sided |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| bm_ratio | original-process | 183 | − | −0.000925 | 0.016596 | −0.754 | −0.841 | 0.001099 | 0.00308 | −0.003079 | +0.001229 | 0.400 | 0.800 |
+| bm_ratio | common-observation | 183 | − | −0.000351 | 0.009484 | −0.500 | −0.580 | 0.000605 | 0.00169 | −0.001536 | +0.000835 | 0.562 | 0.719 |
+| ep_ratio | original-process | 183 | + | +0.002349 | 0.034611 | +0.918 | +0.859 | 0.002734 | 0.00765 | −0.003009 | +0.007706 | 0.390 | 0.195 |
+| ep_ratio | common-observation | 183 | + | +0.001645 | 0.027677 | +0.804 | +0.820 | 0.002007 | 0.00562 | −0.002288 | +0.005578 | 0.412 | 0.206 |
+| roe | original-process | 183 | + | +0.003597 | 0.033474 | +1.454 | +1.421 | 0.002532 | 0.00709 | −0.001365 | +0.008559 | 0.155 | 0.078 |
+| roe | common-observation | 183 | + | +0.002650 | 0.024319 | +1.474 | +1.823 | 0.001454 | 0.00407 | −0.000199 | +0.005500 | 0.068 | 0.034 |
+| asset_growth | original-process | 183 | + | +0.008153 | 0.169595 | +0.650 | +0.673 | 0.012122 | 0.03394 | −0.015605 | +0.031912 | 0.501 | 0.251 |
+| asset_growth | common-observation | 183 | − | −0.001866 | 0.170322 | −0.148 | −0.161 | 0.011567 | 0.03239 | −0.024539 | +0.020806 | 0.872 | 0.564 |
+
+Newey-West t by lag:
+
+| factor | layer | NW(0) t | NW(3) t | NW(5) t | NW(12) t |
+|---|---|---|---|---|---|
+| bm_ratio | original-process | −0.756 | −0.830 | −0.841 | −0.803 |
+| bm_ratio | common-observation | −0.501 | −0.556 | −0.580 | −0.541 |
+| ep_ratio | original-process | +0.921 | +0.875 | +0.859 | +0.888 |
+| ep_ratio | common-observation | +0.806 | +0.798 | +0.820 | +0.839 |
+| roe | original-process | +1.458 | +1.414 | +1.421 | +1.419 |
+| roe | common-observation | +1.478 | +1.645 | +1.823 | +1.901 |
+| asset_growth | original-process | +0.652 | +0.653 | +0.673 | +0.725 |
+| asset_growth | common-observation | −0.149 | −0.155 | −0.161 | −0.154 |
+
+![Mean per-date IC gap with ±2 × SE_NW(5) error bars, by factor and layer](research_note_ic_gaps.png)
+
+Mean of d_t for each factor and layer, with error bars of ±2 × SE_NW(5)
+(OP = original-process, CO = common-observation).
+
+Source: `examples/outputs/research_note_20261125/check_<f>.txt`, part 2,
+computed from `<f>_series.json` fields `series.<layer>/pit.{dates,ic}` and
+`series.<layer>/restated.{dates,ic}`; the figure from the same fields
+(Appendix A).
+
+## asset_growth
+
+The original-process directional trigger fired: `diagnostic_verdict` begins
+`FAIL`, with `detail.material_gap_threshold` 0.005 and `detail.threshold_kind`
+`PRECONFIGURED_DIAGNOSTIC_NOT_SIGNIFICANCE_TEST`. Universe rows excluded:
+PIT 213, restated 236 (`detail.universe_rows_excluded_pit`, `…_restated`).
+
+Each arm, by layer (`detail.layers.<layer>.<arm>.*`):
+
+| arm | layer | observations | IC mean | IC std | avg names per quantile |
+|---|---|---|---|---|---|
+| PIT | original-process | 13,404 | −0.01166 | 0.1878 | 14.7 |
+| PIT | common-observation | 12,999 | −0.01120 | 0.1911 | 14.3 |
+| restated | original-process | 22,642 | −0.00351 | 0.1614 | 24.7 |
+| restated | common-observation | 12,999 | −0.01306 | 0.1877 | 14.3 |
+
+- PIT arm: from original-process to common-observation, the 405 PIT-only
+  observations leave the scored sample; IC mean is −0.01166 and then −0.01120.
+- Restated arm: from original-process to common-observation, the 9,643
+  restated-only observations leave the scored sample; IC mean is −0.00351 and
+  then −0.01306.
+- IC gap by layer: original-process +0.00815; common-observation −0.00187.
+  LS-Sharpe gap by layer (`ls_sharpe_gap`, per observation): +0.1094; +0.0534.
+- In common-observation, the sd of the per-date IC gap is 0.1703: 6.2, 7.0
+  and 18.0 times the common-observation sd of ep_ratio (0.0277), roe (0.0243)
+  and bm_ratio (0.0095) (Per-date statistics).
+
+The two layers' gaps are reported side by side; they are not combined.
+
+## Common-support versus common-observation
+
+For all four factors the common-support IC gap agrees with the
+common-observation IC gap to four decimal places (bm_ratio −0.00036,
+ep_ratio +0.00163, roe +0.00265, asset_growth −0.00188 at
+`layers.common-support.ic_gap`), and the stored LS-Sharpe gaps of the two layers
+are equal, in a run where neutralisation was off (`neutralised: false`).
+
+## Conclusion
+
+Per-date testing over 183 dates finds no statistically significant
+restated-minus-PIT IC gap for any of the four fundamental factors. Because
+restatements can either improve or degrade cross-sectional rankings, the
+primary test is two-sided at Newey–West lag 5; across the eight unadjusted
+tests, the smallest two-sided p-value is 0.068 for `roe` on common
+observations (mean +0.00265, NW(5) t = +1.82). For that row, the directional
+one-sided p-value is 0.034—well above the eight-test Bonferroni threshold
+(p < 0.00625, one-sided t > 2.498)—and the Newey–West t-statistic increases
+with lag length (1.48 at lag 0 to 1.90 at lag 12) while staying below 1.96 at
+every lag tested. Statistical power differs sharply across factors: for
+`bm_ratio`, `ep_ratio`, and `roe`, the tests have roughly 80% power
+(two-sided 5%) to detect average IC gaps of 0.0017–0.0077 and detect none,
+whereas `asset_growth` has far more dispersed per-date gaps (sd ≈ 0.17 in
+both layers; in common observations 6.2–18.0 times that of the other
+factors), so its MDE is 0.0339 (original-process) and 0.0324
+(common-observation). Its null result is therefore uninformative rather than
+reassuring, and the sign change between layers (+0.00815 to −0.00187) cannot
+be interpreted as evidence of a sample-composition effect.
+
+For the pipeline itself, the 0.005 rule is declared a preconfigured
+diagnostic, not a significance test, and this case shows why that
+distinction matters: judging a mean IC gap by sign and size alone ignores
+per-date dispersion and can produce a `FAIL` on a gap that is not
+statistically distinguishable from zero when the gap series is volatile. A
+sounder diagnostic check should pair the mean gap with its Newey–West
+standard error (or t-statistic) and report the MDE so low-power nulls are not
+mistaken for clean passes. These findings apply only to this
+selected, survivorship-prone 200-company diagnostic store with industry
+neutralisation off, and do not generalize to a verified historical universe
+or the broader market.
+
+## What this cannot show
+
+- **Significance from the archive alone.** The 2026-09-09 archive stores no
+  per-date IC series, only date lists and summaries. The per-date statistics
+  above come from the recomputation. The 0.005 threshold is a preconfigured
+  diagnostic trigger, not a test.
+- **Multiple-testing control.** The per-date statistics are eight tests (four
+  factors × two layers). The reported p-values are not adjusted; the
+  Bonferroni threshold for eight tests (0.00625) is stated alongside them.
+- **Absence of an effect.** A t-statistic that is not significant does not
+  show that the gap is zero.
+- **Power for asset_growth.** Its approximate MDE is 0.0339 (original-process)
+  and 0.0324 (common-observation), against 0.0017–0.0077 for the other three
+  factors; the asset_growth tests have low power.
+- **A decomposition.** Layer gaps are not value and sample parts and are not
+  added or subtracted ([VINTAGE_COMPARISON.md](VINTAGE_COMPARISON.md)).
+- **A pure restatement effect.** The restated arm relaxes filing visibility, so
+  the gap mixes value, availability and processing changes.
+- **A cohort or market-wide result.** The common set is selected. The store is
+  `diagnostic_scale` with `declared_research_evidence: false` and
+  `declared_survivorship_prone_share: 1.0`; the roster is not verified
+  historical membership. Research gates (`research_gates`):
+  historical membership and terminal outcomes `UNRESOLVED`; post-publication
+  out-of-sample, multiple testing, free baseline and trading costs
+  `NOT_IMPLEMENTED`.
+- **Industry-neutralised behaviour.** Neutralisation was off in this run.
+- **Generality across factors.** There are four fundamental factors; the other
+  six are `NOT_APPLICABLE` on every layer.
+
+## Appendix A: reproduction
+
+Commands, run logs, file hashes and the committed-script reproduction check
+are in [research_note_20261125/README.md](../examples/outputs/research_note_20261125/README.md).
+
+- **Identities.** Source run SHA-256 `4bcefb56…4c4f34`. The presentation replay
+  [`b_selected_200_presentation_20260912_final/replay_input.json`](../examples/outputs/b_selected_200_presentation_20260912_final/replay_input.json)
+  carries an identical `vintage_comparisons` object (checked 2026-11-24).
+  Store SHA-256 `66c60785…12d9` (`database_sha256_after_run`).
+- **Recomputation.** On 2026-11-25 the current code (commit `c4840f1`; `src/`
+  identical to `main` at `b3d6c35`) recomputed `compare_vintages` for the four
+  factors on the same store (same SHA-256, unchanged by the runs), one factor
+  per process. For all four factors, all three layers and both arms, each
+  arm's `ic_mean` and each layer's `ic_gap` has the same floating-point bit
+  pattern as the archived value (compared with `float.hex()`, no tolerance),
+  and each arm's `n_dates`, `n_observations` and IC date list is equal to the
+  archived one (`check_<f>.txt`, part 1, produced by
+  [`scripts/research_note/check_vintage_series.py`](../scripts/research_note/check_vintage_series.py)).
+  The archive stores no per-date IC, so the per-date series used in the
+  statistics cannot be compared with it.
+  The 0.2.0 window correction applies to `mom_12_1`, `mom_6_1` and `rev_1m`
+  only ([CHANGELOG.md](../CHANGELOG.md)).
+- **Figure.** `research_note_ic_gaps.png` is written by
+  [`scripts/research_note/plot_ic_gaps.py`](../scripts/research_note/plot_ic_gaps.py),
+  which takes its statistics from the same checker, run with matplotlib
+  3.11.2 (Python 3.12.10; matplotlib is not in the locked environment). To
+  regenerate it without touching the tracked file, write to a new directory and
+  compare: `python -I scripts/research_note/plot_ic_gaps.py examples/outputs/research_note_20261125 rerun/research_note_ic_gaps.png`.
+
+Source run fields: `examples/outputs/b_selected_200_rerun_20260909/demo_run.json`.
+
+| item | field path |
+|---|---|
+| per-layer PIT / restated summaries | `vintage_comparisons.<f>.detail.layers.<layer>.{pit,restated}` |
+| per-layer gaps | `vintage_comparisons.<f>.detail.layers.<layer>.{ic_gap,ls_sharpe_gap}` |
+| per-layer status and reason | `vintage_comparisons.<f>.detail.layers.<layer>.{status,reason}` |
+| outcome identity | `vintage_comparisons.<f>.detail.layers.<layer>.outcome_identity.status` |
+| IC date lists | `vintage_comparisons.<f>.detail.layers.<layer>.metrics.ic.{pit_dates,restated_dates,identical_metric_dates}` |
+| layer sample counts | `vintage_comparisons.<f>.detail.layers.<layer>.sample.*` |
+| common-support cleaning and labels | `vintage_comparisons.<f>.detail.layers.common-support.{cleaning_input_sample,cleaning,label_join}` |
+| arm sample comparison | `vintage_comparisons.<f>.detail.sample_comparison.*` |
+| verdict and threshold | `vintage_comparisons.<f>.diagnostic_verdict`, `….detail.{material_gap_threshold,threshold_kind}` |
+| universe exclusions | `vintage_comparisons.<f>.detail.universe_rows_excluded_{pit,restated}` |
+| store identity | `database_sha256_after_run`, `database_bytes_unchanged`, `evidence.*` |
+| grid and protocol | `configuration.*` |
+| environment | `environment.*` |
+| research gates | `research_gates.*` |
+
+Recomputation fields: `examples/outputs/research_note_20261125/`.
+
+| item | file and field path |
+|---|---|
+| per-date IC series | `<f>_series.json`: `series.<layer>/<arm>.{dates,ic}` |
+| recomputed summaries | `<f>_series.json`: `series.<layer>/<arm>.{ic_mean,n_dates,n_observations}`, `layer_ic_gap.<layer>` |
+| store hash before and after | `<f>_series.json`: `db_sha256_before`, `db_sha256_after` |
+| archive comparison | `check_<f>.txt`, part 1 |
+| per-date statistics | `check_<f>.txt`, part 2 |
+| run stages, interpreter, code | `<f>_run.log` |
+
+`<f>` ∈ {`bm_ratio`, `ep_ratio`, `roe`, `asset_growth`}; `<layer>` ∈
+{`original-process`, `common-observation`, `common-support`}; `<arm>` ∈
+{`pit`, `restated`}.
