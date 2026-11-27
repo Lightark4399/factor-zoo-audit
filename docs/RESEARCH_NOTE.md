@@ -7,13 +7,23 @@ archive bit for bit (Appendix A). The archive labels its statistics
 
 ## Key results
 
-- Original-process IC gap (restated − PIT): bm_ratio −0.00092, ep_ratio +0.00235, roe +0.00360, asset_growth +0.00815; only asset_growth exceeds the preconfigured 0.005 trigger, and its `diagnostic_verdict` begins `FAIL`.
+- Original-process IC gap (restated − PIT): bm_ratio −0.00092, ep_ratio +0.00235, roe +0.00360, asset_growth +0.00815; only asset_growth exceeds the preconfigured 0.005 trigger, and its `diagnostic_verdict` begins `FAIL`, but its per-date gap test gives NW(5) t = +0.67 (two-sided p = 0.50).
 - Common-observation IC gap: asset_growth −0.00187 (opposite sign to its original-process gap); bm_ratio −0.00035, ep_ratio +0.00165, roe +0.00265 (same sign as original-process).
 - Of the 8 per-date gap tests, two-sided NW(5) p ranges from 0.068 (roe, common-observation) to 0.872 (asset_growth, common-observation), none below 0.05; asset_growth's MDE is 0.0339 and 0.0324, against 0.0017–0.0077 for the other six.
 
 ## Question and answer
 
-TODO (author).
+**Question.** In this 200-company diagnostic sample, do restated-fundamental
+ICs differ from point-in-time ICs by more than sampling noise, and does the
+`FAIL` flag raised on `asset_growth` reflect a statistically distinguishable
+restated-versus-PIT gap?
+
+**Answer.** No. Across four fundamental factors and two layers (eight
+two-sided Newey–West tests at lag 5), no per-date IC gap is distinguishable
+from zero (unadjusted two-sided p = 0.068 to 0.872). The flagged
+`asset_growth` original-process gap (+0.00815) has NW(5) t = +0.67 (p = 0.501)
+and is −0.00187 (NW(5) t = −0.16, p = 0.872) on common observations, so
+both figures lie well within sampling noise.
 
 ## Data and settings
 
@@ -186,7 +196,35 @@ are equal, in a run where neutralisation was off (`neutralised: false`).
 
 ## Conclusion
 
-TODO (author).
+Per-date testing over 183 dates finds no statistically significant
+restated-minus-PIT IC gap for any of the four fundamental factors. Because
+restatements can either improve or degrade cross-sectional rankings, the
+primary test is two-sided at Newey–West lag 5; across the eight unadjusted
+tests, the smallest two-sided p-value is 0.068 for `roe` on common
+observations (mean +0.00265, NW(5) t = +1.82). For that row, the directional
+one-sided p-value is 0.034—well above the eight-test Bonferroni threshold
+(p < 0.00625, one-sided t > 2.498)—and the Newey–West t-statistic increases
+with lag length (1.48 at lag 0 to 1.90 at lag 12) while staying below 1.96 at
+every lag tested. Statistical power differs sharply across factors: for
+`bm_ratio`, `ep_ratio`, and `roe`, the tests have roughly 80% power
+(two-sided 5%) to detect average IC gaps of 0.0017–0.0077 and detect none,
+whereas `asset_growth` has far more dispersed per-date gaps (sd ≈ 0.17 in
+both layers; in common observations 6.2–18.0 times that of the other
+factors), so its MDE is 0.0339 (original-process) and 0.0324
+(common-observation). Its null result is therefore uninformative rather than
+reassuring, and the sign change between layers (+0.00815 to −0.00187) cannot
+be interpreted as evidence of a sample-composition effect.
+
+For the pipeline itself, the 0.005 rule is declared a preconfigured
+diagnostic, not a significance test, and this case shows why that
+distinction matters: judging a mean IC gap by sign and size alone ignores
+per-date dispersion and can produce a `FAIL` on noise when the gap series is
+volatile. A sounder diagnostic check should pair the mean gap with its
+Newey–West standard error (or t-statistic) and report the MDE so low-power
+nulls are not mistaken for clean passes. These findings apply only to this
+selected, survivorship-prone 200-company diagnostic store with industry
+neutralisation off, and do not generalize to a verified historical universe
+or the broader market.
 
 ## What this cannot show
 
