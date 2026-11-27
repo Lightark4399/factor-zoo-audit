@@ -2,18 +2,19 @@ factor bm_ratio; run bm_ratio_series.json
 db sha256 before/after: 66c60785d1c0 / 66c60785d1c0
 archive b_selected_200_rerun_20260909/demo_run.json
 
-1. Recomputed vs archive (diff = recomputed - archived; 'exact' means |diff| <= 1e-12)
-  original-process    pit      archived -0.0140033358 recomputed -0.0140033358 diff +0.000e+00 exact | n_dates 183->183 | n_obs 20186->20186 | IC dates identical to archive: True
-  original-process    restated archived -0.0149279012 recomputed -0.0149279012 diff +0.000e+00 exact | n_dates 183->183 | n_obs 20346->20346 | IC dates identical to archive: True
-  original-process    ic_gap   archived -0.0009245654 recomputed -0.0009245654 diff +0.000e+00 exact
-  common-observation  pit      archived -0.0142997666 recomputed -0.0142997666 diff +0.000e+00 exact | n_dates 183->183 | n_obs 20151->20151 | IC dates identical to archive: True
-  common-observation  restated archived -0.0146503893 recomputed -0.0146503893 diff +0.000e+00 exact | n_dates 183->183 | n_obs 20151->20151 | IC dates identical to archive: True
-  common-observation  ic_gap   archived -0.0003506227 recomputed -0.0003506227 diff +0.000e+00 exact
-  common-support      pit      archived -0.0142924480 recomputed -0.0142924480 diff +0.000e+00 exact | n_dates 183->183 | n_obs 20151->20151 | IC dates identical to archive: True
-  common-support      restated archived -0.0146548618 recomputed -0.0146548618 diff +0.000e+00 exact | n_dates 183->183 | n_obs 20151->20151 | IC dates identical to archive: True
-  common-support      ic_gap   archived -0.0003624138 recomputed -0.0003624138 diff +0.000e+00 exact
+1. Recomputed vs archive: floats 'bit-identical' if float.hex() is equal (no tolerance);
+   counts and IC date lists 'equal' if identical. Per-date IC: not in the archive, not compared.
+  original-process    pit      ic_mean -0x1.cadc7e909cc27p-7 -> -0x1.cadc7e909cc27p-7 bit-identical | n_dates 183->183 equal | n_obs 20186->20186 equal | IC dates equal
+  original-process    restated ic_mean -0x1.e9284fa6f3aa6p-7 -> -0x1.e9284fa6f3aa6p-7 bit-identical | n_dates 183->183 equal | n_obs 20346->20346 equal | IC dates equal
+  original-process    ic_gap   -0x1.e4bd11656e7f0p-11 -> -0x1.e4bd11656e7f0p-11 bit-identical
+  common-observation  pit      ic_mean -0x1.d49322ffc3008p-7 -> -0x1.d49322ffc3008p-7 bit-identical | n_dates 183->183 equal | n_obs 20151->20151 equal | IC dates equal
+  common-observation  restated ic_mean -0x1.e0105f767bf0fp-7 -> -0x1.e0105f767bf0fp-7 bit-identical | n_dates 183->183 equal | n_obs 20151->20151 equal | IC dates equal
+  common-observation  ic_gap   -0x1.6fa78ed71e0e0p-12 -> -0x1.6fa78ed71e0e0p-12 bit-identical
+  common-support      pit      ic_mean -0x1.d455be48291cbp-7 -> -0x1.d455be48291cbp-7 bit-identical | n_dates 183->183 equal | n_obs 20151->20151 equal | IC dates equal
+  common-support      restated ic_mean -0x1.e035e409130ffp-7 -> -0x1.e035e409130ffp-7 bit-identical | n_dates 183->183 equal | n_obs 20151->20151 equal | IC dates equal
+  common-support      ic_gap   -0x1.7c04b81d3e680p-12 -> -0x1.7c04b81d3e680p-12 bit-identical
 
 2. Per-date IC gap d_t = IC_restated - IC_pit; main lag 5; p from NW(5) t, normal approximation; one-sided H1: mean > 0
    Bonferroni over 8 tests: p < 0.00625; |t| > 2.734 two-sided, t > 2.498 one-sided
-  original-process    n 183 | mean -0.000925 | sign - | sd 0.016596 | simple t -0.754 | NW(0) t -0.756 | NW(3) t -0.830 | NW(5) t -0.841 | NW(12) t -0.803 | SE_NW(5) 0.001099 | MDE 0.003077 | p two-sided 0.4002 | p one-sided 0.7999 | mean vs recomputed ic_gap diff -1.1e-19
-  common-observation  n 183 | mean -0.000351 | sign - | sd 0.009484 | simple t -0.500 | NW(0) t -0.501 | NW(3) t -0.556 | NW(5) t -0.580 | NW(12) t -0.541 | SE_NW(5) 0.000605 | MDE 0.001694 | p two-sided 0.5621 | p one-sided 0.7189 | mean vs recomputed ic_gap diff +4.9e-19
+  original-process    n 183 | mean -0.000925 | sign - | sd 0.016596 | simple t -0.754 | NW(0) t -0.756 | NW(3) t -0.830 | NW(5) t -0.841 | NW(12) t -0.803 | SE_NW(5) 0.001099 | MDE 0.003077 | 95% [-0.003079, +0.001229] | p two-sided 0.4002 | p one-sided 0.7999 | mean vs recomputed ic_gap diff -1.1e-19
+  common-observation  n 183 | mean -0.000351 | sign - | sd 0.009484 | simple t -0.500 | NW(0) t -0.501 | NW(3) t -0.556 | NW(5) t -0.580 | NW(12) t -0.541 | SE_NW(5) 0.000605 | MDE 0.001694 | 95% [-0.001536, +0.000835] | p two-sided 0.5621 | p one-sided 0.7189 | mean vs recomputed ic_gap diff +4.9e-19

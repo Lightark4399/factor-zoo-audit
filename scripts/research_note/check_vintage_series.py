@@ -2,10 +2,13 @@
 
 Stdlib only; reads two JSON files and writes nothing.
 
-1. For each layer and arm: recomputed ic_mean / n_dates / IC date list vs
-   examples/outputs/b_selected_200_rerun_20260909/demo_run.json
-   (vintage_comparisons.<factor>.detail.layers.<layer>.{pit,restated}.ic_mean,
-    .metrics.ic.{pit,restated}_dates), and recomputed ic_gap vs archived ic_gap.
+1. For each layer and arm: recomputed ic_mean / n_dates / n_observations /
+   IC date list vs examples/outputs/b_selected_200_rerun_20260909/demo_run.json
+   (vintage_comparisons.<factor>.detail.layers.<layer>.{pit,restated}.
+    {ic_mean,n_dates,n_observations}, .metrics.ic.{pit,restated}_dates), and
+   recomputed ic_gap vs archived ic_gap. Floats are compared by bit pattern
+   (float.hex()), with no tolerance; integers and date lists by equality. The
+   archive has no per-date IC, so the per-date series cannot be checked here.
 2. For original-process and common-observation: per-date d_t = IC_restated - IC_pit
    on identical dates; simple t = mean / (s / sqrt(n)) with s using n-1;
    Newey-West t with Bartlett weights, autocovariances divided by n, at lags
@@ -14,7 +17,8 @@ Stdlib only; reads two JSON files and writes nothing.
    defined when the mean is 0); p-values from NW(5) t under a standard normal
    approximation, two-sided and one-sided (H1: mean > 0); approximate minimum
    detectable difference MDE = 2.8 * SE_NW (two-sided 5%, 80% power;
-   2.8 ~ 1.96 + 0.84; normal approximation).
+   2.8 ~ 1.96 + 0.84; normal approximation); approximate 95% interval
+   mean +/- 1.96 * SE_NW.
 
     python -I scripts/research_note/check_vintage_series.py <factor>_series.json
         [--archive <demo_run.json>]
@@ -35,7 +39,7 @@ N_TESTS = 8  # four factors x two layers (original-process, common-observation)
 ALPHA = 0.05
 LAYERS = ("original-process", "common-observation", "common-support")
 T_LAYERS = ("original-process", "common-observation")
-EXACT = 1e-12
+CI_Z = 1.96
 Z = NormalDist()
 
 
@@ -57,6 +61,11 @@ def newey_west_se(x, lag):
 
 def newey_west_t(x, lag):
     return (sum(x) / len(x)) / newey_west_se(x, lag)
+
+
+def same_bits(a, b):
+    """True only if two floats have the same bit pattern (so 0.0 != -0.0, nan == nan)."""
+    return float(a).hex() == float(b).hex()
 
 
 def p_two_sided(t):
@@ -83,6 +92,7 @@ def gap_stats(series, layer):
         "simple_t": simple_t(d),
         "nw_t": {lag: newey_west_t(d, lag) for lag in LAGS},
         "se_nw": se, "mde": MDE_Z * se,
+        "ci_low": mean - CI_Z * se, "ci_high": mean + CI_Z * se,
         "p_two": p_two_sided(t), "p_one": p_one_sided_positive(t),
     }
 
@@ -98,6 +108,8 @@ def selftest():
     assert abs(p_two_sided(-1.959963984540054) - 0.05) < 1e-12
     assert abs(p_one_sided_positive(1.6448536269514722) - 0.05) < 1e-12
     assert abs(p_one_sided_positive(-1.6448536269514722) - 0.95) < 1e-12
+    assert same_bits(0.1 + 0.2, 0.30000000000000004) and same_bits(math.nan, math.nan)
+    assert not same_bits(0.0, -0.0) and not same_bits(1.0, math.nextafter(1.0, 2.0))
 
 
 def main():
@@ -116,25 +128,29 @@ def main():
     print(f"db sha256 before/after: {run['db_sha256_before'][:12]} / {run['db_sha256_after'][:12]}")
     print(f"archive {args.archive.parent.name}/{args.archive.name}\n")
 
-    print("1. Recomputed vs archive (diff = recomputed - archived; "
-          f"'exact' means |diff| <= {EXACT:g})")
+    print("1. Recomputed vs archive: floats 'bit-identical' if float.hex() is equal "
+          "(no tolerance);")
+    print("   counts and IC date lists 'equal' if identical. "
+          "Per-date IC: not in the archive, not compared.")
+
+    def verdict(ok, word):
+        return word if ok else "DIFFERS"
+
     for layer in LAYERS:
         a = layers[layer]
         for arm in ("pit", "restated"):
-            r = series[f"{layer}/{arm}"]
-            archived = a[arm]["ic_mean"]
-            diff = r["ic_mean"] - archived
-            dates_same = r["dates"] == a["metrics"]["ic"][f"{arm}_dates"]
-            print(f"  {layer:19s} {arm:8s} archived {archived:+.10f} recomputed "
-                  f"{r['ic_mean']:+.10f} diff {diff:+.3e} "
-                  f"{'exact' if abs(diff) <= EXACT else 'DIFFERS'} | n_dates "
-                  f"{a[arm]['n_dates']}->{r['n_dates']} | n_obs "
-                  f"{a[arm]['n_observations']}->{r['n_observations']} | "
-                  f"IC dates identical to archive: {dates_same}")
-        gap_diff = run["layer_ic_gap"][layer] - a["ic_gap"]
-        print(f"  {layer:19s} ic_gap   archived {a['ic_gap']:+.10f} recomputed "
-              f"{run['layer_ic_gap'][layer]:+.10f} diff {gap_diff:+.3e} "
-              f"{'exact' if abs(gap_diff) <= EXACT else 'DIFFERS'}")
+            r, archived = series[f"{layer}/{arm}"], a[arm]
+            print(f"  {layer:19s} {arm:8s} ic_mean {float(archived['ic_mean']).hex()} -> "
+                  f"{float(r['ic_mean']).hex()} "
+                  f"{verdict(same_bits(r['ic_mean'], archived['ic_mean']), 'bit-identical')} | "
+                  f"n_dates {archived['n_dates']}->{r['n_dates']} "
+                  f"{verdict(r['n_dates'] == archived['n_dates'], 'equal')} | "
+                  f"n_obs {archived['n_observations']}->{r['n_observations']} "
+                  f"{verdict(r['n_observations'] == archived['n_observations'], 'equal')} | "
+                  f"IC dates {verdict(r['dates'] == a['metrics']['ic'][f'{arm}_dates'], 'equal')}")
+        g = run["layer_ic_gap"][layer]
+        print(f"  {layer:19s} ic_gap   {float(a['ic_gap']).hex()} -> {float(g).hex()} "
+              f"{verdict(same_bits(g, a['ic_gap']), 'bit-identical')}")
 
     a_b = ALPHA / N_TESTS
     print(f"\n2. Per-date IC gap d_t = IC_restated - IC_pit; main lag {MAIN_LAG}; "
@@ -150,7 +166,8 @@ def main():
         print(f"  {layer:19s} n {s['n']} | mean {s['mean']:+.6f} | sign "
               f"{'+' if s['mean'] > 0 else '-' if s['mean'] < 0 else '0'} | sd {s['sd']:.6f} | "
               f"simple t {s['simple_t']:+.3f} | {nw} SE_NW(5) {s['se_nw']:.6f} | "
-              f"MDE {s['mde']:.6f} | p two-sided {s['p_two']:.4f} | "
+              f"MDE {s['mde']:.6f} | 95% [{s['ci_low']:+.6f}, {s['ci_high']:+.6f}] | "
+              f"p two-sided {s['p_two']:.4f} | "
               f"p one-sided {s['p_one']:.4f} | mean vs recomputed ic_gap diff "
               f"{s['mean'] - run['layer_ic_gap'][layer]:+.1e}")
 

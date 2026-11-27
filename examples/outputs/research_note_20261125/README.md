@@ -96,16 +96,27 @@ byte-identical in the run directory and the backup directory.
 
 The committed
 [`scripts/research_note/run_vintage_series.py`](../../../scripts/research_note/run_vintage_series.py)
-differs from the driver as run only by taking the repository path and the
-expected hash as `--repo` (default: this checkout) and `--expected-sha256`,
-by splitting one import line, and by its docstring. The equivalent command,
-from the repository root, per factor:
+differs from the driver as run in four ways:
+- it takes the repository path and the expected hash as `--repo` (default:
+  this checkout) and `--expected-sha256`;
+- since 2026-11-27, it resolves `--db`, `--out` and `--log` to absolute paths
+  and refuses to run if any two are the same file, or if `--out` or `--log`
+  already exists (unless `--force` is given);
+- since 2026-11-27, it opens the log only after the store hash has been
+  checked, so a hash mismatch leaves no log and no output;
+- it splits one import line and has a longer docstring.
+
+None of these touch the computation.
+[`tests/test_research_note_scripts.py`](../../../tests/test_research_note_scripts.py)
+checks each refusal. The equivalent command, from the repository root, per
+factor, writes to a new directory (`rerun/`) rather than over the files
+archived here:
 
 ```powershell
 python -I -u scripts/research_note/run_vintage_series.py --db <path>\fza_200.duckdb `
   --factor bm_ratio `
-  --out examples/outputs/research_note_20261125/bm_ratio_series.json `
-  --log examples/outputs/research_note_20261125/bm_ratio_run.log `
+  --out rerun/bm_ratio_series.json `
+  --log rerun/bm_ratio_run.log `
   --expected-sha256 66c60785d1c085d4883f49796a33f20ad2bdf418072086fbfd938100666312d9
 ```
 
@@ -117,15 +128,24 @@ produced afterwards by the committed
 
 ```powershell
 python -I scripts/research_note/check_vintage_series.py `
-  examples/outputs/research_note_20261125/bm_ratio_series.json > check_bm_ratio.txt
+  examples/outputs/research_note_20261125/bm_ratio_series.json > rerun/check_bm_ratio.txt
 ```
 
 Part 1 of each check output compares every layer and arm with the source
-archive; part 2 gives the per-date gap statistics. The `check_<factor>.txt`
-files were regenerated on 2026-11-26, after the checker changed MDE to
-2.8 × the Newey-West standard error and added the sign, two-sided and
-one-sided p-values, NW t at lags 0, 3, 5 and 12, and the Bonferroni
-threshold. Part 1 is byte-identical to the previous version.
+archive. `ic_mean` and `ic_gap` are compared by floating-point bit pattern
+(`float.hex()`, no tolerance), and `n_dates`, `n_observations` and the IC date
+lists by equality. The archive has no per-date IC, so the per-date series are
+not compared. Part 2 gives the per-date gap statistics.
+
+The `check_<factor>.txt` files were regenerated twice:
+- **2026-11-26:** MDE changed to 2.8 × the Newey-West standard error, and the
+  sign, two-sided and one-sided p-values, NW t at lags 0, 3, 5 and 12, and the
+  Bonferroni threshold were added.
+- **2026-11-27:** part 1 changed from a 1e-12 tolerance to bit equality, and
+  the approximate 95% interval (mean ± 1.96 × SE_NW) was added to part 2.
+
+In every file, every comparison in part 1 reads `bit-identical` or `equal`.
+Part 2 is unchanged apart from the added interval.
 
 [`scripts/research_note/compare_series.py`](../../../scripts/research_note/compare_series.py)
 compares two driver outputs field by field (all fields except `generated_at`
@@ -138,10 +158,11 @@ python -I scripts/research_note/compare_series.py <old>_series.json <new>_series
 ## Reproduction with the committed scripts
 
 A check that the committed scripts reproduce the runs above. Only `bm_ratio`
-was rerun; `ep_ratio`, `roe` and `asset_growth` were not, because each takes
-about an hour.
+was rerun. `ep_ratio`, `roe` and `asset_growth` were not; their
+`compare_vintages` runs took about 59 min, 66 min and 6.3 min.
 
-- **Rerun.** The committed `run_vintage_series.py`, run on 2026-11-26 with the
+- **Rerun.** The committed `run_vintage_series.py` as of `28b1d18`, before the
+  2026-11-27 path checks were added. It was run on 2026-11-26 with the
   locked environment and the same store, writing to a temporary directory (the
   log's final `wrote` line records the path).
   [`bm_ratio_rerun_run.log`](bm_ratio_rerun_run.log) records `git rev-parse
@@ -192,10 +213,10 @@ imported `fza`) exactly as written at run time.
 | `bm_ratio_rerun_series.json` | 52014 | `c66adc5dba53f71fc2b851280866fdb22d14a1dfc061d7c064bfb0f3d44b4c19` |
 | `bm_ratio_run.log` | 5399 | `36b230339c0cb50c780706b1768c613cd336f599fb731c2d647dce135c33c0ff` |
 | `bm_ratio_series.json` | 52020 | `0a323fdc6aaad0a2ee4c5dc368d96265b9a40f62e54afd0c8d0cc1632ecd0835` |
-| `check_asset_growth.txt` | 2391 | `c8d7a842a77dcb540b70dd6e4ffae0395de973c8e97276fb995dc7e4c9bc2aad` |
-| `check_bm_ratio.txt` | 2383 | `c4dbcc173bdc33853bd0712f81d4646435611f1969dd9c3e6bd84aa0191e3418` |
-| `check_ep_ratio.txt` | 2383 | `8aca2665ee4bd1892eeaf11f41c8990a840a21fa0b2ae3c78c5aa06303e7cabb` |
-| `check_roe.txt` | 2373 | `890d403583e3892313c46b483b3e60765c8470df4eba5f1b2a7426226bb6d1f4` |
+| `check_asset_growth.txt` | 2464 | `50e78587563aa6b321a4de8cf2fee44fce46388ecff314fd38549530843dcd85` |
+| `check_bm_ratio.txt` | 2460 | `2283950d23b1b6f2c23bc48387408006e66a83dea597513de74f8dd7144527ac` |
+| `check_ep_ratio.txt` | 2452 | `7ea27f37afe4e088eb65da1ab7af2491a276797bd5c2c33ac0398c1e30379a8e` |
+| `check_roe.txt` | 2440 | `c80be745844f76abe14183807ce783bcfa1f4c9320a9053d27d56c005431d018` |
 | `compare_bm_ratio_rerun.txt` | 692 | `4e23cc42c9e6312170d87b37710730cee809e9db908b22dbb47bd691f3f99418` |
 | `ep_ratio_run.log` | 5430 | `060b07562f82f1869ba13c63f3705d89f4327b9966bf2df6705bf13b513e3fcb` |
 | `ep_ratio_series.json` | 51987 | `4b2857ad3da82333c21616aae54c55210803eda590ebf449414408bb7ca56e4f` |

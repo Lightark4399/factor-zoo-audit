@@ -9,9 +9,13 @@ memory_limit 1GB and threads 1.
 
     python -I -u scripts/research_note/run_vintage_series.py --db <store.duckdb>
         --factor bm_ratio --out <dir>/bm_ratio_series.json
-        --log <dir>/bm_ratio_run.log [--expected-sha256 <hex>]
+        --log <dir>/bm_ratio_run.log [--expected-sha256 <hex>] [--force]
 
-With --expected-sha256 the run aborts before computing if the store differs.
+Before anything is written, --db, --out and --log are resolved to absolute
+paths; the run refuses if any two are the same file, and refuses if --out or
+--log already exists unless --force is given. The store is hashed before the
+log is opened: with --expected-sha256 the run aborts on a mismatch without
+creating the log or the output.
 
 Layer spans are derived from call order in fza.pipeline.vintage.diagnostic_layers:
   original-process   = layers start -> 2nd outcome_identity call
@@ -24,7 +28,10 @@ earlier span.
 import argparse
 import ctypes
 import hashlib
+import io
+import itertools
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -124,7 +131,19 @@ def sha256(path):
     return h.hexdigest()
 
 
-def main():
+def check_paths(db, out, log, force=False):
+    """Resolve --db, --out, --log; exit if two coincide or an output exists without force."""
+    paths = {"--db": Path(db).resolve(), "--out": Path(out).resolve(), "--log": Path(log).resolve()}
+    for a, b in itertools.combinations(paths, 2):
+        if os.path.normcase(paths[a]) == os.path.normcase(paths[b]):
+            sys.exit(f"ABORT: {a} and {b} are the same path: {paths[a]}")
+    for name in ("--out", "--log"):
+        if paths[name].exists() and not force:
+            sys.exit(f"ABORT: {name} {paths[name]} already exists; pass --force to overwrite")
+    return paths["--db"], paths["--out"], paths["--log"]
+
+
+def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", type=Path, required=True)
     ap.add_argument("--factor", required=True)
@@ -132,14 +151,17 @@ def main():
     ap.add_argument("--log", type=Path, required=True)
     ap.add_argument("--repo", type=Path, default=Path(__file__).resolve().parents[2])
     ap.add_argument("--expected-sha256")
-    args = ap.parse_args()
+    ap.add_argument("--force", action="store_true", help="overwrite existing --out / --log")
+    args = ap.parse_args(argv)
     repo = args.repo.resolve()
+    args.db, args.out, args.log = check_paths(args.db, args.out, args.log, args.force)
 
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.log.parent.mkdir(parents=True, exist_ok=True)
-    log = open(args.log, "w", encoding="utf-8")
+    # Console plus an in-memory buffer until the store hash is checked; the
+    # buffer is copied into the log once it is opened.
+    pending = io.StringIO()
     sys.stdout.reconfigure(errors="replace")
-    sys.stdout = sys.stderr = Tee(sys.__stdout__, log)
+    tee = Tee(sys.__stdout__, pending)
+    sys.stdout = sys.stderr = tee
 
     print(f"{now()} python {sys.version.split()[0]} at {sys.executable}")
     for cmd in (["rev-parse", "HEAD"], ["status", "--porcelain", "--", "src"]):
@@ -154,6 +176,12 @@ def main():
     print(f"sha256 before: {before}")
     if args.expected_sha256 and before != args.expected_sha256.lower():
         sys.exit(f"ABORT: DB hash differs from --expected-sha256 {args.expected_sha256}")
+
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.log.parent.mkdir(parents=True, exist_ok=True)
+    log = open(args.log, "w", encoding="utf-8")
+    log.write(pending.getvalue())
+    tee.streams = (sys.__stdout__, log)
 
     s = begin("load")
     sys.path.insert(0, str(repo / "src"))
