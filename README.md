@@ -36,6 +36,9 @@ these describe that selected sample, not market-wide anomaly survival.
   or that the PIT pipeline leaked.
 <!-- diagnostic-examples:end -->
 
+A per-date test of the flagged `asset_growth` gap is in the
+[research note](docs/RESEARCH_NOTE.md).
+
 ## Evidence boundary
 
 Synthetic controls test the audit mechanics. A selected 200-company dataset
@@ -140,6 +143,7 @@ are in [docs/DESIGN_AND_DATA_NOTES.md](docs/DESIGN_AND_DATA_NOTES.md#further-run
 | [docs/DESIGN_AND_DATA_NOTES.md](docs/DESIGN_AND_DATA_NOTES.md) | Point-in-time schema, hypothesis cards, status checklist, data limitations |
 | [docs/DEFINITION_AUDIT.md](docs/DEFINITION_AUDIT.md) | Factor definition and citation audit |
 | [docs/VINTAGE_COMPARISON.md](docs/VINTAGE_COMPARISON.md) | Three-layer vintage diagnostic contract |
+| [docs/RESEARCH_NOTE.md](docs/RESEARCH_NOTE.md) | Per-date tests of the four fundamental factors' vintage IC gaps |
 | [docs/DISCLOSURE_METRICS.md](docs/DISCLOSURE_METRICS.md) | Stored disclosure metrics and historical interpretation correction |
 | [docs/RENDERING.md](docs/RENDERING.md) | Report replay and source boundaries |
 | [docs/validation/README.md](docs/validation/README.md) | Historical validation index: dated checkpoints, not current acceptance |
